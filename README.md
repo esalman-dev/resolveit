@@ -2,7 +2,7 @@
 
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
-> 🚧 **Status: in early development.** The frontend, backend, and PostgreSQL database are connected end to end. See [Progress](#progress) for what's done and what's next.
+> 🚧 **Status: in development.** Accounts, login (password or Google), and roles are done and covered by automated tests. Tickets are next. See [Progress](#progress).
 
 ## The idea
 
@@ -15,12 +15,36 @@ Most help desk tickets are for common problems with simple fixes: Wi-Fi that won
 
 **Safety first:** the AI only suggests low-risk fixes. Anything risky, like registry edits, BIOS changes or deleting files, goes straight to a technician.
 
-## Planned features
+## Features
 
-- Ticket tracking with **user**, **technician**, and **admin** roles
+**Done**
+- Accounts with email and password, or **Sign in with Google**
+- Stay logged in for up to 30 days, with a hard 90-day maximum
+- Roles: **user**, **technician**, and **admin**, with an admin screen for managing users
+
+**Planned**
+- Ticket tracking: create, assign, update, search, and filter
 - AI self-service troubleshooting with safe-fix guardrails
 - A knowledge base that learns from tickets technicians have solved
 - An analytics dashboard: self-solved rate, escalations, most common problems, average resolution time
+
+## Security
+
+Authentication is built by hand rather than with an auth service, so each decision is visible and tested:
+
+| Concern | How ResolveIT handles it |
+|---|---|
+| Stored passwords | Hashed with **bcrypt** (cost 12, salted). The real password is never stored or returned. |
+| Login tokens | Short-lived **JWT access token** (15 minutes) kept only in memory, never in `localStorage`. |
+| Staying logged in | **Refresh token** in an `httpOnly`, `SameSite=Strict` cookie that JavaScript can't read. Stored as a SHA-256 hash, valid for 30 days of inactivity and at most 90 days in total. |
+| Stolen refresh tokens | **Rotation:** every refresh token works once. **Reuse detection:** if an old one is presented again, all of that user's sessions are revoked. |
+| Logging out | The server revokes the session, not just the browser. |
+| Permissions | Role checks read the **current role from the database**, so promotions, demotions, and deleted accounts take effect immediately. 401 = not logged in, 403 = not allowed. |
+| Self-promotion | Sign-up always creates a `user`, whatever the request says. The first admin is created from the server with `npm run make-admin`. Admins can't change their own role, so one admin always remains. |
+| Password guessing | **Rate limits:** 10 failed logins per 15 minutes, 10 sign-ups per hour, and a general API cap. |
+| Account fishing | Login gives the same error for an unknown email and a wrong password. |
+| SQL injection | Every query uses parameters (`$1`, `$2`), never string building. |
+| Google sign-in | Google's ID token is verified (signature, audience, expiry). An existing account is linked only if Google confirms the email is verified. |
 
 ## Tech stack
 
@@ -29,43 +53,60 @@ Most help desk tickets are for common problems with simple fixes: Wi-Fi that won
 | Frontend | React 19 + Vite |
 | Backend | Node.js + Express 5 |
 | Database | PostgreSQL |
+| Auth | bcrypt, JSON Web Tokens, Google Identity Services, express-rate-limit |
+| Testing | Vitest + Supertest, against a separate test database |
 | AI | AI model API for fix suggestions (planned) |
-| Hosting | Render / Railway / Vercel (planned) |
+| Hosting | Vercel (frontend), Render (API), Neon (database), on free tiers (planned) |
 
 ## Progress
 
 **Phase 1: Core ticket tracker**
 - [x] Project repository set up
-- [x] React frontend and Express backend connected (health check endpoint)
-- [x] PostgreSQL database and ticket schema
-- [ ] User accounts and login
-- [ ] Roles: user, technician, admin
+- [x] React frontend and Express backend connected
+- [x] PostgreSQL database and schema
+- [x] User accounts and login (password and Google)
+- [x] Roles: user, technician, admin
 - [ ] Create, view, assign, and update tickets
 - [ ] Ticket status and priority
 - [ ] Search and filter
 
-**Phase 2: AI self-service fixes** · **Phase 3: Knowledge base and analytics** · **Phase 4: Deployment, automated tests, CI**
+**Phase 2: AI self-service fixes** · **Phase 3: Knowledge base and analytics** · **Phase 4: Deployment, CI, password reset**
 
 ## Project structure
 
 ```
 resolveit/
-├── client/          React frontend (Vite)
-│   └── src/         Pages and components
-└── server/          Express API
-    ├── index.js     Server entry point and routes
+├── client/                  React frontend (Vite)
+│   ├── src/
+│   │   ├── api.js           All API calls: attaches and renews the login token
+│   │   ├── App.jsx          Restores the session on load, picks the screen
+│   │   ├── LoginPage.jsx    Log in / create account form
+│   │   ├── GoogleButton.jsx Sign in with Google
+│   │   └── UsersPage.jsx    Admin: manage users and roles
+│   ├── vite.config.js       Dev proxy: forwards /api to the Express server
+│   └── vercel.json          Production proxy: forwards /api to the hosted API
+└── server/                  Express API
+    ├── app.js               Builds the app: middleware and routes
+    ├── index.js             Starts the server
+    ├── routes/
+    │   ├── auth.js          Register, login, Google, refresh, logout, /me
+    │   └── users.js         Admin user management
+    ├── middleware/
+    │   ├── auth.js          requireAuth (who are you?) and requireRole (are you allowed?)
+    │   └── rateLimit.js     Request limits
     ├── db/
-    │   ├── index.js     Shared PostgreSQL connection pool
-    │   └── schema.sql   Database tables (users, tickets)
-    └── .env.example Template for environment variables
+    │   ├── index.js         Shared PostgreSQL connection pool
+    │   └── schema.sql       Tables and constraints (safe to re-run)
+    ├── scripts/
+    │   └── make-admin.js    Promote an account to admin
+    └── test/                Automated tests
 ```
 
 ## Database
 
-Two tables so far:
-
-- **`users`**: name, unique email, hashed password, and a role (`user`, `technician`, or `admin`)
-- **`tickets`**: title, description, status, priority, and category, plus foreign keys to the user who created it and the technician it's assigned to
+- **`users`**: name, unique email, an optional bcrypt password hash, an optional Google ID, and a role (`user`, `technician`, or `admin`). A `CHECK` constraint requires at least one way to log in.
+- **`tickets`**: title, description, status, priority, and category, plus foreign keys to the user who created it and the technician it's assigned to.
+- **`refresh_tokens`**: one row per logged-in browser. Stores a hash of the token, its expiry, when the session started, and when it was revoked.
 
 Allowed values for role, status, and priority are enforced by the database itself with `CHECK` constraints. See [`server/db/schema.sql`](server/db/schema.sql).
 
@@ -82,25 +123,55 @@ cd resolveit
 psql -U postgres -c "CREATE DATABASE resolveit;"
 psql -U postgres -d resolveit -f server/db/schema.sql
 
-# 3. Start the backend (http://localhost:5000)
+# 3. Configure and start the backend (http://localhost:5000)
 cd server
 npm install
-cp .env.example .env    # then put your PostgreSQL password in DATABASE_URL
+cp .env.example .env    # put your PostgreSQL password in DATABASE_URL and generate a JWT_SECRET
 npm run dev
 
 # 4. In a second terminal, start the frontend (http://localhost:5173)
 cd client
 npm install
+cp .env.example .env    # optional: add a Google Client ID to show the Google button
 npm run dev
 ```
 
-Open http://localhost:5173. The page should show **Server status: ok** and **Database: connected**.
+Open http://localhost:5173 and create an account.
+
+**Make yourself an admin** (from the `server` folder, after signing up):
+
+```bash
+npm run make-admin -- you@example.com
+```
+
+**Sign in with Google (optional):** create an OAuth Client ID (type: Web application) in Google Cloud Console, add `http://localhost:5173` as an authorized JavaScript origin, and put the ID in both `server/.env` (`GOOGLE_CLIENT_ID`) and `client/.env` (`VITE_GOOGLE_CLIENT_ID`). Without it, the Google button is simply hidden.
+
+### Running the tests
+
+```bash
+cd server
+npm test
+```
+
+The tests create and use a separate database, `resolveit_test`, on the same PostgreSQL server, and empty it before every test. They refuse to run against any database whose name doesn't end in `_test`.
+
+> **Windows + Git Bash:** if Vitest says it "failed to find the runner," open the folder with an uppercase drive letter (`cd /C/Users/...`) or run the tests from PowerShell.
 
 ### API
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/health` | Checks the server and database. Returns `{ "status": "ok", "database": "connected" }`, or HTTP 503 if the database is unreachable. |
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/api/health` | Anyone | Checks the server and database |
+| POST | `/api/auth/register` | Anyone | Create an account. Returns the user and an access token, and sets the refresh cookie |
+| POST | `/api/auth/login` | Anyone | Log in with email and password |
+| POST | `/api/auth/google` | Anyone | Log in with a Google ID token |
+| POST | `/api/auth/refresh` | Refresh cookie | Get a new access token (rotates the refresh token) |
+| POST | `/api/auth/logout` | Refresh cookie | Revoke this session |
+| GET | `/api/auth/me` | Logged in | The current user |
+| GET | `/api/users` | Admin | List all users |
+| PATCH | `/api/users/:id/role` | Admin | Change a user's role |
+
+Protected endpoints expect `Authorization: Bearer <access token>`.
 
 ## Author
 
