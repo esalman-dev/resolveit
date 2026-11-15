@@ -1,37 +1,62 @@
 import { useEffect, useState } from 'react'
-
-// Where the Express server lives while developing
-const API_URL = 'http://localhost:5000'
+import { apiFetch, getToken, clearToken } from './api.js'
+import LoginPage from './LoginPage.jsx'
 
 function App() {
-  // 'checking' until the server answers, then 'ok' or 'offline'
+  const [user, setUser] = useState(null)       // the logged-in user, or null
+  // True while we check a saved token on page load. If there's no token, there's nothing to check.
+  // (Passing a function means it only runs on the first render.)
+  const [checking, setChecking] = useState(() => Boolean(getToken()))
   const [serverStatus, setServerStatus] = useState('checking')
-  const [dbStatus, setDbStatus] = useState('checking')
 
-  // Runs once when the page first loads: ask the server if it (and the database) are alive
+  // Runs once on page load
   useEffect(() => {
-    fetch(`${API_URL}/api/health`)
-      .then((res) => res.json())
-      .then((data) => {
-        setServerStatus(data.status)
-        setDbStatus(data.database)
-      })
-      .catch(() => {
-        setServerStatus('offline')
-        setDbStatus('unknown') // can't ask about the database if the server is down
-      })
+    // Is the API (and database) alive?
+    apiFetch('/api/health')
+      .then((data) => setServerStatus(data.database === 'connected' ? 'online' : 'database offline'))
+      .catch(() => setServerStatus('offline'))
+
+    // If a token was saved earlier, ask the server who it belongs to.
+    // The server re-checks the signature and expiry, so an old or fake token gets rejected.
+    if (!getToken()) return
+    apiFetch('/api/auth/me')
+      .then((data) => setUser(data.user))
+      .catch(() => clearToken()) // expired or invalid: forget it and show the login form
+      .finally(() => setChecking(false))
   }, [])
+
+  function logout() {
+    // With JWTs, "logging out" means the browser throws its token away
+    clearToken()
+    setUser(null)
+  }
 
   return (
     <main>
-      <h1>ResolveIT</h1>
-      <p>Help desk with AI self-service fixes. Coming soon.</p>
-      <p>
-        Server status: <strong>{serverStatus}</strong>
-      </p>
-      <p>
-        Database: <strong>{dbStatus}</strong>
-      </p>
+      <header className="topbar">
+        <h1>ResolveIT</h1>
+        {user && (
+          <div>
+            <span>
+              {user.name} <span className="badge">{user.role}</span>
+            </span>{' '}
+            <button type="button" onClick={logout}>Log out</button>
+          </div>
+        )}
+      </header>
+
+      {checking ? (
+        <p>Loading…</p>
+      ) : user ? (
+        <section className="card">
+          <h2>Welcome, {user.name}!</h2>
+          <p>You're logged in as a <strong>{user.role}</strong>. Tickets are coming next.</p>
+        </section>
+      ) : (
+        <LoginPage onLoggedIn={setUser} />
+      )}
+
+      <footer>API: {serverStatus}</footer>
     </main>
   )
 }
