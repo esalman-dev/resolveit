@@ -1,5 +1,7 @@
 # ResolveIT
 
+[![CI](https://github.com/esalman-dev/resolveit/actions/workflows/ci.yml/badge.svg)](https://github.com/esalman-dev/resolveit/actions/workflows/ci.yml)
+
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
 > 🚧 **Status: in development.** Accounts, login (password or Google), and roles are done and covered by automated tests. Tickets are next. See [Progress](#progress).
@@ -154,6 +156,8 @@ npm test
 ```
 
 The tests create and use a separate database, `resolveit_test`, on the same PostgreSQL server, and empty it before every test. They refuse to run against any database whose name doesn't end in `_test`.
+
+**GitHub Actions** runs the server tests (against a PostgreSQL 17 container) and lints and builds the client on every push and pull request. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 > **Windows + Git Bash:** if Vitest says it "failed to find the runner," open the folder with an uppercase drive letter (`cd /C/Users/...`) or run the tests from PowerShell.
 
