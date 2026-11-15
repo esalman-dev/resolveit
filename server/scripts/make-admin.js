@@ -26,7 +26,7 @@ try {
   } else {
     const user = result.rows[0];
     console.log(`Done: ${user.name} (${user.email}) is now an admin.`);
-    console.log('They will see admin features within 15 minutes, or right away after logging in again.');
+    console.log('Admin permissions work immediately. The admin screen appears after they refresh the page or log in again.');
   }
 } finally {
   await pool.end(); // close the DB connection so the script exits

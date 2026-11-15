@@ -69,3 +69,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 );
 
 CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+
+-- When the user originally logged in. Copied from token to token on every rotation, so we can
+-- enforce a hard 90-day maximum: after that, they must log in again even if they use the app daily.
+ALTER TABLE refresh_tokens ADD COLUMN IF NOT EXISTS session_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW();

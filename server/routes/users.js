@@ -50,8 +50,8 @@ router.patch('/:id/role', async (req, res) => {
     return res.status(404).json({ error: 'User not found' });
   }
 
-  // Note: the user's current access token still carries their OLD role for up to 15 minutes.
-  // Their next token refresh reads the new role from the database.
+  // Takes effect immediately on the server: requireRole reads the role from the database.
+  // (Their screen updates on their next token refresh, within 15 minutes.)
   res.json({ user: result.rows[0] });
 });
 

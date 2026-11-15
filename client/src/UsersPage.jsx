@@ -39,7 +39,7 @@ function UsersPage({ currentUser }) {
     <section>
       <h2>Manage users</h2>
       <p className="hint">
-        Role changes apply within 15 minutes, or right away when that person logs in again.
+        Role changes take effect immediately. The person's screen updates the next time they reload the page.
       </p>
       {error && <p className="error" role="alert">{error}</p>}
 

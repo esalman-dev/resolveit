@@ -20,6 +20,8 @@ const googleClient = new OAuth2Client(); // checks Google ID tokens (downloads +
 const SALT_ROUNDS = 12;              // how slow bcrypt is: 2^12 rounds (~0.25s). Slow = hard to brute-force.
 const ACCESS_TOKEN_LIFETIME = '15m'; // if one is ever stolen, it's useless within minutes
 const REFRESH_DAYS = 30;             // "stay logged in" window; resets every time the app is used
+const MAX_SESSION_DAYS = 90;         // hard limit: log in again after 90 days, however active you are
+const DAY_MS = 24 * 60 * 60 * 1000;
 const REFRESH_COOKIE = 'resolveit_refresh';
 
 const cookieOptions = {
@@ -41,14 +43,22 @@ function createAccessToken(user) {
 // SHA-256 (fast) is fine here, unlike passwords: the token is 256 random bits, so there's nothing to guess
 const hashToken = (raw) => crypto.createHash('sha256').update(raw).digest('hex');
 
-// Log a user in on this browser: save a new refresh token, set the cookie, return a fresh access token
-async function startSession(res, user) {
+// Save a new refresh token, set the cookie, return a fresh access token.
+// sessionStartedAt = when the user originally logged in: "now" for a new login,
+// or carried over from the old token when /refresh rotates it.
+async function startSession(res, user, sessionStartedAt = new Date()) {
   const raw = crypto.randomBytes(32).toString('base64url'); // 256 bits of randomness
-  const expiresAt = new Date(Date.now() + REFRESH_DAYS * 24 * 60 * 60 * 1000);
+
+  // Expires 30 days from now, but never later than 90 days after the original login
+  const expiresAt = new Date(Math.min(
+    Date.now() + REFRESH_DAYS * DAY_MS,
+    sessionStartedAt.getTime() + MAX_SESSION_DAYS * DAY_MS
+  ));
 
   await pool.query(
-    'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
-    [user.id, hashToken(raw), expiresAt]
+    `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, session_started_at)
+     VALUES ($1, $2, $3, $4)`,
+    [user.id, hashToken(raw), expiresAt, sessionStartedAt]
   );
   // Housekeeping: expired rows are useless, so clear them out while we're here
   await pool.query('DELETE FROM refresh_tokens WHERE expires_at < NOW()');
@@ -196,7 +206,7 @@ router.post('/refresh', async (req, res) => {
   }
 
   const result = await pool.query(
-    `SELECT rt.id, rt.user_id, rt.expires_at, rt.revoked_at, u.name, u.email, u.role
+    `SELECT rt.id, rt.user_id, rt.expires_at, rt.revoked_at, rt.session_started_at, u.name, u.email, u.role
        FROM refresh_tokens rt
        JOIN users u ON u.id = rt.user_id
       WHERE rt.token_hash = $1`,
@@ -219,6 +229,7 @@ router.post('/refresh', async (req, res) => {
     return endSession(res, 401, 'Session ended for your security, please log in again');
   }
 
+  // Covers both limits: 30 days unused, and the 90-day maximum (expires_at is capped at login + 90 days)
   if (session.expires_at < new Date()) {
     return endSession(res, 401, 'Session expired, please log in again');
   }
@@ -235,7 +246,8 @@ router.post('/refresh', async (req, res) => {
 
   // Name and role come fresh from the database, so a role change takes effect on the next refresh
   const user = { id: session.user_id, name: session.name, email: session.email, role: session.role };
-  res.json({ user, token: await startSession(res, user) });
+  // Pass the ORIGINAL login time along, so the 90-day clock keeps running across rotations
+  res.json({ user, token: await startSession(res, user, session.session_started_at) });
 });
 
 // POST /api/auth/logout: revoke this browser's refresh token and delete the cookie.

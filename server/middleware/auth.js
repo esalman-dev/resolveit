@@ -1,6 +1,7 @@
 // Authentication middleware: the "bouncer" that checks a login token before a route runs.
 // Usage: app.get('/api/something', requireAuth, handler)
 import jwt from 'jsonwebtoken';
+import pool from '../db/index.js';
 
 export function requireAuth(req, res, next) {
   // The client sends the token in a header like:  Authorization: Bearer eyJhbGciOi...
@@ -29,8 +30,20 @@ export function requireAuth(req, res, next) {
 export function requireRole(...allowedRoles) {
   // This returns the actual middleware. Writing it as a function that builds middleware lets
   // each route list its own allowed roles: requireRole('admin') or requireRole('technician', 'admin').
-  return (req, res, next) => {
-    if (!allowedRoles.includes(req.user?.role)) {
+  return async (req, res, next) => {
+    // Check the role in the DATABASE, not the one inside the token. A token is a snapshot from
+    // when it was issued (up to 15 min ago), and we can't delete a token that's already in
+    // someone's browser. Looking it up here makes demotions instant: one fast primary-key
+    // lookup, and only on routes that need a specific role.
+    const result = await pool.query('SELECT role FROM users WHERE id = $1', [req.user.id]);
+    const currentRole = result.rows[0]?.role; // undefined if the account was deleted
+
+    if (!currentRole) {
+      return res.status(401).json({ error: 'Account no longer exists' });
+    }
+    req.user.role = currentRole; // later code sees the up-to-date role too
+
+    if (!allowedRoles.includes(currentRole)) {
       // 403 = Forbidden: we know who you are (unlike 401), you just don't have permission
       return res.status(403).json({ error: 'You do not have permission to do that' });
     }
