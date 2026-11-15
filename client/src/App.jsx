@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react'
-import { apiFetch, getToken, clearToken } from './api.js'
+import { apiFetch, refreshSession, logout, setOnSessionLost } from './api.js'
 import LoginPage from './LoginPage.jsx'
 
 function App() {
-  const [user, setUser] = useState(null)       // the logged-in user, or null
-  // True while we check a saved token on page load. If there's no token, there's nothing to check.
-  // (Passing a function means it only runs on the first render.)
-  const [checking, setChecking] = useState(() => Boolean(getToken()))
+  const [user, setUser] = useState(null)         // the logged-in user, or null
+  const [checking, setChecking] = useState(true) // true while we ask the server about a saved session
   const [serverStatus, setServerStatus] = useState('checking')
 
   // Runs once on page load
@@ -16,18 +14,19 @@ function App() {
       .then((data) => setServerStatus(data.database === 'connected' ? 'online' : 'database offline'))
       .catch(() => setServerStatus('offline'))
 
-    // If a token was saved earlier, ask the server who it belongs to.
-    // The server re-checks the signature and expiry, so an old or fake token gets rejected.
-    if (!getToken()) return
-    apiFetch('/api/auth/me')
-      .then((data) => setUser(data.user))
-      .catch(() => clearToken()) // expired or invalid: forget it and show the login form
+    // If the session ends mid-use (e.g. logged out elsewhere), go back to the login screen
+    setOnSessionLost(() => setUser(null))
+
+    // "Stay logged in": the browser automatically sends the httpOnly refresh cookie (if it has one).
+    // The server checks it and hands back the user plus a fresh 15-minute access token.
+    refreshSession()
+      .then((session) => setUser(session?.user ?? null))
+      .catch(() => setUser(null)) // server offline: show the login form
       .finally(() => setChecking(false))
   }, [])
 
-  function logout() {
-    // With JWTs, "logging out" means the browser throws its token away
-    clearToken()
+  async function handleLogout() {
+    await logout() // server revokes the refresh token and deletes the cookie
     setUser(null)
   }
 
@@ -40,7 +39,7 @@ function App() {
             <span>
               {user.name} <span className="badge">{user.role}</span>
             </span>{' '}
-            <button type="button" onClick={logout}>Log out</button>
+            <button type="button" onClick={handleLogout}>Log out</button>
           </div>
         )}
       </header>

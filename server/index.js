@@ -2,6 +2,8 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import { apiLimiter } from './middleware/rateLimit.js';
 import pool from './db/index.js';
 import authRoutes from './routes/auth.js';
 
@@ -17,6 +19,16 @@ const PORT = process.env.PORT || 5000;
 // Middleware: runs on every request before it reaches a route
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' })); // only our React app may call the API
 app.use(express.json()); // parse JSON request bodies into req.body
+app.use(cookieParser()); // read cookies into req.cookies (for the refresh token)
+
+// Behind a proxy (Vercel -> Render in production), every request seems to come from the proxy's IP,
+// which would make ALL users share one rate limit. TRUST_PROXY tells Express how many proxy hops
+// to trust when reading the real visitor IP from the X-Forwarded-For header. Unset locally.
+if (process.env.TRUST_PROXY) {
+  app.set('trust proxy', Number(process.env.TRUST_PROXY));
+}
+
+app.use('/api', apiLimiter); // general cap on every API route
 
 // Health check: confirms the server is up AND can reach the database
 app.get('/api/health', async (req, res) => {

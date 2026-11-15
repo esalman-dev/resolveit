@@ -1,29 +1,69 @@
-// Account routes: sign up, log in, and "who am I?"
-// Mounted in index.js at /api/auth, so these become /api/auth/register, /api/auth/login, /api/auth/me
+// Account routes: sign up, log in (password or Google), stay logged in (refresh), log out, "who am I?"
+// Mounted in index.js at /api/auth, so these become /api/auth/register, /api/auth/login, etc.
+//
+// Two tokens:
+//   ACCESS token  = short-lived JWT (15 min). Kept in the browser's memory, sent in the Authorization header.
+//   REFRESH token = long-lived random string (30 days). Kept in an httpOnly cookie that JavaScript can't read.
+//                   Its only job is getting a new access token. Stored (hashed) in the DB so we can revoke it.
+import crypto from 'node:crypto';
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import pool from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
+import { loginLimiter, signupLimiter } from '../middleware/rateLimit.js';
 
 const router = Router();
 const googleClient = new OAuth2Client(); // checks Google ID tokens (downloads + caches Google's public keys)
 
-const SALT_ROUNDS = 12;      // how slow bcrypt is: 2^12 rounds (~0.25s). Slow = hard to brute-force.
-const TOKEN_LIFETIME = '1h'; // short expiry limits the damage if a token is ever stolen
+const SALT_ROUNDS = 12;              // how slow bcrypt is: 2^12 rounds (~0.25s). Slow = hard to brute-force.
+const ACCESS_TOKEN_LIFETIME = '15m'; // if one is ever stolen, it's useless within minutes
+const REFRESH_DAYS = 30;             // "stay logged in" window; resets every time the app is used
+const REFRESH_COOKIE = 'resolveit_refresh';
 
-// Build a signed token holding only the user's id and role (anyone can READ a JWT, so no secrets inside)
-function createToken(user) {
+const cookieOptions = {
+  httpOnly: true,                                // JavaScript can't read it, so an XSS bug can't steal it
+  secure: process.env.NODE_ENV === 'production', // HTTPS only once deployed (localhost is plain http)
+  sameSite: 'strict',                            // never sent on requests started by other websites (blocks CSRF)
+  path: '/api/auth',                             // only sent to auth routes, not with every API call
+};
+
+// Build a signed access token holding only the user's id and role (anyone can READ a JWT, so no secrets inside)
+function createAccessToken(user) {
   return jwt.sign(
     { sub: user.id, role: user.role }, // "sub" (subject) is the standard JWT field for "who this is"
     process.env.JWT_SECRET,
-    { expiresIn: TOKEN_LIFETIME }
+    { expiresIn: ACCESS_TOKEN_LIFETIME }
   );
 }
 
+// SHA-256 (fast) is fine here, unlike passwords: the token is 256 random bits, so there's nothing to guess
+const hashToken = (raw) => crypto.createHash('sha256').update(raw).digest('hex');
+
+// Log a user in on this browser: save a new refresh token, set the cookie, return a fresh access token
+async function startSession(res, user) {
+  const raw = crypto.randomBytes(32).toString('base64url'); // 256 bits of randomness
+  const expiresAt = new Date(Date.now() + REFRESH_DAYS * 24 * 60 * 60 * 1000);
+
+  await pool.query(
+    'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
+    [user.id, hashToken(raw), expiresAt]
+  );
+  // Housekeeping: expired rows are useless, so clear them out while we're here
+  await pool.query('DELETE FROM refresh_tokens WHERE expires_at < NOW()');
+
+  res.cookie(REFRESH_COOKIE, raw, { ...cookieOptions, expires: expiresAt });
+  return createAccessToken(user);
+}
+
+function endSession(res, status, error) {
+  res.clearCookie(REFRESH_COOKIE, cookieOptions); // same options, or the browser won't match the cookie
+  return res.status(status).json({ error });
+}
+
 // POST /api/auth/register: create a new account
-router.post('/register', async (req, res) => {
+router.post('/register', signupLimiter, async (req, res) => {
   const name = req.body.name?.trim();
   const email = req.body.email?.trim().toLowerCase(); // so "Bob@X.com" and "bob@x.com" are the same account
   const password = req.body.password;
@@ -52,7 +92,7 @@ router.post('/register', async (req, res) => {
       [name, email, passwordHash]
     );
     const user = result.rows[0];
-    res.status(201).json({ user, token: createToken(user) }); // 201 = Created
+    res.status(201).json({ user, token: await startSession(res, user) }); // 201 = Created
   } catch (err) {
     if (err.code === '23505') { // PostgreSQL's code for "UNIQUE constraint violated"
       return res.status(409).json({ error: 'An account with that email already exists' }); // 409 = Conflict
@@ -62,7 +102,7 @@ router.post('/register', async (req, res) => {
 });
 
 // POST /api/auth/login: check email + password, hand back a token
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   const email = req.body.email?.trim().toLowerCase();
   const password = req.body.password;
 
@@ -87,13 +127,13 @@ router.post('/login', async (req, res) => {
   }
 
   const { password_hash, ...safeUser } = user; // strip the hash before sending the user back
-  res.json({ user: safeUser, token: createToken(safeUser) });
+  res.json({ user: safeUser, token: await startSession(res, safeUser) });
 });
 
 // POST /api/auth/google: "Sign in with Google"
 // The browser gets an ID token from Google and sends it here as { credential }.
 // We verify it really came from Google, then log the person in with OUR OWN token.
-router.post('/google', async (req, res) => {
+router.post('/google', loginLimiter, async (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) {
     return res.status(503).json({ error: 'Google sign-in is not set up on this server' });
@@ -144,7 +184,72 @@ router.post('/google', async (req, res) => {
     }
   }
 
-  res.json({ user, token: createToken(user) });
+  res.json({ user, token: await startSession(res, user) });
+});
+
+// POST /api/auth/refresh: "I have a refresh cookie, give me a new access token"
+// Called when the app opens (to restore your login) and whenever the access token expires.
+router.post('/refresh', async (req, res) => {
+  const raw = req.cookies[REFRESH_COOKIE];
+  if (!raw) {
+    return res.status(401).json({ error: 'Not logged in' });
+  }
+
+  const result = await pool.query(
+    `SELECT rt.id, rt.user_id, rt.expires_at, rt.revoked_at, u.name, u.email, u.role
+       FROM refresh_tokens rt
+       JOIN users u ON u.id = rt.user_id
+      WHERE rt.token_hash = $1`,
+    [hashToken(raw)]
+  );
+  const session = result.rows[0];
+
+  if (!session) {
+    return endSession(res, 401, 'Not logged in');
+  }
+
+  // REUSE DETECTION: each refresh token works exactly once (see "rotation" below).
+  // If an already-used one shows up again, someone copied it. We can't tell whether the
+  // attacker or the real user is holding the newer one, so we log out ALL of this user's sessions.
+  if (session.revoked_at) {
+    await pool.query(
+      'UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL',
+      [session.user_id]
+    );
+    return endSession(res, 401, 'Session ended for your security, please log in again');
+  }
+
+  if (session.expires_at < new Date()) {
+    return endSession(res, 401, 'Session expired, please log in again');
+  }
+
+  // ROTATION: retire this token and issue a brand-new one (with a fresh 30 days).
+  // "AND revoked_at IS NULL" makes this atomic: if two requests race, only one wins.
+  const retired = await pool.query(
+    'UPDATE refresh_tokens SET revoked_at = NOW() WHERE id = $1 AND revoked_at IS NULL',
+    [session.id]
+  );
+  if (retired.rowCount === 0) {
+    return endSession(res, 401, 'Session expired, please log in again');
+  }
+
+  // Name and role come fresh from the database, so a role change takes effect on the next refresh
+  const user = { id: session.user_id, name: session.name, email: session.email, role: session.role };
+  res.json({ user, token: await startSession(res, user) });
+});
+
+// POST /api/auth/logout: revoke this browser's refresh token and delete the cookie.
+// (The 15-minute access token in memory is simply thrown away by the client.)
+router.post('/logout', async (req, res) => {
+  const raw = req.cookies[REFRESH_COOKIE];
+  if (raw) {
+    await pool.query(
+      'UPDATE refresh_tokens SET revoked_at = NOW() WHERE token_hash = $1 AND revoked_at IS NULL',
+      [hashToken(raw)]
+    );
+  }
+  res.clearCookie(REFRESH_COOKIE, cookieOptions);
+  res.status(204).end(); // 204 = No Content: success, nothing to send back
 });
 
 // GET /api/auth/me: "who am I?" Protected: requireAuth runs first and sets req.user

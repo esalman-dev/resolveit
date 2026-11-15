@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { apiFetch, saveToken } from './api.js'
+import { apiFetch, setAccessToken } from './api.js'
 
 // Public ID from Google Cloud Console (not a secret: it's visible in every page that uses it).
 // If it isn't set, this component shows nothing and email/password login still works.
@@ -40,7 +40,7 @@ function GoogleButton({ onLoggedIn }) {
                 method: 'POST',
                 body: { credential: response.credential },
               })
-              saveToken(data.token) // from here on it's a normal ResolveIT login
+              setAccessToken(data.token) // from here on it's a normal ResolveIT login
               onLoggedIn(data.user)
             } catch (err) {
               setError(err.message)

@@ -53,3 +53,19 @@ ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_has_login_method;
 ALTER TABLE users ADD CONSTRAINT users_has_login_method
     CHECK (password_hash IS NOT NULL OR google_id IS NOT NULL);
+
+-- ---------------------------------------------------------------------------
+-- 2026-11-15: Refresh tokens ("stay logged in" for 30 days)
+-- One row per logged-in browser. The browser holds the raw token in an httpOnly cookie;
+-- we store only its SHA-256 hash, so a database leak can't be used to log in.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, -- delete user = delete their sessions
+    token_hash  TEXT NOT NULL UNIQUE,
+    expires_at  TIMESTAMPTZ NOT NULL,
+    revoked_at  TIMESTAMPTZ,              -- set when used (rotated) or logged out; kept to detect reuse
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);

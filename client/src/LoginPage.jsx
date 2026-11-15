@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { apiFetch, saveToken } from './api.js'
+import { apiFetch, setAccessToken } from './api.js'
 import GoogleButton from './GoogleButton.jsx'
 
 // One form for both "log in" and "create account".
@@ -23,7 +23,7 @@ function LoginPage({ onLoggedIn }) {
         method: 'POST',
         body: isRegister ? { name, email, password } : { email, password },
       })
-      saveToken(data.token)
+      setAccessToken(data.token)
       onLoggedIn(data.user)
     } catch (err) {
       setError(err.message) // show the server's message, e.g. "Invalid email or password"
