@@ -4,6 +4,11 @@ import { rateLimit } from 'express-rate-limit';
 
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 
+// Automated tests create dozens of accounts in seconds, which would trip the limits.
+// Skipped ONLY when both are set (so it can't be switched off in production by one stray variable).
+// test/rateLimit.test.js turns limits back on to test them.
+const skip = () => process.env.NODE_ENV === 'test' && process.env.DISABLE_RATE_LIMIT === '1';
+
 // Strict: endpoints that check a password or create accounts.
 // 10 tries per 15 minutes is plenty for a human who mistyped, and useless for a guessing script
 // (it would take years to get through even a small password list).
@@ -13,6 +18,7 @@ export const loginLimiter = rateLimit({
   skipSuccessfulRequests: true, // only FAILED attempts count, so normal logins never get blocked
   standardHeaders: 'draft-8',   // tells the client its limit via a RateLimit header
   legacyHeaders: false,
+  skip,
   message: { error: 'Too many attempts. Please wait 15 minutes and try again.' },
 });
 
@@ -22,6 +28,7 @@ export const signupLimiter = rateLimit({
   limit: 10,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  skip,
   message: { error: 'Too many accounts created. Please try again in an hour.' },
 });
 
@@ -31,5 +38,6 @@ export const apiLimiter = rateLimit({
   limit: 500,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
+  skip,
   message: { error: 'Too many requests. Please slow down and try again shortly.' },
 });
