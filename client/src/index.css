@@ -103,6 +103,41 @@ button.link {
   font-size: 14px;
 }
 
+/* Admin navigation tabs */
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tabs button.active {
+  font-weight: 600;
+  border-bottom: 2px solid #4a7dff;
+}
+
+.hint {
+  font-size: 14px;
+  opacity: 0.75;
+}
+
+/* Tables scroll sideways on small screens instead of squashing */
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th,
+td {
+  padding: 8px;
+  border-bottom: 1px solid #8884;
+  text-align: left;
+}
+
 footer {
   margin-top: 32px;
   font-size: 12px;

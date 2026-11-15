@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { apiFetch, refreshSession, logout, setOnSessionLost } from './api.js'
 import LoginPage from './LoginPage.jsx'
+import UsersPage from './UsersPage.jsx'
 
 function App() {
   const [user, setUser] = useState(null)         // the logged-in user, or null
   const [checking, setChecking] = useState(true) // true while we ask the server about a saved session
   const [serverStatus, setServerStatus] = useState('checking')
+  const [page, setPage] = useState('home') // 'home' or 'users' (a real router comes with tickets)
 
   // Runs once on page load
   useEffect(() => {
@@ -28,7 +30,10 @@ function App() {
   async function handleLogout() {
     await logout() // server revokes the refresh token and deletes the cookie
     setUser(null)
+    setPage('home')
   }
+
+  const isAdmin = user?.role === 'admin'
 
   return (
     <main>
@@ -44,8 +49,21 @@ function App() {
         )}
       </header>
 
+      {isAdmin && (
+        <nav className="tabs">
+          <button type="button" className={page === 'home' ? 'active' : ''} onClick={() => setPage('home')}>
+            Home
+          </button>
+          <button type="button" className={page === 'users' ? 'active' : ''} onClick={() => setPage('users')}>
+            Manage users
+          </button>
+        </nav>
+      )}
+
       {checking ? (
         <p>Loading…</p>
+      ) : isAdmin && page === 'users' ? (
+        <UsersPage currentUser={user} />
       ) : user ? (
         <section className="card">
           <h2>Welcome, {user.name}!</h2>
