@@ -88,4 +88,4 @@ Open http://localhost:5173. The page should show **Server status: ok**, which co
 
 ## Author
 
-**[esalman-dev](https://github.com/esalman-dev)**, Computer Science student
+**E. Salman**, Computer Science student · [GitHub: esalman-dev](https://github.com/esalman-dev)
