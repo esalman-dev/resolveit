@@ -2,7 +2,7 @@
 
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
-> 🚧 **Status: in early development.** The project skeleton is set up and the frontend and backend are connected. See [Progress](#progress) for what's done and what's next.
+> 🚧 **Status: in early development.** The frontend, backend, and PostgreSQL database are connected end to end. See [Progress](#progress) for what's done and what's next.
 
 ## The idea
 
@@ -37,7 +37,7 @@ Most help desk tickets are for common problems with simple fixes: Wi-Fi that won
 **Phase 1: Core ticket tracker**
 - [x] Project repository set up
 - [x] React frontend and Express backend connected (health check endpoint)
-- [ ] PostgreSQL database and ticket schema
+- [x] PostgreSQL database and ticket schema
 - [ ] User accounts and login
 - [ ] Roles: user, technician, admin
 - [ ] Create, view, assign, and update tickets
@@ -54,37 +54,53 @@ resolveit/
 │   └── src/         Pages and components
 └── server/          Express API
     ├── index.js     Server entry point and routes
+    ├── db/
+    │   ├── index.js     Shared PostgreSQL connection pool
+    │   └── schema.sql   Database tables (users, tickets)
     └── .env.example Template for environment variables
 ```
 
+## Database
+
+Two tables so far:
+
+- **`users`**: name, unique email, hashed password, and a role (`user`, `technician`, or `admin`)
+- **`tickets`**: title, description, status, priority, and category, plus foreign keys to the user who created it and the technician it's assigned to
+
+Allowed values for role, status, and priority are enforced by the database itself with `CHECK` constraints. See [`server/db/schema.sql`](server/db/schema.sql).
+
 ## Running locally
 
-**Requirements:** [Node.js](https://nodejs.org/) 22 or newer. PostgreSQL will be needed once the database is added.
+**Requirements:** [Node.js](https://nodejs.org/) 22 or newer and [PostgreSQL](https://www.postgresql.org/) 17.
 
 ```bash
 # 1. Clone the repo
 git clone https://github.com/esalman-dev/resolveit.git
 cd resolveit
 
-# 2. Start the backend (http://localhost:5000)
+# 2. Create the database and tables
+psql -U postgres -c "CREATE DATABASE resolveit;"
+psql -U postgres -d resolveit -f server/db/schema.sql
+
+# 3. Start the backend (http://localhost:5000)
 cd server
 npm install
-cp .env.example .env    # then fill in your own values
+cp .env.example .env    # then put your PostgreSQL password in DATABASE_URL
 npm run dev
 
-# 3. In a second terminal, start the frontend (http://localhost:5173)
+# 4. In a second terminal, start the frontend (http://localhost:5173)
 cd client
 npm install
 npm run dev
 ```
 
-Open http://localhost:5173. The page should show **Server status: ok**, which confirms the frontend can reach the API.
+Open http://localhost:5173. The page should show **Server status: ok** and **Database: connected**.
 
 ### API
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/api/health` | Returns `{ "status": "ok" }` when the server is running |
+| GET | `/api/health` | Checks the server and database. Returns `{ "status": "ok", "database": "connected" }`, or HTTP 503 if the database is unreachable. |
 
 ## Author
 
