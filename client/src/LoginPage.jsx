@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { apiFetch, saveToken } from './api.js'
+import GoogleButton from './GoogleButton.jsx'
 
 // One form for both "log in" and "create account".
 // onLoggedIn(user) is called after success so App can switch screens.
@@ -69,6 +70,8 @@ function LoginPage({ onLoggedIn }) {
           {busy ? 'Please wait…' : isRegister ? 'Create account' : 'Log in'}
         </button>
       </form>
+
+      <GoogleButton onLoggedIn={onLoggedIn} />
 
       <p className="switch">
         {isRegister ? 'Already have an account?' : 'New to ResolveIT?'}{' '}

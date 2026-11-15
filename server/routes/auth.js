@@ -3,10 +3,12 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import pool from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
+const googleClient = new OAuth2Client(); // checks Google ID tokens (downloads + caches Google's public keys)
 
 const SALT_ROUNDS = 12;      // how slow bcrypt is: 2^12 rounds (~0.25s). Slow = hard to brute-force.
 const TOKEN_LIFETIME = '1h'; // short expiry limits the damage if a token is ever stolen
@@ -74,8 +76,9 @@ router.post('/login', async (req, res) => {
   );
   const user = result.rows[0];
 
-  // bcrypt.compare hashes the attempt with the stored salt and checks for a match
-  const passwordOk = user && (await bcrypt.compare(password, user.password_hash));
+  // bcrypt.compare hashes the attempt with the stored salt and checks for a match.
+  // Google-only accounts have no password_hash, so they can't log in this way.
+  const passwordOk = user?.password_hash && (await bcrypt.compare(password, user.password_hash));
 
   // Same message whether the email or the password was wrong, so attackers
   // can't use this form to discover which emails have accounts
@@ -85,6 +88,63 @@ router.post('/login', async (req, res) => {
 
   const { password_hash, ...safeUser } = user; // strip the hash before sending the user back
   res.json({ user: safeUser, token: createToken(safeUser) });
+});
+
+// POST /api/auth/google: "Sign in with Google"
+// The browser gets an ID token from Google and sends it here as { credential }.
+// We verify it really came from Google, then log the person in with OUR OWN token.
+router.post('/google', async (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    return res.status(503).json({ error: 'Google sign-in is not set up on this server' });
+  }
+  const { credential } = req.body;
+  if (!credential) {
+    return res.status(400).json({ error: 'Missing Google credential' });
+  }
+
+  // 1. Verify Google's token: checks Google's signature, that it was issued FOR OUR APP
+  //    (audience = our client ID, so a token made for some other website is rejected), and expiry.
+  let google;
+  try {
+    const ticket = await googleClient.verifyIdToken({ idToken: credential, audience: clientId });
+    google = ticket.getPayload(); // { sub, email, email_verified, name, ... }
+  } catch {
+    return res.status(401).json({ error: 'Google sign-in failed, please try again' });
+  }
+
+  const fields = 'id, name, email, role';
+
+  // 2. Returning Google user? Match on Google's permanent ID.
+  let result = await pool.query(`SELECT ${fields} FROM users WHERE google_id = $1`, [google.sub]);
+  let user = result.rows[0];
+
+  if (!user) {
+    // Only trust the email if Google has verified the person owns it. Otherwise someone could
+    // create a Google account using YOUR email address and take over your ResolveIT account.
+    if (!google.email_verified) {
+      return res.status(401).json({ error: 'Your Google email address is not verified' });
+    }
+    const email = google.email.toLowerCase();
+
+    // 3. Already signed up with a password using this email? Link Google to that account.
+    result = await pool.query(
+      `UPDATE users SET google_id = $1 WHERE email = $2 RETURNING ${fields}`,
+      [google.sub, email]
+    );
+    user = result.rows[0];
+
+    // 4. Brand-new person: create the account (no password, role defaults to 'user')
+    if (!user) {
+      result = await pool.query(
+        `INSERT INTO users (name, email, google_id) VALUES ($1, $2, $3) RETURNING ${fields}`,
+        [google.name || email.split('@')[0], email, google.sub]
+      );
+      user = result.rows[0];
+    }
+  }
+
+  res.json({ user, token: createToken(user) });
 });
 
 // GET /api/auth/me: "who am I?" Protected: requireAuth runs first and sets req.user
