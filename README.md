@@ -4,7 +4,7 @@
 
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
-> 🚧 **Status: in development.** Accounts, login (password or Google), roles, and the ticket API (with categories and comments) are done and covered by automated tests. The ticket screens are next. See [Progress](#progress).
+> 🚧 **Status: in development.** Accounts, login (password or Google), roles, and the ticket API (with categories and comments) are done and covered by automated tests. The ticket screens are being built: the app layout, the "Get help" form, and a ticket page with its history are done. See [Progress](#progress).
 
 ## The idea
 
@@ -27,9 +27,12 @@ Most help desk tickets are for common problems with simple fixes: Wi-Fi that won
 - Ticket API: users open tickets, edit them while still open, and close them; staff assign, prioritize, categorize, and add internal notes
 - **Ticket history** on every ticket: who changed what, from what, to what, and when
 - **Comments** that the author can edit, with every earlier version kept and visible
+- App layout with a role-based sidebar; every screen has its own address, so links, refresh, and the Back button work
+- **Get help** form to open a ticket, with tips for a faster fix
+- Ticket page in a GitHub-style layout: the description and an activity timeline on the left, status, priority, category, and assignee on the right
 
 **Planned**
-- Ticket tracking screens: create, assign, update, comment, search, and filter
+- Ticket screens still to come: the ticket list with search and filters, staff controls and comments on the ticket page, and category management
 - AI self-service troubleshooting with safe-fix guardrails
 - A knowledge base that learns from tickets technicians have solved
 - An analytics dashboard: self-solved rate, escalations, most common problems, average resolution time
@@ -61,7 +64,7 @@ Authentication is built by hand rather than with an auth service, so each decisi
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19 + Vite |
+| Frontend | React 19 + Vite, React Router, plain CSS |
 | Backend | Node.js + Express 5 |
 | Database | PostgreSQL |
 | Auth | bcrypt, JSON Web Tokens, Google Identity Services, express-rate-limit |
@@ -90,17 +93,25 @@ resolveit/
 ├── client/                  React frontend (Vite)
 │   ├── src/
 │   │   ├── api.js           All API calls: attaches and renews the login token
-│   │   ├── App.jsx          Restores the session on load, picks the screen
+│   │   ├── App.jsx          Restores the session on load, maps each address to a page
+│   │   ├── AppShell.jsx     Sidebar and header around every page after login
 │   │   ├── LoginPage.jsx    Log in / create account form
 │   │   ├── GoogleButton.jsx Sign in with Google
+│   │   ├── GetHelpPage.jsx  "Get help": the form that opens a ticket
+│   │   ├── TicketPage.jsx   One ticket: description, activity timeline, details panel
 │   │   ├── UsersPage.jsx    Admin/owner: manage users and roles
 │   │   ├── ConfirmDialog.jsx Reusable "Are you sure?" box
+│   │   ├── Badges.jsx       Status and priority labels
+│   │   ├── EmptyState.jsx   Reusable "nothing here yet" box
+│   │   ├── RelativeTime.jsx "2 hours ago", with the exact time on hover
+│   │   ├── usePageTitle.js  Lets a page set the header and browser tab title
+│   │   ├── ticketLabels.js  Status and priority names in words
 │   │   ├── roles.js         Role ranking (mirrors the server, for a tidy UI)
 │   │   ├── index.css        App-wide styles, built only from the theme variables
 │   │   └── styles/
 │   │       └── theme.css    Colors, spacing and fonts in one place (contrast-checked)
 │   ├── vite.config.js       Dev proxy: forwards /api to the Express server
-│   └── vercel.json          Production proxy: forwards /api to the hosted API
+│   └── vercel.json          Production: forwards /api to the hosted API, every other address to the app
 └── server/                  Express API
     ├── app.js               Builds the app: middleware and routes
     ├── index.js             Starts the server
