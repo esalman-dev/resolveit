@@ -1,29 +1,48 @@
-// Ticket page: one ticket's details, at /tickets/:id.
+// Ticket page: one ticket, at /tickets/:id.
 //
-// Two columns: the ticket and its activity on the left, and a panel of facts (status,
-// priority, category, assignee, dates) on the right. On phones the panel sits between the
-// description and the activity.
+// Two columns: the ticket and its activity (comments and history) on the left, and the side
+// panel (status, priority, category, assignee) on the right. On phones the panel sits between
+// the description and the activity.
 //
-// For now it's read-only. Staff controls and comments come next.
+// Staff change the ticket from the side panel. The person who opened it can edit the text while
+// it's still open, close it, and comment.
 
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { apiFetch } from './api.js'
-import { PriorityBadge, StatusBadge } from './Badges.jsx'
-import { priorityLabel, statusLabel } from './ticketLabels.js'
+import ConfirmDialog from './ConfirmDialog.jsx'
 import EmptyState from './EmptyState.jsx'
 import RelativeTime from './RelativeTime.jsx'
+import TicketActivity from './TicketActivity.jsx'
+import TicketSidePanel from './TicketSidePanel.jsx'
+import { isStaff } from './roles.js'
+import { statusLabel } from './ticketLabels.js'
 import { usePageTitle } from './usePageTitle.js'
 import './TicketPage.css'
 
+// Note: these match MAX_TITLE and MAX_DESCRIPTION in server/routes/tickets.js.
+const MAX_TITLE = 200
+const MAX_DESCRIPTION = 5000
+
 /** Shows one ticket, plus a "Ticket created" message when arriving from the Get help form. */
-function TicketPage() {
+function TicketPage({ currentUser }) {
   const { id } = useParams() // the 12 in /tickets/12
   const location = useLocation()
   const navigate = useNavigate()
+  const staff = isStaff(currentUser.role)
+
   const [ticket, setTicket] = useState(null)
   const [history, setHistory] = useState([])
-  const [error, setError] = useState('')
+  const [comments, setComments] = useState([])
+  const [categories, setCategories] = useState([]) // staff only
+  const [assignees, setAssignees] = useState([]) // staff only
+  const [loadError, setLoadError] = useState('')
+  const [actionError, setActionError] = useState('')
+  const [busy, setBusy] = useState(false) // a ticket change is saving
+  // A change waiting for "Are you sure?": { fields, title, message, confirmLabel, danger }.
+  const [pending, setPending] = useState(null)
+  const [editing, setEditing] = useState(false) // the title/description edit form is open
+  const [draft, setDraft] = useState({ title: '', description: '' })
   // Read once: the Get help form sends { created: true } along with the address.
   const [justCreated] = useState(Boolean(location.state?.created))
 
@@ -35,19 +54,128 @@ function TicketPage() {
     if (location.state?.created) navigate(location.pathname, { replace: true, state: null })
   }, [location, navigate])
 
+  // Everything the page needs, in parallel. Staff also need the dropdown choices.
   useEffect(() => {
-    apiFetch(`/api/tickets/${id}`)
-      .then((data) => {
-        setTicket(data.ticket)
-        setHistory(data.history)
+    const requests = [apiFetch(`/api/tickets/${id}`), apiFetch(`/api/tickets/${id}/comments`)]
+    if (staff) requests.push(apiFetch('/api/categories'), apiFetch('/api/tickets/assignees'))
+    Promise.all(requests)
+      .then(([ticketData, commentData, categoryData, assigneeData]) => {
+        setTicket(ticketData.ticket)
+        setHistory(ticketData.history)
+        setComments(commentData.comments)
+        if (staff) {
+          setCategories(categoryData.categories)
+          setAssignees(assigneeData.assignees)
+        }
       })
-      .catch((err) => setError(err.message))
-  }, [id])
+      .catch((err) => setLoadError(err.message))
+  }, [id, staff])
 
   // Security: someone else's ticket answers 404, the same as one that doesn't exist, so
   // nobody can find out which ticket numbers are in use.
-  if (error) return <EmptyState message={error} actionLabel="Back to tickets" actionTo="/tickets" />
+  if (loadError) return <EmptyState message={loadError} actionLabel="Back to tickets" actionTo="/tickets" />
   if (!ticket) return <p className="hint">Loading ticket…</p>
+
+  const isCreator = ticket.created_by === currentUser.id
+  // The server's rule: staff can always edit; the creator only while nobody has started on it.
+  const canEdit = staff || (isCreator && ticket.status === 'open')
+
+  // --- Changing the ticket ---
+
+  /** Saves changed fields. The server answers with the updated ticket and its history. */
+  async function save(fields) {
+    setBusy(true)
+    setActionError('')
+    try {
+      const data = await apiFetch(`/api/tickets/${ticket.id}`, { method: 'PATCH', body: fields })
+      setTicket(data.ticket)
+      setHistory(data.history)
+      return true
+    } catch (err) {
+      setActionError(err.message)
+      return false
+    } finally {
+      setBusy(false)
+      setPending(null)
+    }
+  }
+
+  /**
+   * A change from the side panel. Big changes ask "Are you sure?" first; small ones save
+   * straight away, because every change is in the history and easy to undo.
+   */
+  function handleChange(fields) {
+    const question = confirmationFor(fields)
+    if (question) setPending({ fields, ...question })
+    else save(fields)
+  }
+
+  /** The "Are you sure?" text for a change, or null if it doesn't need one. */
+  function confirmationFor(fields) {
+    if ('status' in fields && fields.status === 'resolved') {
+      return {
+        title: `Mark #${ticket.id} resolved?`,
+        message: `${ticket.created_by_name} will see the ticket as resolved.`,
+        confirmLabel: 'Mark resolved',
+      }
+    }
+    if ('status' in fields && ticket.status === 'resolved') {
+      return {
+        title: `Reopen #${ticket.id}?`,
+        message: `The ticket goes back to ${statusLabel(fields.status)}.`,
+        confirmLabel: 'Reopen',
+      }
+    }
+    // Taking a ticket away from someone else: they may be in the middle of it.
+    if ('assigned_to' in fields && ticket.assigned_to && ticket.assigned_to !== currentUser.id) {
+      const to = assignees.find((a) => a.id === fields.assigned_to)?.name
+      return {
+        title: 'Reassign this ticket?',
+        message: `It's assigned to ${ticket.assigned_to_name}. ${to ? `It will move to ${to}.` : 'It will be unassigned.'}`,
+        confirmLabel: to ? 'Reassign' : 'Unassign',
+      }
+    }
+    return null
+  }
+
+  function askToClose() {
+    setPending({
+      fields: { status: 'resolved' },
+      title: 'Close this ticket?',
+      message: 'It will be marked resolved. If the problem comes back, add a comment and a technician can reopen it.',
+      confirmLabel: 'Close ticket',
+      danger: true,
+    })
+  }
+
+  function startEditing() {
+    setDraft({ title: ticket.title, description: ticket.description })
+    setEditing(true)
+  }
+
+  async function saveEdit(e) {
+    e.preventDefault()
+    if (await save({ title: draft.title, description: draft.description })) setEditing(false)
+  }
+
+  // --- Comments ---
+
+  async function addComment(text, isInternal) {
+    const data = await apiFetch(`/api/tickets/${ticket.id}/comments`, {
+      method: 'POST',
+      body: { body: text, is_internal: isInternal },
+    })
+    setComments((list) => [...list, data.comment])
+    setTicket((t) => ({ ...t, updated_at: data.comment.created_at })) // a comment counts as activity
+  }
+
+  async function editComment(commentId, text) {
+    const data = await apiFetch(`/api/tickets/${ticket.id}/comments/${commentId}`, {
+      method: 'PATCH',
+      body: { body: text },
+    })
+    setComments((list) => list.map((c) => (c.id === commentId ? data.comment : c)))
+  }
 
   return (
     <div className="ticket-page">
@@ -56,78 +184,83 @@ function TicketPage() {
           Ticket created. A technician will take a look; you'll see updates here.
         </p>
       )}
+      {actionError && <p className="ticket-page__error" role="alert">{actionError}</p>}
 
       <div className="ticket-page__layout">
         <article className="ticket-page__post">
           <header className="ticket-page__post-header">
-            <strong>{ticket.created_by_name}</strong> opened this ticket <RelativeTime date={ticket.created_at} />
+            <span>
+              <strong>{ticket.created_by_name}</strong> opened this ticket <RelativeTime date={ticket.created_at} />
+            </span>
+            {canEdit && !editing && (
+              <button type="button" className="link" onClick={startEditing}>Edit</button>
+            )}
           </header>
-          <p className="ticket-page__description">{ticket.description}</p>
+
+          {editing ? (
+            <form className="ticket-page__edit" onSubmit={saveEdit}>
+              <label>
+                Title
+                <input
+                  value={draft.title}
+                  onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                  required
+                  maxLength={MAX_TITLE}
+                />
+              </label>
+              <label>
+                Details
+                <textarea
+                  value={draft.description}
+                  onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+                  required
+                  maxLength={MAX_DESCRIPTION}
+                  rows={6}
+                />
+              </label>
+              <div className="ticket-page__edit-buttons">
+                <button type="button" onClick={() => setEditing(false)} disabled={busy}>Cancel</button>
+                <button type="submit" className="primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+              </div>
+            </form>
+          ) : (
+            <p className="ticket-page__description">{ticket.description}</p>
+          )}
         </article>
 
-        <aside className="ticket-page__side" aria-label="Ticket details">
-          <dl>
-            <Fact label="Status"><StatusBadge status={ticket.status} /></Fact>
-            <Fact label="Priority"><PriorityBadge priority={ticket.priority} /></Fact>
-            <Fact label="Category">{ticket.category_name ?? <span className="ticket-page__none">Not set</span>}</Fact>
-            <Fact label="Assignee">{ticket.assigned_to_name ?? <span className="ticket-page__none">Nobody yet</span>}</Fact>
-            <Fact label="Opened"><RelativeTime date={ticket.created_at} /></Fact>
-            <Fact label="Last updated"><RelativeTime date={ticket.updated_at} /></Fact>
-          </dl>
-        </aside>
+        <TicketSidePanel
+          ticket={ticket}
+          currentUser={currentUser}
+          staff={staff}
+          categories={categories}
+          assignees={assignees}
+          busy={busy}
+          onChange={handleChange}
+          onClose={askToClose}
+        />
 
-        <section className="ticket-page__activity" aria-labelledby="ticket-activity">
-          <h2 id="ticket-activity" className="ticket-page__heading">Activity</h2>
-          <ol className="ticket-page__timeline">
-            {history.map((event) => (
-              <li key={event.id} className="ticket-page__event">
-                <strong>{event.actor_name}</strong> {describeEvent(event)} · <RelativeTime date={event.created_at} />
-              </li>
-            ))}
-          </ol>
-        </section>
+        <TicketActivity
+          history={history}
+          comments={comments}
+          currentUser={currentUser}
+          staff={staff}
+          onAddComment={addComment}
+          onEditComment={editComment}
+        />
       </div>
+
+      <ConfirmDialog
+        open={pending !== null}
+        title={pending?.title ?? ''}
+        message={pending?.message ?? ''}
+        confirmLabel={pending?.confirmLabel}
+        danger={pending?.danger}
+        busy={busy}
+        onConfirm={() => save(pending.fields)}
+        onCancel={() => setPending(null)}
+      />
     </div>
   )
-}
-
-/** One label and value in the side panel. */
-function Fact({ label, children }) {
-  return (
-    <div className="ticket-page__fact">
-      <dt>{label}</dt>
-      <dd>{children}</dd>
-    </div>
-  )
-}
-
-/**
- * One history entry in words, after the person's name.
- * @example describeEvent({ action: 'changed', field: 'status', old_value: 'open', new_value: 'resolved' })
- * // "changed the status from Open to Resolved"
- */
-function describeEvent({ action, field, old_value: from, new_value: to }) {
-  if (action === 'created') return 'opened this ticket'
-  switch (field) {
-    case 'status':
-      return `changed the status from ${statusLabel(from)} to ${statusLabel(to)}`
-    case 'priority':
-      return `changed the priority from ${priorityLabel(from)} to ${priorityLabel(to)}`
-    case 'category':
-      if (!from) return `set the category to ${to}`
-      if (!to) return `removed the category ${from}`
-      return `changed the category from ${from} to ${to}`
-    case 'assignee':
-      if (!from) return `assigned this to ${to}`
-      if (!to) return `unassigned ${from}`
-      return `reassigned this from ${from} to ${to}`
-    case 'title':
-      return `changed the title from "${from}" to "${to}"`
-    case 'description':
-      return 'edited the description' // the full old text would be too long for one line
-    default:
-      return `changed the ${field}`
-  }
 }
 
 export default TicketPage

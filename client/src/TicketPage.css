@@ -40,6 +40,15 @@
   color: var(--success-text);
 }
 
+/* A change the server refused, e.g. "You can only edit a ticket while it is still open". */
+.ticket-page__error {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--error-bg);
+  color: var(--error-text);
+}
+
 /* --- The ticket itself: a box with a gray header, like a comment --- */
 
 .ticket-page__post {
@@ -50,6 +59,10 @@
 }
 
 .ticket-page__post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
   font-size: 14px;
   color: var(--text-muted);
@@ -100,44 +113,43 @@
   color: var(--text-muted);
 }
 
-/* --- Activity timeline --- */
+/* Staff controls in the panel: dropdowns fill the panel's width. */
+.ticket-page__fact select {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  font-size: 14px;
+}
 
+.ticket-page__take {
+  margin-top: var(--space-1);
+  font-size: 14px;
+}
+
+.ticket-page__close {
+  width: 100%;
+  margin-top: var(--space-4);
+}
+
+/* The "Activity" heading. The timeline itself is styled in TicketActivity.css. */
 .ticket-page__heading {
   margin: 0 0 var(--space-3);
   font-size: 16px;
 }
 
-/* A thin line down the left, with a dot for each entry. */
-.ticket-page__timeline {
-  margin: 0;
-  padding: 0 0 0 var(--space-5);
-  list-style: none;
-  border-left: 2px solid var(--border);
-  margin-left: var(--space-2);
+/* --- Editing the title and description --- */
+
+.ticket-page__edit {
+  padding: var(--space-4);
 }
 
-.ticket-page__event {
-  position: relative;
-  padding: var(--space-2) 0;
-  font-size: 14px;
-  color: var(--text-muted);
+.ticket-page__edit textarea {
+  resize: vertical;
 }
 
-.ticket-page__event strong {
-  color: var(--text);
-}
-
-.ticket-page__event::before {
-  content: '';
-  position: absolute;
-  top: calc(var(--space-2) + 5px); /* next to the first line of text, even when it wraps */
-  left: calc(-1 * var(--space-5) - 6px); /* centered on the line: padding + half of (dot - line) */
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 2px solid var(--border-input);
-  box-sizing: border-box;
+.ticket-page__edit-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
 }
 
 /* --- Phones --- */

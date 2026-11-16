@@ -73,7 +73,7 @@ function App() {
         <Route index element={<Navigate to={home} replace />} />
         <Route path="get-help" element={<GetHelpPage />} />
         <Route path="tickets" element={<TicketsPage currentUser={user} />} />
-        <Route path="tickets/:id" element={<TicketPage />} />
+        <Route path="tickets/:id" element={<TicketPage currentUser={user} />} />
         <Route path="admin/users" element={admin ? <UsersPage currentUser={user} /> : <Navigate to="/" replace />} />
         <Route path="admin/categories" element={admin ? <CategoriesPage /> : <Navigate to="/" replace />} />
         <Route path="*" element={<NotFoundPage />} />

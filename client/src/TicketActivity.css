@@ -1,0 +1,190 @@
+/* Ticket activity: the timeline of comments and history lines, and the comment box
+   (TicketActivity.jsx). */
+
+/* --- Timeline --- */
+
+/* A thin line down the left. History lines get a small dot on it; comments sit beside it. */
+.activity {
+  margin: 0 0 var(--space-4) var(--space-2);
+  padding: 0 0 0 var(--space-5);
+  list-style: none;
+  border-left: 2px solid var(--border);
+}
+
+.activity__event {
+  position: relative;
+  padding: var(--space-2) 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.activity__event strong {
+  color: var(--text);
+}
+
+.activity__event::before {
+  content: '';
+  position: absolute;
+  top: calc(var(--space-2) + 5px); /* next to the first line of text, even when it wraps */
+  left: calc(-1 * var(--space-5) - 6px); /* centered on the line: padding + half of (dot - line) */
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--border-input);
+  box-sizing: border-box;
+}
+
+.activity__item {
+  padding: var(--space-2) 0;
+}
+
+/* --- One comment --- */
+
+.comment {
+  overflow: hidden; /* keeps the header's background inside the rounded corners */
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+
+/* Internal notes: yellow, plus the "Internal" label, so staff never mistake one for a reply
+   the user can see. */
+.comment--internal {
+  background: var(--internal-note-bg);
+  border-color: var(--internal-note-border);
+}
+
+.comment__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: 14px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.comment--internal .comment__header {
+  border-bottom-color: var(--internal-note-border);
+}
+
+.comment__header strong {
+  color: var(--text);
+}
+
+.comment__tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.comment__label {
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--internal-note-border);
+}
+
+.comment__edited {
+  font-size: 14px;
+}
+
+.comment__body {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  line-height: 1.6;
+  white-space: pre-wrap; /* keeps the line breaks the person typed */
+  overflow-wrap: anywhere; /* a long link can't push the page sideways */
+}
+
+.comment__form {
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-2);
+}
+
+.comment__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* Earlier versions of an edited comment, shown under it. */
+.comment__versions {
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  background: var(--page-bg);
+  border-top: 1px solid var(--border);
+}
+
+.comment__versions-title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.comment__versions ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comment__versions li + li {
+  border-top: 1px dashed var(--border-strong);
+}
+
+.comment__versions-time {
+  display: block;
+  padding-top: var(--space-2);
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+}
+
+.comment__versions .comment__body {
+  padding: var(--space-1) 0 var(--space-2);
+  color: var(--text-muted);
+}
+
+/* --- The comment box --- */
+
+.comment-form {
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+
+/* Turns yellow while "Internal note" is ticked, so it's clear before sending. */
+.comment-form--internal {
+  background: var(--internal-note-bg);
+  border-color: var(--internal-note-border);
+}
+
+.comment-form textarea {
+  resize: vertical;
+}
+
+.comment-form__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.comment-form__check {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.comment-form__check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
