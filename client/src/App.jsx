@@ -1,17 +1,27 @@
-// App: restores the login when the page opens, then picks which screen to show.
+// App: restores the login when the page opens, then shows the login screen or the app's pages.
+//
+// Every page has its own address (React Router), so links can be shared, a refresh keeps you on
+// the same page, and the browser's Back button works. Pages sit inside AppShell, which draws the
+// sidebar and header.
 
 import { useEffect, useState } from 'react'
+import { Navigate, Route, Routes, useNavigate } from 'react-router'
 import { apiFetch, refreshSession, logout, setOnSessionLost } from './api.js'
+import AppShell from './AppShell.jsx'
+import EmptyState from './EmptyState.jsx'
+import GetHelpPage from './GetHelpPage.jsx'
 import LoginPage from './LoginPage.jsx'
+import TicketPage from './TicketPage.jsx'
 import UsersPage from './UsersPage.jsx'
-import { isAdminOrOwner } from './roles.js'
+import { isAdminOrOwner, isStaff } from './roles.js'
+import { usePageTitle } from './usePageTitle.js'
 
-/** The whole app: top bar, admin tabs, the current screen, and the API status footer. */
+/** The whole app: the login screen, or the pages inside the app shell. */
 function App() {
   const [user, setUser] = useState(null) // the logged-in user, or null
   const [checking, setChecking] = useState(true) // true while we ask the server about a saved session
   const [serverStatus, setServerStatus] = useState('checking')
-  const [page, setPage] = useState('home') // 'home' or 'users' (replaced by React Router next)
+  const navigate = useNavigate()
 
   // Runs once, when the page opens.
   useEffect(() => {
@@ -21,6 +31,7 @@ function App() {
       .catch(() => setServerStatus('offline'))
 
     // If the session ends mid-use (e.g. logged out in another tab), go back to the login screen.
+    // The address stays the same, so logging in again returns to the same page.
     setOnSessionLost(() => setUser(null))
 
     // Staying logged in: the browser sends the httpOnly refresh cookie automatically, if it has
@@ -34,53 +45,60 @@ function App() {
   async function handleLogout() {
     await logout() // the server revokes the refresh token and deletes the cookie
     setUser(null)
-    setPage('home')
+    navigate('/') // the next person to log in starts on their own home page
   }
 
-  // Note: hiding admin screens is only for tidiness. The server checks every request.
-  const isAdmin = isAdminOrOwner(user?.role) // owners get everything admins get
+  if (checking) return <p className="login-screen">Loading…</p>
+
+  // Logged out: any address shows the login form. After logging in, the same address opens,
+  // so a shared ticket link still works for someone who wasn't logged in yet.
+  if (!user) {
+    return (
+      <main className="login-screen">
+        <h1>ResolveIT</h1>
+        <LoginPage onLoggedIn={setUser} />
+        <footer>API: {serverStatus}</footer>
+      </main>
+    )
+  }
+
+  // Note: blocking admin pages here only keeps the interface tidy. The server checks every request.
+  const admin = isAdminOrOwner(user.role)
+  const home = isStaff(user.role) ? '/tickets' : '/get-help'
 
   return (
-    <main>
-      <header className="topbar">
-        <h1>ResolveIT</h1>
-        {user && (
-          <div>
-            <span>
-              {user.name} <span className="badge">{user.role}</span>
-            </span>{' '}
-            <button type="button" onClick={handleLogout}>Log out</button>
-          </div>
-        )}
-      </header>
-
-      {isAdmin && (
-        <nav className="tabs">
-          <button type="button" className={page === 'home' ? 'active' : ''} onClick={() => setPage('home')}>
-            Home
-          </button>
-          <button type="button" className={page === 'users' ? 'active' : ''} onClick={() => setPage('users')}>
-            Manage users
-          </button>
-        </nav>
-      )}
-
-      {checking ? (
-        <p>Loading…</p>
-      ) : isAdmin && page === 'users' ? (
-        <UsersPage currentUser={user} />
-      ) : user ? (
-        <section className="card">
-          <h2>Welcome, {user.name}!</h2>
-          <p>You're logged in as a <strong>{user.role}</strong>. Tickets are coming next.</p>
-        </section>
-      ) : (
-        <LoginPage onLoggedIn={setUser} />
-      )}
-
-      <footer>API: {serverStatus}</footer>
-    </main>
+    <Routes>
+      <Route element={<AppShell user={user} serverStatus={serverStatus} onLogout={handleLogout} />}>
+        <Route index element={<Navigate to={home} replace />} />
+        <Route path="get-help" element={<GetHelpPage />} />
+        <Route path="tickets" element={<TicketsPage staff={isStaff(user.role)} />} />
+        <Route path="tickets/:id" element={<TicketPage />} />
+        <Route path="admin/users" element={admin ? <UsersPage currentUser={user} /> : <Navigate to="/" replace />} />
+        <Route path="admin/categories" element={admin ? <CategoriesPage /> : <Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+    </Routes>
   )
+}
+
+// --- Placeholder pages, replaced one by one as the real screens are built ---
+
+/** The ticket list: "My tickets" for users, "Tickets" for staff. */
+function TicketsPage({ staff }) {
+  usePageTitle(staff ? 'Tickets' : 'My tickets')
+  return <EmptyState message="The ticket list is coming soon." actionLabel="Get help" actionTo="/get-help" />
+}
+
+/** Categories: admins add, rename and archive ticket categories. */
+function CategoriesPage() {
+  usePageTitle('Categories')
+  return <EmptyState message="Managing categories is coming soon." />
+}
+
+/** Any address that doesn't match a page. */
+function NotFoundPage() {
+  usePageTitle('Page not found')
+  return <EmptyState message="That page doesn't exist." actionLabel="Go to your home page" actionTo="/" />
 }
 
 export default App

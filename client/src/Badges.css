@@ -1,0 +1,61 @@
+/* Badges: status and priority labels (Badges.jsx). Colors come from theme.css. */
+
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* --- Status --- */
+
+.badge-pill--status-open {
+  background: var(--status-open-bg);
+  color: var(--status-open-text);
+}
+
+.badge-pill--status-in_progress {
+  background: var(--status-progress-bg);
+  color: var(--status-progress-text);
+}
+
+.badge-pill--status-resolved {
+  background: var(--status-resolved-bg);
+  color: var(--status-resolved-text);
+}
+
+/* --- Priority --- */
+
+/* Why: Open (blue) and Medium (indigo) look alike side by side. The dot gives priority
+   badges a different shape, so the two kinds are easy to tell apart. */
+.badge-pill--priority::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.badge-pill--priority-low {
+  background: var(--priority-low-bg);
+  color: var(--priority-low-text);
+}
+
+.badge-pill--priority-medium {
+  background: var(--priority-medium-bg);
+  color: var(--priority-medium-text);
+}
+
+.badge-pill--priority-high {
+  background: var(--priority-high-bg);
+  color: var(--priority-high-text);
+}
+
+.badge-pill--priority-urgent {
+  background: var(--priority-urgent-bg);
+  color: var(--priority-urgent-text);
+}

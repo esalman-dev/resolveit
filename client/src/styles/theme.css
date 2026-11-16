@@ -84,6 +84,7 @@
   --space-6: 32px;
   --radius: 6px;
   --sidebar-width: 220px;
+  --content-width: 1200px;         /* the centered column the header and pages share */
   --focus-ring: 0 0 0 3px rgba(79, 70, 229, 0.35);  /* keyboard focus outline: the primary indigo, see-through */
 
   /* Note: the phone breakpoint (768px) can't be a variable, because @media rules don't read

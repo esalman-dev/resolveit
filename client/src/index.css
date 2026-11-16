@@ -13,19 +13,12 @@ body {
   font-size: var(--font-size);
 }
 
-main {
-  max-width: 720px;
+/* The login screen, which sits outside the app shell: one narrow centered column.
+   Note: keep max-width equal to .card's, or the login box sits off to the left. */
+.login-screen {
+  max-width: 380px;
   margin: 0 auto;
   padding: var(--space-6) var(--space-4);
-}
-
-/* Top bar: app name on the left, logged-in user on the right. */
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
 }
 
 /* A bordered box for forms and panels. */
@@ -126,18 +119,6 @@ button.link {
 .switch {
   margin-bottom: 0;
   font-size: 14px;
-}
-
-/* Admin navigation tabs. To be replaced by the sidebar. */
-.tabs {
-  display: flex;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
-}
-
-.tabs button.active {
-  font-weight: 600;
-  border-bottom: 2px solid var(--color-primary);
 }
 
 .hint {

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from './api.js'
 import { ROLES, canManage, grantableRoles } from './roles.js'
 import ConfirmDialog from './ConfirmDialog.jsx'
+import { usePageTitle } from './usePageTitle.js'
 
 /**
  * The Manage users screen.
@@ -15,6 +16,7 @@ import ConfirmDialog from './ConfirmDialog.jsx'
  * blocks them (GET /api/users answers 403 for anyone who isn't an admin or owner).
  */
 function UsersPage({ currentUser }) {
+  usePageTitle('Users')
   const [users, setUsers] = useState([])
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
@@ -79,7 +81,6 @@ function UsersPage({ currentUser }) {
 
   return (
     <section>
-      <h2>Manage users</h2>
       <p className="hint">
         Changes take effect immediately. Disabling someone logs them out everywhere; their tickets stay.
         {currentUser.role === 'admin' && ' Only an owner can change admins.'}

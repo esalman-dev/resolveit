@@ -12,6 +12,9 @@ export const ROLES = ['user', 'technician', 'admin', 'owner']
 const RANK = { user: 0, technician: 1, admin: 2, owner: 3 }
 const rankOf = (role) => RANK[role] ?? -1
 
+/** True for the roles that work on tickets (the server's STAFF list). */
+export const isStaff = (role) => role === 'technician' || role === 'admin' || role === 'owner'
+
 /** True for the roles that see the admin screens. */
 export const isAdminOrOwner = (role) => role === 'admin' || role === 'owner'
 
