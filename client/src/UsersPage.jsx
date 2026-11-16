@@ -2,12 +2,17 @@
 //
 // Every account with a role dropdown and a Disable/Enable button, each change confirmed with
 // an "Are you sure?" box, plus the account history (who changed what, and when).
+//
+// A search box (name or email) and a Role filter narrow the list. Like the ticket list, they're
+// kept in the address (e.g. /admin/users?role=technician), so a refresh keeps them.
 
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { apiFetch } from './api.js'
 import { ROLES, canManage, grantableRoles } from './roles.js'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import { usePageTitle } from './usePageTitle.js'
+import './UsersPage.css'
 
 /**
  * The Manage users screen.
@@ -25,6 +30,7 @@ function UsersPage({ currentUser }) {
   // { kind: 'role', user, role } or { kind: 'disable', user, disabled }.
   const [pending, setPending] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [params, setParams] = useSearchParams()
 
   // useCallback keeps the same function between renders, so the effect below runs only once.
   const loadHistory = useCallback(
@@ -79,13 +85,61 @@ function UsersPage({ currentUser }) {
 
   const options = grantableRoles(currentUser.role) // e.g. an admin may give: user, technician
 
+  // --- Search and filter ---
+  const q = params.get('q') ?? ''
+  const roleFilter = params.get('role') ?? ''
+  const filtering = Boolean(q || roleFilter)
+  const text = q.trim().toLowerCase()
+  const shown = users.filter(
+    (u) =>
+      (!text || u.name.toLowerCase().includes(text) || u.email.toLowerCase().includes(text)) &&
+      (!roleFilter || u.role === roleFilter)
+  )
+
+  /** Changes one filter in the address; `replace` so typing doesn't add Back-button steps. */
+  function setFilter(name, value) {
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (value) next.set(name, value)
+        else next.delete(name)
+        return next
+      },
+      { replace: true }
+    )
+  }
+
   return (
-    <section>
+    <section className="users-page">
       <p className="hint">
         Changes take effect immediately. Disabling someone logs them out everywhere; their tickets stay.
         {currentUser.role === 'admin' && ' Only an owner can change admins.'}
       </p>
       {error && <p className="error" role="alert">{error}</p>}
+
+      <div className="users-page__toolbar" role="search">
+        <label className="users-page__search">
+          Search
+          <input type="search" value={q} onChange={(e) => setFilter('q', e.target.value)} placeholder="Name or email" />
+        </label>
+        <label>
+          Role
+          <select value={roleFilter} onChange={(e) => setFilter('role', e.target.value)}>
+            <option value="">All</option>
+            {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </label>
+        {filtering && (
+          <button type="button" className="link users-page__clear" onClick={() => setParams({}, { replace: true })}>
+            Clear filters
+          </button>
+        )}
+      </div>
+
+      {/* aria-live: screen readers announce the new count as the filters change. */}
+      <p className="hint users-page__count" aria-live="polite">
+        {filtering ? `Showing ${shown.length} of ${users.length} users` : `${users.length} users`}
+      </p>
 
       <div className="table-wrap">
         <table>
@@ -99,7 +153,12 @@ function UsersPage({ currentUser }) {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => {
+            {shown.length === 0 && (
+              <tr>
+                <td colSpan={5} className="users-page__none">No users match these filters.</td>
+              </tr>
+            )}
+            {shown.map((u) => {
               const reason = lockedReason(u)
               const disabled = Boolean(u.disabled_at)
               return (

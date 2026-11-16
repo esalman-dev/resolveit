@@ -1,0 +1,38 @@
+/* Users page: the search bar above the Manage users table (UsersPage.jsx). Matches the ticket
+   list's toolbar. */
+
+.users-page__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.users-page__search {
+  flex: 1 1 220px; /* takes the spare width, but never narrower than 220px */
+}
+
+/* Roles are stored in lowercase ("technician"); show them capitalized. */
+.users-page__toolbar select {
+  text-transform: capitalize;
+}
+
+.users-page__clear {
+  padding-bottom: var(--space-2);
+  font-size: 14px;
+}
+
+.users-page__count {
+  margin: 0 0 var(--space-2);
+}
+
+.users-page__none {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--text-muted);
+}
