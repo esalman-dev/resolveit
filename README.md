@@ -95,7 +95,10 @@ resolveit/
 │   │   ├── GoogleButton.jsx Sign in with Google
 │   │   ├── UsersPage.jsx    Admin/owner: manage users and roles
 │   │   ├── ConfirmDialog.jsx Reusable "Are you sure?" box
-│   │   └── roles.js         Role ranking (mirrors the server, for a tidy UI)
+│   │   ├── roles.js         Role ranking (mirrors the server, for a tidy UI)
+│   │   ├── index.css        App-wide styles, built only from the theme variables
+│   │   └── styles/
+│   │       └── theme.css    Colors, spacing and fonts in one place (contrast-checked)
 │   ├── vite.config.js       Dev proxy: forwards /api to the Express server
 │   └── vercel.json          Production proxy: forwards /api to the hosted API
 └── server/                  Express API
