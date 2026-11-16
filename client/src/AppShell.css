@@ -48,44 +48,31 @@
   height: 100vh;
   overflow-y: auto;
   box-sizing: border-box;
-  padding: var(--space-4) var(--space-3);
   background: var(--sidebar-bg);
   color: var(--sidebar-text);
 }
 
-/* Why: the theme's indigo focus ring is hard to see on the dark sidebar, so use white here. */
-.app-shell__sidebar :focus-visible {
+/* Why: the theme's indigo focus ring is hard to see on the dark sidebar, so use white there. */
+.app-shell__nav :focus-visible {
   box-shadow: 0 0 0 2px var(--sidebar-text-active);
 }
 
+/* The logo bay: the top of the sidebar is white and exactly as tall as the page header, so one
+   white strip runs across the top of the screen. Why: the logo's "Resolve" is drawn in the
+   same dark slate as the sidebar, so it would disappear on it. */
 .app-shell__brand {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--space-5);
+  height: var(--header-height);
+  padding: 0 var(--space-4);
+  box-sizing: border-box; /* the bottom border counts inside the height, as in the header */
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
 .app-shell__brand-name {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 0 var(--space-2);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--sidebar-text-active);
-  text-decoration: none;
-}
-
-/* The icon sits on a small white tile, like an app icon. Why: its indigo is too dark to stand
-   out on the dark sidebar by itself. */
-.app-shell__brand-icon {
-  padding: 3px;
-  background: var(--surface);
-  border-radius: var(--radius);
-}
-
-.app-shell__brand-accent {
-  color: var(--sidebar-brand-accent);
+  display: flex; /* no gap under the image */
 }
 
 .app-shell__menu-button {
@@ -96,6 +83,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  padding: var(--space-4) var(--space-3);
 }
 
 .app-shell__link {
@@ -131,7 +119,11 @@
 /* --- Header --- */
 
 .app-shell__header {
-  padding-block: var(--space-3);
+  display: flex;
+  align-items: center;
+  min-height: var(--header-height); /* matches the logo bay; can grow if it wraps on a phone */
+  box-sizing: border-box;
+  padding-block: var(--space-2);
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
@@ -172,26 +164,19 @@
   .app-shell__sidebar {
     position: static;
     height: auto;
-    padding: var(--space-3) var(--space-4);
   }
 
-  .app-shell__brand {
-    margin-bottom: 0;
-  }
-
+  /* On the white top bar the ☰ button looks like the other buttons. */
   .app-shell__menu-button {
     display: block;
     padding: var(--space-1) var(--space-3);
     font-size: 18px;
     line-height: 1;
-    color: var(--sidebar-text-active);
-    background: none;
-    border-color: var(--sidebar-text);
   }
 
   .app-shell__nav {
     display: none;
-    margin-top: var(--space-3);
+    padding: var(--space-3) var(--space-4);
   }
 
   .app-shell__sidebar--open .app-shell__nav {

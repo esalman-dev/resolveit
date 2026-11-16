@@ -115,7 +115,7 @@ resolveit/
 │   │   ├── usePageTitle.js  Lets a page set the header and browser tab title
 │   │   ├── ticketLabels.js  Status and priority names in words
 │   │   ├── roles.js         Role ranking (mirrors the server, for a tidy UI)
-│   │   ├── assets/          Logo and icon (SVG)
+│   │   ├── assets/          Logos: stacked SVG (login screen), horizontal PNG (sidebar)
 │   │   ├── index.css        App-wide styles, built only from the theme variables
 │   │   └── styles/
 │   │       └── theme.css    Colors, spacing and fonts in one place (contrast-checked)

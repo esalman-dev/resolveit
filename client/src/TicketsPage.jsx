@@ -137,7 +137,8 @@ function TicketsPage({ currentUser }) {
 
       {/* aria-live: screen readers announce the new count as filters change. */}
       <p className="hint tickets-page__count" aria-live="polite">
-        {filtering ? `Showing ${shown.length} of ${tickets.length} tickets` : `${tickets.length} tickets`}
+        {filtering ? `Showing ${shown.length} of ` : ''}
+        {tickets.length} {tickets.length === 1 ? 'ticket' : 'tickets'}
       </p>
 
       {shown.length === 0 ? (

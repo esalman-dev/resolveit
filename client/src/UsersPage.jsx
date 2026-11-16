@@ -138,7 +138,8 @@ function UsersPage({ currentUser }) {
 
       {/* aria-live: screen readers announce the new count as the filters change. */}
       <p className="hint users-page__count" aria-live="polite">
-        {filtering ? `Showing ${shown.length} of ${users.length} users` : `${users.length} users`}
+        {filtering ? `Showing ${shown.length} of ` : ''}
+        {users.length} {users.length === 1 ? 'user' : 'users'}
       </p>
 
       <div className="table-wrap">
