@@ -23,6 +23,10 @@ Most help desk tickets are for common problems with simple fixes: Wi-Fi that won
 - Accounts with email and password, or **Sign in with Google**
 - Stay logged in for up to 30 days, with a hard 90-day maximum
 - Roles: **user**, **technician**, **admin**, and **owner**, ranked so you can only manage people below you, with an admin screen for managing users and an "Are you sure?" step before each change
+- Admins and owners can **disable** accounts (logged out everywhere at once; their tickets stay), and see an **account history** of every role change and disable
+- Ticket API: users open tickets, edit them while still open, and close them; staff assign, prioritize, categorize, and add internal notes
+- **Ticket history** on every ticket: who changed what, from what, to what, and when
+- **Comments** that the author can edit, with every earlier version kept and visible
 
 **Planned**
 - Ticket tracking screens: create, assign, update, comment, search, and filter
@@ -41,13 +45,17 @@ Authentication is built by hand rather than with an auth service, so each decisi
 | Staying logged in | **Refresh token** in an `httpOnly`, `SameSite=Strict` cookie that JavaScript can't read. Stored as a SHA-256 hash, valid for 30 days of inactivity and at most 90 days in total. |
 | Stolen refresh tokens | **Rotation:** every refresh token works once. **Reuse detection:** if an old one is presented again, all of that user's sessions are revoked. |
 | Logging out | The server revokes the session, not just the browser. |
-| Permissions | Role checks read the **current role from the database**, so promotions, demotions, and deleted accounts take effect immediately. 401 = not logged in, 403 = not allowed. |
+| Permissions | Role checks read the **current role from the database**, so promotions, demotions, disabled accounts, and deleted accounts take effect immediately. 401 = not logged in, 403 = not allowed. |
 | Self-promotion | Sign-up always creates a `user`, whatever the request says. The first admin is created from the server with `npm run make-admin`, and owners only with `npm run make-owner`: no website request can create an owner. Nobody can change their own role. |
 | Role hierarchy | user < technician < admin < owner. You can only change the role of someone **ranked below you**, and only give roles **below your own**: admins manage technicians and users, owners also manage admins, and owners can't demote each other. A role change is saved only if the person's role hasn't changed since it was checked (no race between two editors). |
 | Password guessing | **Rate limits:** 10 failed logins per 15 minutes, 10 sign-ups per hour, and a general API cap. |
-| Account fishing | Login gives the same error for an unknown email and a wrong password. |
-| SQL injection | Every query uses parameters (`$1`, `$2`), never string building. |
-| Google sign-in | Google's ID token is verified (signature, audience, expiry). An existing account is linked only if Google confirms the email is verified. |
+| Account fishing | Login gives the same error **and takes the same time** for an unknown email and a wrong password: it checks against a dummy bcrypt hash, so response timing can't reveal which emails have accounts. |
+| Input limits | Names, emails, titles, descriptions, and comments have maximum lengths. Passwords are capped at **72 bytes**, because bcrypt silently ignores anything longer. |
+| Disabled accounts | Disabling revokes every session at once; the next request, refresh, or login is refused. |
+| Accountability | Every ticket change, role change, and disable is logged with who did it, in the **same database transaction** as the change, so the log can't miss anything. Comment edits keep every earlier version. |
+| SQL injection | Every value goes through parameters (`$1`, `$2`). Where column names are built into SQL, they come from fixed lists in the code, never from the request. |
+| Login tokens (JWT) | Verified with the algorithm pinned to HS256, so a token can't choose a different signing method. |
+| Google sign-in | Google's ID token is verified (signature, audience, expiry). An existing account is linked only if Google confirms the email is verified **and** the account isn't already linked to a different Google account. |
 
 ## Tech stack
 
@@ -113,10 +121,13 @@ resolveit/
 
 ## Database
 
-- **`users`**: name, unique email, an optional bcrypt password hash, an optional Google ID, and a role (`user`, `technician`, `admin`, or `owner`). A `CHECK` constraint requires at least one way to log in.
+- **`users`**: name, unique email, an optional bcrypt password hash, an optional Google ID, and a role (`user`, `technician`, `admin`, or `owner`). A `CHECK` constraint requires at least one way to log in. `disabled_at` marks disabled accounts.
 - **`tickets`**: title, description, status, and priority, plus foreign keys to the user who created it, the technician it's assigned to, and its category. `resolved_at` records when it was resolved (for average resolution time).
 - **`categories`**: the list of ticket categories, managed by admins. Names are unique ignoring capital letters, and categories are archived (`active = false`) rather than deleted, so old tickets keep their label.
-- **`ticket_comments`**: the conversation on a ticket. `is_internal` marks staff-only notes that the ticket's creator never sees.
+- **`ticket_comments`**: the conversation on a ticket. `is_internal` marks staff-only notes that the ticket's creator never sees. `edited_at` shows when it was last edited.
+- **`comment_edits`**: every earlier version of an edited comment.
+- **`ticket_events`**: the ticket history: one row per change, with who, which field, and the before/after values as people saw them.
+- **`account_events`**: the account history: role changes, disables, and enables, with who did them (empty = a server command).
 - **`refresh_tokens`**: one row per logged-in browser. Stores a hash of the token, its expiry, when the session started, and when it was revoked.
 
 Allowed values for role, status, and priority are enforced by the database itself with `CHECK` constraints. See [`server/db/schema.sql`](server/db/schema.sql).
@@ -185,18 +196,21 @@ The tests create and use a separate database, `resolveit_test`, on the same Post
 | GET | `/api/auth/me` | Logged in | The current user |
 | GET | `/api/users` | Admin, owner | List all users |
 | PATCH | `/api/users/:id/role` | Admin, owner | Change a role: only for people ranked below you, and only to a role below yours |
-| POST | `/api/tickets` | Logged in | Open a ticket (always starts open and unassigned) |
+| PATCH | `/api/users/:id/disabled` | Admin, owner | Disable or re-enable an account ranked below you |
+| GET | `/api/users/history` | Admin, owner | Account history, newest first (`?user_id=` for one person) |
+| POST | `/api/tickets` | Logged in | Open a ticket (always starts open and unassigned; only staff can choose a priority, otherwise it starts at medium) |
 | GET | `/api/tickets` | Logged in | List tickets: users see their own, technicians, admins and owners see all |
-| GET | `/api/tickets/:id` | Creator, technician, admin | One ticket (404 for other users' tickets, so ids can't be probed) |
-| PATCH | `/api/tickets/:id` | Technician, admin | Change status, priority, category_id, or assignee |
-| GET | `/api/tickets/assignees` | Technician, admin | Technicians and admins a ticket can be assigned to |
-| GET | `/api/tickets/:id/comments` | Creator, technician, admin | Comments, oldest first (internal notes only for technicians and admins) |
-| POST | `/api/tickets/:id/comments` | Creator, technician, admin | Add a comment; technicians and admins can mark it internal |
+| GET | `/api/tickets/:id` | Creator, staff | One ticket **with its history** (404 for other users' tickets, so ids can't be probed) |
+| PATCH | `/api/tickets/:id` | Creator, staff | Staff: change anything. Creator: edit title/description while open, or close it. Every change is logged |
+| GET | `/api/tickets/assignees` | Staff | Active technicians, admins, and owners a ticket can be assigned to |
+| GET | `/api/tickets/:id/comments` | Creator, staff | Comments, oldest first, each with its earlier versions (internal notes only for staff) |
+| POST | `/api/tickets/:id/comments` | Creator, staff | Add a comment; staff can mark it internal |
+| PATCH | `/api/tickets/:id/comments/:commentId` | The comment's author | Edit your comment; the old text is kept |
 | GET | `/api/categories` | Logged in | Active categories (admins can add `?all=true` for archived ones) |
 | POST | `/api/categories` | Admin, owner | Add a category |
 | PATCH | `/api/categories/:id` | Admin, owner | Rename, archive, or restore a category |
 
-Protected endpoints expect `Authorization: Bearer <access token>`.
+Protected endpoints expect `Authorization: Bearer <access token>`. "Staff" means a technician, admin, or owner.
 
 ## Author
 
