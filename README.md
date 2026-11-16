@@ -1,10 +1,10 @@
-# ResolveIT
+<h1 align="center"><img src="client/src/assets/resolveit-logo.svg" alt="ResolveIT" width="260"></h1>
 
 [![CI](https://github.com/esalman-dev/resolveit/actions/workflows/ci.yml/badge.svg)](https://github.com/esalman-dev/resolveit/actions/workflows/ci.yml)
 
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
-> 🚧 **Status: in development.** Accounts, login (password or Google), roles, and the ticket API (with categories and comments) are done and covered by automated tests. The ticket screens are being built: the app layout, the "Get help" form, the ticket list with search and filters, and the ticket page (staff controls, comments, and history) are done. So is the admin Categories screen. See [Progress](#progress).
+> 🚧 **Status: in development.** Phase 1, the core ticket tracker, is complete: accounts and login (password or Google), roles, the Get help form, the ticket list with search and filters, the ticket page with staff controls, comments, and history, and the admin Users and Categories screens. The server is covered by automated tests. Next: AI self-service fixes. See [Progress](#progress).
 
 ## The idea
 
@@ -34,9 +34,9 @@ Most help desk tickets are for common problems with simple fixes: Wi-Fi that won
 - "Are you sure?" only for big changes (resolving, reopening, taking a ticket from someone else, closing your own ticket); small changes save instantly and show in the history
 - Comments with **internal notes** for staff (highlighted, and never sent to the user), editable with every earlier version kept
 - **Categories** managed by admins: add, rename, archive (never deleted, so old tickets keep theirs), and restore
+- **Search** on the Users screen by name, email, or role
 
 **Planned**
-- A search bar on the Users screen
 - AI self-service troubleshooting with safe-fix guardrails
 - A knowledge base that learns from tickets technicians have solved
 - An analytics dashboard: self-solved rate, escalations, most common problems, average resolution time
@@ -78,7 +78,7 @@ Authentication is built by hand rather than with an auth service, so each decisi
 
 ## Progress
 
-**Phase 1: Core ticket tracker**
+**Phase 1: Core ticket tracker** ✅ complete
 - [x] Project repository set up
 - [x] React frontend and Express backend connected
 - [x] PostgreSQL database and schema
@@ -115,9 +115,11 @@ resolveit/
 │   │   ├── usePageTitle.js  Lets a page set the header and browser tab title
 │   │   ├── ticketLabels.js  Status and priority names in words
 │   │   ├── roles.js         Role ranking (mirrors the server, for a tidy UI)
+│   │   ├── assets/          Logo and icon (SVG)
 │   │   ├── index.css        App-wide styles, built only from the theme variables
 │   │   └── styles/
 │   │       └── theme.css    Colors, spacing and fonts in one place (contrast-checked)
+│   ├── public/favicon.svg   Browser tab icon
 │   ├── vite.config.js       Dev proxy: forwards /api to the Express server
 │   └── vercel.json          Production: forwards /api to the hosted API, every other address to the app
 └── server/                  Express API
