@@ -1,14 +1,17 @@
-// History and accountability: ticket history, comment edit history, account history,
-// and disabling accounts
+// Tests for history and accountability: ticket history, comment edit history, account
+// history, and disabling accounts.
+
 import { describe, it, expect } from 'vitest';
 import { app, pool, request, signUp, signUpAdmin, signUpOwner, bearer } from './helpers.js';
 
+/** Signs up, then sets the role directly in the database. */
 async function signUpAs(role, email) {
   const account = await signUp({ name: email.split('@')[0], email });
   await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role, account.user.id]);
   return account;
 }
 
+/** Opens a ticket and returns the response body: { ticket, history }. */
 async function createTicket(token, fields = {}) {
   const res = await request(app)
     .post('/api/tickets')
@@ -17,6 +20,7 @@ async function createTicket(token, fields = {}) {
   return res.body;
 }
 
+/** Sends a PATCH to a ticket as the given token holder. */
 const patchTicket = (token, id, body) => request(app).patch(`/api/tickets/${id}`).set(bearer(token)).send(body);
 
 describe('ticket history (shown on the ticket itself)', () => {
@@ -115,7 +119,7 @@ describe('editing comments (every earlier version is kept and visible)', () => {
     expect(res.body.comment.edited_at).not.toBeNull();
     expect(res.body.comment.edits.map((e) => e.old_body)).toEqual(['Version 1', 'Version 2']);
 
-    // Anyone who can see the comment can see what it used to say
+    // Anyone who can see the comment can see what it used to say.
     const asTech = await request(app).get(`/api/tickets/${ticket.id}/comments`).set(bearer(tech.token));
     expect(asTech.body.comments[0].edits).toHaveLength(2);
   });
@@ -167,11 +171,11 @@ describe('disabling accounts', () => {
     expect(res.status).toBe(200);
     expect(res.body.user.disabled_at).not.toBeNull();
 
-    // Their still-unexpired access token no longer works
+    // Their still-valid access token no longer works.
     expect((await request(app).get('/api/tickets').set(bearer(bob.token))).status).toBe(401);
-    // Their "stay logged in" cookie no longer works
+    // Their "stay logged in" cookie no longer works.
     expect((await bob.agent.post('/api/auth/refresh')).status).toBe(401);
-    // They can't log in again (after a CORRECT password, they're told why)
+    // They can't log in again; after a correct password, they're told why.
     const login = await request(app).post('/api/auth/login').send({ email: 'bob@example.com', password: 'password123' });
     expect(login.status).toBe(403);
   });

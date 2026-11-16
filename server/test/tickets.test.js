@@ -1,15 +1,17 @@
-// Tickets: creating, listing, viewing, assigning and updating, and who is allowed to do each
+// Tests for tickets: opening, listing, viewing, assigning, updating and commenting, and who
+// is allowed to do each.
+
 import { describe, it, expect } from 'vitest';
 import { app, pool, request, signUp, signUpAdmin, bearer } from './helpers.js';
 
-// Sign up, then set the role directly in the database
+/** Signs up, then sets the role directly in the database. */
 async function signUpAs(role, email) {
   const account = await signUp({ name: email.split('@')[0], email });
   await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role, account.user.id]);
   return account;
 }
 
-// Open a ticket as the given token holder and return it
+/** Opens a ticket as the given token holder and returns it. */
 async function createTicket(token, fields = {}) {
   const res = await request(app)
     .post('/api/tickets')
@@ -19,7 +21,7 @@ async function createTicket(token, fields = {}) {
   return res.body.ticket;
 }
 
-// Add a category straight into the database and return its id (setup.js empties the table before each test)
+/** Adds a category straight into the database and returns its id. setup.js empties the table before each test. */
 async function addCategory(name, active = true) {
   const result = await pool.query('INSERT INTO categories (name, active) VALUES ($1, $2) RETURNING id', [name, active]);
   return result.rows[0].id;
@@ -348,7 +350,7 @@ describe('PATCH /api/tickets/:id', () => {
 });
 
 describe('ticket comments', () => {
-  // Shortcuts: post a comment / read the comments as a given token holder
+  // Shortcuts: post a comment, or read the comments, as the given token holder.
   const postComment = (token, ticketId, body) =>
     request(app).post(`/api/tickets/${ticketId}/comments`).set(bearer(token)).send(body);
   const getComments = (token, ticketId) =>

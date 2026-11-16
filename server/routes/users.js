@@ -1,6 +1,10 @@
-// User management (admins and owners): list everyone, change roles, disable/enable accounts,
-// and see the account history (who changed what, and when).
-// Mounted in app.js at /api/users
+// Users API: list accounts, change roles, disable or enable accounts, and read the account history.
+//
+// Every change follows the ranking rule in roles.js (you can only manage people ranked below
+// you) and is logged in account_events in the same transaction as the change itself.
+//
+// Mounted at /api/users (see app.js). Admins and owners only.
+
 import { Router } from 'express';
 import pool, { withTransaction } from '../db/index.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
@@ -8,36 +12,45 @@ import { ROLES, ADMINS, canManage, canGrant } from '../roles.js';
 
 const router = Router();
 
-// Every route in this file: must be logged in AND an admin or owner.
-// router.use() applies them to all routes below, so no route can accidentally forget the check.
+// Applied to every route in this file, so a route added later can't forget the check.
 router.use(requireAuth, requireRole(...ADMINS));
 
-// Turn "42" into 42, or null if it isn't a positive whole number
+// --- Helpers ---
+
+/** Turns "42" into 42, or null if it isn't a positive whole number. */
 function parseId(value) {
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-// Checks shared by "change role" and "disable/enable": the target exists, isn't you,
-// and is ranked below you. Returns { target } or { status, error }.
+/**
+ * Checks shared by "change role" and "disable/enable": the target exists, isn't the caller,
+ * and is ranked below the caller. Returns { target } or { status, error }.
+ */
 async function checkTarget(req, id) {
   if (!id) return { status: 400, error: 'Invalid user id' };
-  // Nobody can change their OWN account here. This is also why there's always at least one
-  // owner (or admin): removing one always takes someone else, ranked higher.
+  // Why: nobody can change their own account. That's also what guarantees at least one owner
+  // (or admin) always remains: removing one always takes someone else, ranked higher.
   if (id === req.user.id) return { status: 400, error: "You can't change your own account" };
 
   const result = await pool.query('SELECT id, role, disabled_at FROM users WHERE id = $1', [id]);
   const target = result.rows[0];
   if (!target) return { status: 404, error: 'User not found' };
 
-  // The ranking rule (see roles.js). req.user.role is fresh from the database (requireRole).
+  // req.user.role is fresh from the database (requireRole re-reads it).
   if (!canManage(req.user.role, target.role)) {
     return { status: 403, error: `You can't change an ${target.role}'s account` };
   }
   return { target };
 }
 
-// GET /api/users: everyone, oldest first
+// --- Routes ---
+
+/**
+ * GET /api/users
+ * Every account, oldest first, including whether it's disabled.
+ * Access: admins and owners.
+ */
 router.get('/', async (req, res) => {
   const result = await pool.query(
     `SELECT id, name, email, role, created_at, disabled_at,
@@ -49,16 +62,21 @@ router.get('/', async (req, res) => {
   res.json({ users: result.rows });
 });
 
-// GET /api/users/history: the account log, newest first (role changes, disables, enables).
-// Optional ?user_id=5 to see one person's history. Shows the last 200 entries.
+/**
+ * GET /api/users/history
+ * The account history, newest first: role changes, disables and enables (last 200 entries).
+ * Add ?user_id=5 for one person's history. actor_name is empty when a server command
+ * (make-admin, make-owner) made the change.
+ * Access: admins and owners.
+ */
 router.get('/history', async (req, res) => {
   const userId = req.query.user_id === undefined ? null : parseId(req.query.user_id);
   if (req.query.user_id !== undefined && !userId) {
     return res.status(400).json({ error: 'Invalid user id' });
   }
 
-  // "$1::int IS NULL OR ...": one query for both cases. No user_id -> everyone's history.
-  // actor_name is empty when the change came from a server command (make-admin / make-owner).
+  // "$1::int IS NULL OR ..." handles both cases in one query: with no user_id, $1 is null and
+  // every row matches. ::int tells PostgreSQL the type of that empty value.
   const result = await pool.query(
     `SELECT e.id, e.action, e.old_value, e.new_value, e.created_at,
             e.user_id,  target.name AS user_name,
@@ -74,8 +92,13 @@ router.get('/history', async (req, res) => {
   res.json({ history: result.rows });
 });
 
-// PATCH /api/users/:id/role: change one user's role. Body: { "role": "technician" }
-// (PATCH = update part of something; PUT would mean replacing the whole user)
+/**
+ * PATCH /api/users/:id/role
+ * Changes someone's role: only someone ranked below you, and only to a role below yours.
+ * Answers 409 if their role changed since it was checked.
+ * Access: admins and owners.
+ * Body: { role }
+ */
 router.patch('/:id/role', async (req, res) => {
   const id = parseId(req.params.id);
   const { role } = req.body ?? {};
@@ -84,7 +107,7 @@ router.patch('/:id/role', async (req, res) => {
   if (!ROLES.includes(role)) {
     return res.status(400).json({ error: `Role must be one of: ${ROLES.join(', ')}` });
   }
-  // Owners are made only on the server (npm run make-owner), never through the website
+  // Owners are created only on the server (npm run make-owner), never through the website.
   if (role === 'owner') {
     return res.status(403).json({ error: 'Owners can only be created on the server' });
   }
@@ -99,10 +122,10 @@ router.patch('/:id/role', async (req, res) => {
     return res.json({ user: { id, role } }); // nothing to change, nothing to log
   }
 
-  // Change the role AND write the history entry together (all or nothing).
+  // The role change and its history entry are saved together, or not at all.
   const updated = await withTransaction(async (db) => {
-    // "AND role = $3": only save if their role is still the one we just checked. If someone else
-    // changed it in the split second since, nothing is updated (no race).
+    // Why "AND role = $3": only save if their role is still the one checked above. If someone
+    // else changed it in the meantime, nothing is updated (optimistic concurrency).
     const result = await db.query(
       'UPDATE users SET role = $1 WHERE id = $2 AND role = $3 RETURNING id, name, email, role',
       [role, id, target.role]
@@ -119,13 +142,18 @@ router.patch('/:id/role', async (req, res) => {
   if (!updated) {
     return res.status(409).json({ error: 'Their role was changed by someone else just now. Reload and try again.' });
   }
-  // Takes effect immediately on the server: requireRole reads the role from the database.
+  // Takes effect at once: requireRole reads the role from the database on every request.
   res.json({ user: updated });
 });
 
-// PATCH /api/users/:id/disabled: disable or re-enable an account. Body: { "disabled": true }
-// Disabled accounts can't log in, and every session they have is ended at once.
-// Their tickets and comments stay (that's why we disable instead of delete).
+/**
+ * PATCH /api/users/:id/disabled
+ * Disables or re-enables an account ranked below you. A disabled account can't log in and is
+ * logged out everywhere at once; its tickets and comments stay (which is why we disable
+ * instead of delete).
+ * Access: admins and owners.
+ * Body: { disabled: true | false }
+ */
 router.patch('/:id/disabled', async (req, res) => {
   const id = parseId(req.params.id);
   const { disabled } = req.body ?? {};
@@ -133,8 +161,6 @@ router.patch('/:id/disabled', async (req, res) => {
     return res.status(400).json({ error: 'disabled must be true or false' });
   }
 
-  // Same ranking rule as roles: admins can disable technicians and users; owners can also
-  // disable admins; nobody can disable an owner (or themselves) from the website.
   const { target, status, error } = await checkTarget(req, id);
   if (error) return res.status(status).json({ error });
 
@@ -149,8 +175,8 @@ router.patch('/:id/disabled', async (req, res) => {
       [id, disabled]
     );
     if (disabled) {
-      // Log them out everywhere: revoke every refresh token they have.
-      // (Their 15-minute access token is refused too: requireRole checks disabled_at.)
+      // Log them out everywhere by revoking every refresh token. Their current access token is
+      // refused too, because requireRole checks disabled_at on every request.
       await db.query('UPDATE refresh_tokens SET revoked_at = NOW() WHERE user_id = $1 AND revoked_at IS NULL', [id]);
     }
     await db.query(

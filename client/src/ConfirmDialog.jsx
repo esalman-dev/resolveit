@@ -1,26 +1,31 @@
+// Confirm dialog: the reusable "Are you sure?" box for important staff actions.
+//
+// Built on the browser's own <dialog> element. showModal() provides, for free: a dimmed
+// background that can't be clicked, keyboard focus kept inside the box (good for
+// accessibility), and Escape to close (treated as Cancel).
+
 import { useEffect, useRef } from 'react'
 
-// A reusable "Are you sure?" box for important staff actions (role changes now;
-// resolving, reassigning and archiving later on the ticket screens).
-//
-// It uses the browser's built-in <dialog> element. showModal() gives us, for free:
-//   - a dimmed background, and nothing behind it can be clicked
-//   - keyboard focus kept inside the box (good for accessibility)
-//   - the Escape key closes it (we treat that as "Cancel")
-//
-// Usage:
-//   <ConfirmDialog
-//     open={pending !== null}
-//     title="Change role?"
-//     message="Bob will become a technician."
-//     confirmLabel="Change role"
-//     onConfirm={...}
-//     onCancel={...}
-//   />
+/**
+ * Shows an "Are you sure?" box while `open` is true.
+ *
+ * @param danger shows a red confirm button, for actions that take something away
+ * @param busy disables both buttons and shows "Saving…" while the action runs
+ *
+ * @example
+ * <ConfirmDialog
+ *   open={pending !== null}
+ *   title="Change role?"
+ *   message="Bob will become a technician."
+ *   confirmLabel="Change role"
+ *   onConfirm={save}
+ *   onCancel={() => setPending(null)}
+ * />
+ */
 function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', danger = false, busy = false, onConfirm, onCancel }) {
   const dialogRef = useRef(null)
 
-  // React decides WHETHER it's open (the `open` prop); this effect tells the browser.
+  // React decides whether it's open (the `open` prop); this effect tells the browser.
   useEffect(() => {
     const dialog = dialogRef.current
     if (open && !dialog.open) dialog.showModal()
@@ -42,7 +47,7 @@ function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', danger 
       <h3 id="confirm-title">{title}</h3>
       <p>{message}</p>
       <div className="confirm-buttons">
-        {/* Cancel comes first and gets focus, so pressing Enter by accident does nothing harmful */}
+        {/* Cancel comes first and gets focus, so pressing Enter by accident does nothing harmful. */}
         <button type="button" onClick={onCancel} disabled={busy} autoFocus>
           Cancel
         </button>

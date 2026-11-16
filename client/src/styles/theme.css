@@ -1,0 +1,91 @@
+/*
+  Theme: every color, size and spacing value the app uses, as CSS variables.
+
+  The look is a dark slate sidebar with an indigo main color, light theme only. Other CSS files
+  use these names instead of typing colors, so changing a value here changes it everywhere:
+    color: var(--color-primary);
+
+  Note: every text color here has at least 4.5 : 1 contrast against its background (the WCAG
+  standard for normal text), and form field edges have 3 : 1. Keep it that way when changing
+  colors.
+*/
+
+:root {
+  /* Light theme only. Also tells the browser to draw its own parts (scrollbars, date pickers,
+     form controls) in light mode, even when the computer is set to dark mode. */
+  color-scheme: light;
+
+  /* Main color (indigo): buttons, links, focus rings. */
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-primary-soft: #eef2ff;   /* light indigo background, e.g. selected row */
+  --color-on-primary: #ffffff;     /* text on an indigo button */
+
+  /* Sidebar (dark slate). */
+  --sidebar-bg: #1e293b;
+  --sidebar-text: #cbd5e1;
+  --sidebar-text-active: #ffffff;
+  --sidebar-item-hover: #273449;
+  --sidebar-item-active: #334155;
+  --sidebar-heading: #94a3b8;      /* small "ADMIN" section label */
+
+  /* Page and surfaces. */
+  --page-bg: #f8fafc;              /* behind everything in the main area */
+  --surface: #ffffff;              /* cards, tables, forms */
+  --border: #e5e7eb;               /* dividers: table rows, card edges */
+  --border-strong: #d1d5db;
+  /* The edge of text boxes and dropdowns. Needs 3 : 1 contrast so people can see where to
+     click (WCAG, non-text); --border-strong is only 1.5 : 1, fine for decoration only. */
+  --border-input: #868d99;         /* 3.3 : 1 on white */
+
+  /* Text. */
+  --text: #111827;
+  --text-muted: #6b7280;           /* dates, hints, "Opened by Jo" */
+
+  /* Danger: Demote, Archive, Disable. */
+  --color-danger: #dc2626;
+  --color-danger-hover: #b91c1c;
+  --color-danger-soft: #fef2f2;
+  --color-on-danger: #ffffff;      /* text on a red button */
+
+  /* Status badges: a soft background with dark text of the same color.
+     Always show the word too ("Open"), never color alone. */
+  --status-open-bg: #dbeafe;        --status-open-text: #1e40af;
+  --status-progress-bg: #fef3c7;    --status-progress-text: #92400e;
+  --status-resolved-bg: #dcfce7;    --status-resolved-text: #166534;
+
+  /* Priority badges. Must match the priorities allowed by the database CHECK. */
+  --priority-low-bg: #f3f4f6;       --priority-low-text: #374151;
+  --priority-medium-bg: #e0e7ff;    --priority-medium-text: #3730a3;
+  --priority-high-bg: #ffedd5;      --priority-high-text: #9a3412;
+  --priority-urgent-bg: #fee2e2;    --priority-urgent-text: #991b1b;
+
+  /* Staff-only internal notes on tickets. */
+  --internal-note-bg: #fefce8;
+  --internal-note-border: #facc15;
+
+  /* Messages. */
+  --success-bg: #f0fdf4;            --success-text: #166534;
+  --error-bg: #fef2f2;              --error-text: #991b1b;
+
+  /* Pop-ups, such as the "Are you sure?" box. */
+  --overlay: rgba(15, 23, 42, 0.5);                    /* dims the page behind a pop-up */
+  --shadow: 0 10px 30px rgba(15, 23, 42, 0.18);        /* lifts a pop-up off the page */
+
+  /* Type, spacing, shape. */
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-size: 15px;
+  --font-size-small: 13px;         /* badges, hints, table dates */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius: 6px;
+  --sidebar-width: 220px;
+  --focus-ring: 0 0 0 3px rgba(79, 70, 229, 0.35);  /* keyboard focus outline: the primary indigo, see-through */
+
+  /* Note: the phone breakpoint (768px) can't be a variable, because @media rules don't read
+     variables. Write 768px directly in @media. */
+}

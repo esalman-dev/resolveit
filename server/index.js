@@ -1,4 +1,7 @@
-// Starts the API server. The app itself is built in app.js (so tests can use it without a port).
+// Server entry point: starts the API on a port.
+//
+// The app itself is built in app.js, so the tests can use it without opening a port.
+
 import app from './app.js';
 
 const PORT = process.env.PORT || 5000;

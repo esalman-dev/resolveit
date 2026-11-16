@@ -1,12 +1,16 @@
+// Google button: "Sign in with Google", drawn by Google's own script.
+//
+// Hidden when VITE_GOOGLE_CLIENT_ID isn't set; email and password login still works.
+
 import { useEffect, useRef, useState } from 'react'
 import { apiFetch, setAccessToken } from './api.js'
 
-// Public ID from Google Cloud Console (not a secret: it's visible in every page that uses it).
-// If it isn't set, this component shows nothing and email/password login still works.
+// The app's public ID from Google Cloud Console. Not a secret: every page that uses it shows it.
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
-// Load Google's sign-in script once, no matter how many times the button mounts
 let scriptPromise
+
+/** Loads Google's sign-in script once, however many times the button appears. */
 function loadGoogleScript() {
   scriptPromise ??= new Promise((resolve, reject) => {
     const script = document.createElement('script')
@@ -19,6 +23,10 @@ function loadGoogleScript() {
   return scriptPromise
 }
 
+/**
+ * The Google sign-in button.
+ * @param onLoggedIn called with the user after our server accepts the Google sign-in
+ */
 function GoogleButton({ onLoggedIn }) {
   const buttonRef = useRef(null) // the empty <div> Google draws its button into
   const [error, setError] = useState('')
@@ -33,7 +41,7 @@ function GoogleButton({ onLoggedIn }) {
         window.google.accounts.id.initialize({
           client_id: CLIENT_ID,
           // Google calls this after the user picks an account. response.credential is
-          // Google's signed ID token; we pass it to OUR server, which verifies it.
+          // Google's signed ID token; we pass it to our own server, which verifies it.
           callback: async (response) => {
             try {
               const data = await apiFetch('/api/auth/google', {

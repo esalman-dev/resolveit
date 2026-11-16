@@ -1,4 +1,5 @@
-// Sign-up, password login, and the access token
+// Tests for sign-up, password login, and the access token.
+
 import { describe, it, expect } from 'vitest';
 import { app, pool, request, signUp, bearer, refreshCookie, decodeJwt } from './helpers.js';
 

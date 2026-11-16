@@ -1,57 +1,74 @@
-/* Global styles: apply to the whole app */
-:root {
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  color-scheme: light dark; /* follow the user's light/dark mode setting */
-}
+/*
+  Global styles: rules that apply across the whole app.
+
+  Every color, size and spacing comes from styles/theme.css, which main.jsx loads first.
+  Write var(--name) here, never a raw color.
+*/
 
 body {
   margin: 0;
+  background: var(--page-bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--font-size);
 }
 
 main {
   max-width: 720px;
   margin: 0 auto;
-  padding: 32px 16px;
+  padding: var(--space-6) var(--space-4);
 }
 
-/* Top bar: app name on the left, logged-in user on the right */
+/* Top bar: app name on the left, logged-in user on the right. */
 .topbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
-/* A bordered box for forms and panels */
+/* A bordered box for forms and panels. */
 .card {
   max-width: 380px;
-  padding: 24px;
-  border: 1px solid #8884;
-  border-radius: 8px;
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
 form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 label {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   font-size: 14px;
 }
 
-input {
-  padding: 8px;
+input,
+select,
+textarea {
+  padding: var(--space-2);
+  font: inherit;
   font-size: 16px; /* 16px stops phones from zooming in on focus */
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-input); /* 3 : 1 contrast, so the box is easy to see */
+  border-radius: var(--radius);
 }
 
 button {
-  padding: 8px 14px;
-  font-size: 15px;
+  padding: var(--space-2) 14px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius);
   cursor: pointer;
 }
 
@@ -60,42 +77,50 @@ button:disabled {
   opacity: 0.6;
 }
 
-/* A button that looks like a text link (for "Create an account") */
+/* Keyboard users see a clear ring on whatever is focused. :focus-visible shows it for
+   keyboard focus only, not for mouse clicks. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* A button that looks like a text link (e.g. "Create an account"). */
 button.link {
   padding: 0;
   border: none;
   background: none;
-  color: #4a7dff;
+  color: var(--color-primary);
   text-decoration: underline;
 }
 
 .error {
   margin: 0;
-  color: #d33;
+  color: var(--error-text);
 }
 
 .badge {
-  padding: 2px 8px;
+  padding: 2px var(--space-2);
   border-radius: 999px;
-  background: #4a7dff22;
+  background: var(--color-primary-soft);
+  color: var(--priority-medium-text);
   font-size: 12px;
 }
 
-/* "──── or ────" line between the form and the Google button */
+/* The "──── or ────" line between the login form and the Google button. */
 .divider {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 16px 0;
-  font-size: 13px;
-  opacity: 0.7;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
 }
 
 .divider::before,
 .divider::after {
   content: '';
   flex: 1;
-  border-top: 1px solid #8886;
+  border-top: 1px solid var(--border);
 }
 
 .switch {
@@ -103,26 +128,27 @@ button.link {
   font-size: 14px;
 }
 
-/* Admin navigation tabs */
+/* Admin navigation tabs. To be replaced by the sidebar. */
 .tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
 .tabs button.active {
   font-weight: 600;
-  border-bottom: 2px solid #4a7dff;
+  border-bottom: 2px solid var(--color-primary);
 }
 
 .hint {
   font-size: 14px;
-  opacity: 0.75;
+  color: var(--text-muted);
 }
 
-/* Tables scroll sideways on small screens instead of squashing */
+/* Tables scroll sideways on small screens instead of squashing. */
 .table-wrap {
   overflow-x: auto;
+  background: var(--surface);
 }
 
 table {
@@ -133,28 +159,31 @@ table {
 
 th,
 td {
-  padding: 8px;
-  border-bottom: 1px solid #8884;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
   text-align: left;
 }
 
 footer {
-  margin-top: 32px;
+  margin-top: var(--space-6);
   font-size: 12px;
-  opacity: 0.6;
+  color: var(--text-muted);
 }
 
-/* "Are you sure?" box (ConfirmDialog.jsx), built on the browser's <dialog> */
+/* The "Are you sure?" box (ConfirmDialog.jsx), built on the browser's <dialog>. */
 dialog.confirm {
   max-width: 380px;
   width: calc(100% - 32px); /* 16px gap on each side on phones */
-  padding: 24px;
-  border: 1px solid #8884;
-  border-radius: 8px;
+  padding: var(--space-5);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 dialog.confirm::backdrop {
-  background: #0008; /* dim everything behind the box */
+  background: var(--overlay); /* dims everything behind the box */
 }
 
 dialog.confirm h3 {
@@ -164,32 +193,42 @@ dialog.confirm h3 {
 .confirm-buttons {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 button.primary {
-  border: none;
-  border-radius: 4px;
-  background: #4a7dff;
-  color: white;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
 }
 
 button.danger {
-  border: none;
-  border-radius: 4px;
-  background: #d33;
-  color: white;
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+  color: var(--color-on-danger);
 }
 
-/* An outlined red button for actions that take something away (e.g. Disable) */
+button.danger:hover:not(:disabled) {
+  background: var(--color-danger-hover);
+}
+
+/* An outlined red button for actions that take something away (e.g. Disable). */
 button.danger-outline {
-  border: 1px solid #d33;
-  border-radius: 4px;
-  background: none;
-  color: #d33;
+  border-color: var(--color-danger);
+  background: var(--surface);
+  color: var(--color-danger);
 }
 
-/* A disabled account's row is faded */
+button.danger-outline:hover:not(:disabled) {
+  background: var(--color-danger-soft);
+}
+
+/* A disabled account's row. Gray text instead of see-through, so it still passes the 4.5 : 1
+   contrast check (see-through text would drop to about 3 : 1). */
 tr.muted td {
-  opacity: 0.55;
+  color: var(--text-muted);
 }

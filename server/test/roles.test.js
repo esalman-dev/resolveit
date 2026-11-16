@@ -1,4 +1,5 @@
-// Roles: who can manage users, and role changes taking effect immediately
+// Tests for roles: who can manage users, and role changes taking effect immediately.
+
 import { describe, it, expect } from 'vitest';
 import { app, pool, request, signUp, signUpAdmin, signUpOwner, bearer } from './helpers.js';
 
@@ -74,7 +75,7 @@ describe('role changes take effect immediately', () => {
     const { token: aliceToken } = await signUpOwner({ email: 'alice@example.com' });
     const { token: bobToken, user: bob } = await signUpAdmin({ email: 'bob@example.com', name: 'Bob' });
 
-    // Alice (an owner) demotes Bob. Bob's token was issued while he was admin and is still unexpired.
+    // Alice (an owner) demotes Bob. Bob's token was issued while he was an admin and is still valid.
     await request(app).patch(`/api/users/${bob.id}/role`).set(bearer(aliceToken)).send({ role: 'user' });
 
     const res = await request(app).get('/api/users').set(bearer(bobToken));

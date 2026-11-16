@@ -1,8 +1,10 @@
-// Categories: everyone can read the list; only admins can add, rename, archive or restore
+// Tests for categories: everyone can read the list; only admins and owners can add, rename,
+// archive or restore.
+
 import { describe, it, expect } from 'vitest';
 import { app, pool, request, signUp, signUpAdmin, bearer } from './helpers.js';
 
-// Add a category straight into the database (setup.js empties the table before each test)
+/** Adds a category straight into the database and returns its id. setup.js empties the table before each test. */
 async function addCategory(name, active = true) {
   const result = await pool.query('INSERT INTO categories (name, active) VALUES ($1, $2) RETURNING id', [name, active]);
   return result.rows[0].id;

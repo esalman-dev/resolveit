@@ -1,5 +1,7 @@
-# Continuous integration: on every push and pull request, GitHub starts a fresh Linux machine,
-# installs everything from scratch, and runs the checks. A red X on a commit means something broke.
+# CI workflow: runs the server tests and the client lint and build on every push and pull request.
+#
+# GitHub starts a fresh Linux machine, installs everything from scratch, and runs the checks.
+# A red X on a commit means something broke.
 name: CI
 
 on:
@@ -12,7 +14,7 @@ jobs:
     name: Server tests
     runs-on: ubuntu-latest
 
-    # A real PostgreSQL database for the tests, running in a container next to the job
+    # A real PostgreSQL database for the tests, running in a container next to the job.
     services:
       postgres:
         image: postgres:17
@@ -20,7 +22,7 @@ jobs:
           POSTGRES_PASSWORD: postgres # throwaway password: this database only lives for this run
         ports:
           - 5432:5432
-        # Wait until PostgreSQL is accepting connections before the steps start
+        # Wait until PostgreSQL is accepting connections before the steps start.
         options: >-
           --health-cmd pg_isready
           --health-interval 5s
@@ -32,7 +34,7 @@ jobs:
         working-directory: server
 
     env:
-      # The tests create this database themselves (see server/test/globalSetup.js)
+      # The tests create this database themselves (see server/test/globalSetup.js).
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/resolveit_test
 
     steps:
@@ -45,7 +47,7 @@ jobs:
           cache-dependency-path: server/package-lock.json
 
       - name: Install dependencies
-        run: npm ci # like npm install, but installs EXACTLY what package-lock.json says
+        run: npm ci # like npm install, but installs exactly what package-lock.json says
 
       - name: Run tests
         run: npm test

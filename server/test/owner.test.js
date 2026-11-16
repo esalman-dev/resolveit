@@ -1,18 +1,21 @@
-// The owner role and the ranking rule: "you can only manage people below you,
-// and only give out roles below your own" (server/roles.js)
+// Tests for the owner role and the ranking rule in server/roles.js: you can only manage people
+// ranked below you, and only give out roles ranked below your own.
+
 import { describe, it, expect } from 'vitest';
 import { app, pool, request, signUp, signUpAdmin, signUpOwner, bearer } from './helpers.js';
 
-// Sign up, then set the role directly in the database
+/** Signs up, then sets the role directly in the database. */
 async function signUpAs(role, email) {
   const account = await signUp({ name: email.split('@')[0], email });
   await pool.query('UPDATE users SET role = $1 WHERE id = $2', [role, account.user.id]);
   return account;
 }
 
+/** Sends a role change as the given token holder. */
 const changeRole = (token, id, role) =>
   request(app).patch(`/api/users/${id}/role`).set(bearer(token)).send({ role });
 
+/** Reads a user's current role straight from the database. */
 const roleInDb = async (id) => (await pool.query('SELECT role FROM users WHERE id = $1', [id])).rows[0].role;
 
 describe('what an owner can do', () => {

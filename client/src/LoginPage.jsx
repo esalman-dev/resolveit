@@ -1,9 +1,13 @@
+// Login page: one form for both "log in" and "create account", plus Sign in with Google.
+
 import { useState } from 'react'
 import { apiFetch, setAccessToken } from './api.js'
 import GoogleButton from './GoogleButton.jsx'
 
-// One form for both "log in" and "create account".
-// onLoggedIn(user) is called after success so App can switch screens.
+/**
+ * The login / create-account form.
+ * @param onLoggedIn called with the user after success, so App can switch screens
+ */
 function LoginPage({ onLoggedIn }) {
   const [mode, setMode] = useState('login') // 'login' or 'register'
   const [name, setName] = useState('')

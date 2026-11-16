@@ -1,27 +1,30 @@
+// App: restores the login when the page opens, then picks which screen to show.
+
 import { useEffect, useState } from 'react'
 import { apiFetch, refreshSession, logout, setOnSessionLost } from './api.js'
 import LoginPage from './LoginPage.jsx'
 import UsersPage from './UsersPage.jsx'
 import { isAdminOrOwner } from './roles.js'
 
+/** The whole app: top bar, admin tabs, the current screen, and the API status footer. */
 function App() {
-  const [user, setUser] = useState(null)         // the logged-in user, or null
+  const [user, setUser] = useState(null) // the logged-in user, or null
   const [checking, setChecking] = useState(true) // true while we ask the server about a saved session
   const [serverStatus, setServerStatus] = useState('checking')
-  const [page, setPage] = useState('home') // 'home' or 'users' (a real router comes with tickets)
+  const [page, setPage] = useState('home') // 'home' or 'users' (replaced by React Router next)
 
-  // Runs once on page load
+  // Runs once, when the page opens.
   useEffect(() => {
-    // Is the API (and database) alive?
+    // Is the API (and its database) up?
     apiFetch('/api/health')
       .then((data) => setServerStatus(data.database === 'connected' ? 'online' : 'database offline'))
       .catch(() => setServerStatus('offline'))
 
-    // If the session ends mid-use (e.g. logged out elsewhere), go back to the login screen
+    // If the session ends mid-use (e.g. logged out in another tab), go back to the login screen.
     setOnSessionLost(() => setUser(null))
 
-    // "Stay logged in": the browser automatically sends the httpOnly refresh cookie (if it has one).
-    // The server checks it and hands back the user plus a fresh 15-minute access token.
+    // Staying logged in: the browser sends the httpOnly refresh cookie automatically, if it has
+    // one, and the server answers with the user and a fresh 15-minute access token.
     refreshSession()
       .then((session) => setUser(session?.user ?? null))
       .catch(() => setUser(null)) // server offline: show the login form
@@ -29,11 +32,12 @@ function App() {
   }, [])
 
   async function handleLogout() {
-    await logout() // server revokes the refresh token and deletes the cookie
+    await logout() // the server revokes the refresh token and deletes the cookie
     setUser(null)
     setPage('home')
   }
 
+  // Note: hiding admin screens is only for tidiness. The server checks every request.
   const isAdmin = isAdminOrOwner(user?.role) // owners get everything admins get
 
   return (

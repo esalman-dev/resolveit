@@ -1,23 +1,30 @@
+// Users page: the Manage users screen for admins and owners.
+//
+// Every account with a role dropdown and a Disable/Enable button, each change confirmed with
+// an "Are you sure?" box, plus the account history (who changed what, and when).
+
 import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from './api.js'
 import { ROLES, canManage, grantableRoles } from './roles.js'
 import ConfirmDialog from './ConfirmDialog.jsx'
 
-// Admin/owner screen: every account, with a role dropdown and a Disable/Enable button,
-// plus the account history (who changed what, and when).
-// Hiding this page from others is just for a clean UI; the SERVER is what actually
-// blocks them (GET /api/users returns 403 for anyone who isn't an admin or owner).
+/**
+ * The Manage users screen.
+ *
+ * Note: hiding this page from other roles only keeps the interface tidy. The server is what
+ * blocks them (GET /api/users answers 403 for anyone who isn't an admin or owner).
+ */
 function UsersPage({ currentUser }) {
   const [users, setUsers] = useState([])
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  // The action waiting for "Are you sure?", or null:
-  //   { kind: 'role', user, role }  or  { kind: 'disable', user, disabled }
+  // The action waiting for "Are you sure?", or null. Either
+  // { kind: 'role', user, role } or { kind: 'disable', user, disabled }.
   const [pending, setPending] = useState(null)
   const [saving, setSaving] = useState(false)
 
-  // useCallback keeps the same function between renders, so the effect below runs only once
+  // useCallback keeps the same function between renders, so the effect below runs only once.
   const loadHistory = useCallback(
     () => apiFetch('/api/users/history').then((data) => setHistory(data.history)),
     []
@@ -29,14 +36,16 @@ function UsersPage({ currentUser }) {
       .finally(() => setLoading(false))
   }, [loadHistory])
 
-  // Step 1: picking a role or clicking Disable doesn't save anything. It only opens the confirm box.
-  // The dropdown keeps showing the OLD role (its value comes from `users`), so Cancel needs no undo.
+  /**
+   * Step 1: picking a role or clicking Disable doesn't save anything; it opens the confirm box.
+   * The dropdown keeps showing the old role (its value comes from `users`), so Cancel needs no undo.
+   */
   function ask(action) {
     setError('')
     setPending(action)
   }
 
-  // Step 2: they clicked the confirm button
+  /** Step 2: saves the pending action after the confirm button is clicked, then reloads the history. */
   async function confirm() {
     const { kind, user } = pending
     setSaving(true)
@@ -45,7 +54,7 @@ function UsersPage({ currentUser }) {
         kind === 'role'
           ? await apiFetch(`/api/users/${user.id}/role`, { method: 'PATCH', body: { role: pending.role } })
           : await apiFetch(`/api/users/${user.id}/disabled`, { method: 'PATCH', body: { disabled: pending.disabled } })
-      // Replace just that one user in the list with the server's updated version
+      // Replace just that one user in the list with the server's updated version.
       setUsers((list) => list.map((u) => (u.id === user.id ? { ...u, ...data.user } : u)))
       await loadHistory() // show the new history entry
     } catch (err) {
@@ -56,7 +65,7 @@ function UsersPage({ currentUser }) {
     }
   }
 
-  // Why a row can't be changed (shown as a tooltip), or null if it can
+  /** Why a row can't be changed (shown as a tooltip), or null if it can. */
   function lockedReason(u) {
     if (u.id === currentUser.id) return "You can't change your own account"
     if (u.role === 'owner') return 'Owners can only be changed on the server'
@@ -99,7 +108,7 @@ function UsersPage({ currentUser }) {
                   <td>{[u.has_password && 'Password', u.has_google && 'Google'].filter(Boolean).join(', ')}</td>
                   <td>
                     {reason ? (
-                      // Locked: show the role as plain text, with the reason on hover
+                      // Locked: show the role as plain text, with the reason on hover.
                       <span className="badge" title={reason}>{u.role}</span>
                     ) : (
                       <select
@@ -150,7 +159,7 @@ function UsersPage({ currentUser }) {
               {history.map((e) => (
                 <tr key={e.id}>
                   <td>{new Date(e.created_at).toLocaleString()}</td>
-                  {/* No actor = it was done with a server command (make-admin / make-owner) */}
+                  {/* No actor means a server command (make-admin, make-owner) made the change. */}
                   <td>{e.actor_name ?? 'Server command'}</td>
                   <td>{describeEvent(e)}</td>
                 </tr>
@@ -171,7 +180,7 @@ function UsersPage({ currentUser }) {
   )
 }
 
-// One history row in plain words, e.g. "Bob: technician → admin"
+/** One history row in plain words, e.g. "Bob: technician → admin". */
 function describeEvent(e) {
   if (e.action === 'role_changed') return `${e.user_name}: ${e.old_value} → ${e.new_value}`
   if (e.action === 'disabled') return `Disabled ${e.user_name}`
@@ -179,12 +188,12 @@ function describeEvent(e) {
   return e.action
 }
 
-// What the "Are you sure?" box says for each kind of action
+/** What the "Are you sure?" box says for each kind of action. */
 function confirmText(pending) {
   if (!pending) return { title: '', message: '' }
   const { kind, user } = pending
   if (kind === 'role') {
-    // A demotion (moving down the ranking) gets a red button
+    // A demotion (moving down the ranking) gets a red button.
     const demotion = ROLES.indexOf(pending.role) < ROLES.indexOf(user.role)
     return {
       title: 'Change role?',

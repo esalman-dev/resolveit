@@ -1,6 +1,9 @@
-// Sign in with Google. We can't get real Google tokens in a test, so we replace Google's
-// verifier with a fake ("mock"): tokens starting with "valid:" pass and carry a made-up payload.
-// This tests OUR logic (create, match, link, reject) without calling Google.
+// Tests for Sign in with Google.
+//
+// Real Google tokens can't be made in a test, so Google's verifier is replaced with a fake
+// (a mock): tokens starting with "valid:" pass and carry a made-up payload. This tests our own
+// logic (create, match, link, reject) without calling Google.
+
 import { describe, it, expect, vi } from 'vitest';
 import { app, pool, request, signUp } from './helpers.js';
 
@@ -16,7 +19,7 @@ vi.mock('google-auth-library', () => ({
   },
 }));
 
-// Build a fake Google credential
+/** Builds a fake Google credential the mock accepts. */
 const googleToken = (payload) =>
   'valid:' + JSON.stringify({ sub: 'google-123', email: 'ada@gmail.com', email_verified: true, name: 'Ada', ...payload });
 

@@ -1,4 +1,6 @@
-// Security fixes from the Code Docs open questions (#1, #3, #5, #9)
+// Tests for login hardening: equal timing for unknown emails, input length limits, the pinned
+// JWT algorithm, and 401 from /me for accounts that no longer work.
+
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -6,9 +8,9 @@ import { app, pool, request, signUp, bearer } from './helpers.js';
 
 afterEach(() => vi.restoreAllMocks());
 
-describe('#1 login timing: unknown emails cost as much as wrong passwords', () => {
+describe('login timing: unknown emails cost as much as wrong passwords', () => {
   it('still runs bcrypt when the email does not exist', async () => {
-    // A "spy" watches a function and counts its calls, without changing what it does
+    // A spy watches a function and counts its calls, without changing what it does.
     const compare = vi.spyOn(bcrypt, 'compare');
     const res = await request(app).post('/api/auth/login').send({ email: 'nobody@example.com', password: 'password123' });
     expect(res.status).toBe(401);
@@ -24,7 +26,7 @@ describe('#1 login timing: unknown emails cost as much as wrong passwords', () =
   });
 });
 
-describe('#3 length limits on sign-up', () => {
+describe('length limits on sign-up', () => {
   const register = (fields) =>
     request(app).post('/api/auth/register').send({ name: 'Ada', email: 'ada@example.com', password: 'password123', ...fields });
 
@@ -49,7 +51,7 @@ describe('#3 length limits on sign-up', () => {
   });
 });
 
-describe('#5 the JWT algorithm is pinned to HS256', () => {
+describe('the JWT algorithm is pinned to HS256', () => {
   it('refuses a token signed with a different algorithm, even using our secret', async () => {
     const { user } = await signUp();
     const hs512 = jwt.sign({ sub: user.id, role: 'user' }, 'test-only-secret', { algorithm: 'HS512' });
@@ -58,7 +60,7 @@ describe('#5 the JWT algorithm is pinned to HS256', () => {
   });
 });
 
-describe('#9 /me answers 401 (not 404) for an account that no longer works', () => {
+describe('/me answers 401 (not 404) for an account that no longer works', () => {
   it('deleted account -> 401', async () => {
     const { token, user } = await signUp();
     await pool.query('DELETE FROM users WHERE id = $1', [user.id]);

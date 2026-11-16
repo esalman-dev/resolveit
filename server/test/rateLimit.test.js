@@ -1,5 +1,8 @@
-// Rate limiting. The other test files switch limits off; this one switches them back on.
-// (Vitest gives each test file fresh copies of the app's modules, so the counters start at zero.)
+// Tests for rate limiting.
+//
+// The other test files switch the limits off; this one switches them back on. Vitest gives
+// each test file fresh copies of the app's modules, so the counters start at zero.
+
 import { describe, it, expect, beforeAll } from 'vitest';
 import { app, request, signUp } from './helpers.js';
 
@@ -21,7 +24,7 @@ describe('login rate limit', () => {
     expect(blocked.status).toBe(429);
     expect(blocked.body.error).toMatch(/too many attempts/i);
 
-    // Even the RIGHT password is blocked now: that's what stops a guessing script
+    // Even the right password is blocked now; that's what stops a guessing script.
     expect((await login('password123')).status).toBe(429);
   });
 });

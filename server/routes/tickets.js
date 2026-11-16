@@ -1,13 +1,17 @@
-// Tickets: create, list, view, assign, and update help desk requests, plus their comments.
-// Every change is written to the ticket's HISTORY (ticket_events), which comes back with the ticket.
-// Mounted in app.js at /api/tickets
+// Tickets API: open, list, view and update help desk tickets, and read or write their comments.
+//
+// Every change to a ticket is saved in ticket_events (its history) in the same transaction as
+// the change, and returned with the ticket.
 //
 // Who can do what:
-//   user  -> create tickets, see ONLY their own, comment on their own,
-//            edit the title/description while the ticket is still open, and close (resolve) it
-//   staff -> (technician, admin, owner) see ALL tickets, change anything on them, assign them,
-//            comment on any ticket, and write internal (staff-only) notes
-//   anyone -> edit their OWN comments; every earlier version is kept and shown
+//   User (the ticket's creator): open tickets, see only their own, comment on them, edit the
+//     title and description while the ticket is still open, and close (resolve) it.
+//   Staff (technician, admin, owner): see every ticket, change anything on it, assign it,
+//     comment on any ticket, and write internal notes that users never see.
+//   Anyone: edit their own comments. Every earlier version is kept and returned.
+//
+// Mounted at /api/tickets (see app.js).
+
 import { Router } from 'express';
 import pool, { withTransaction } from '../db/index.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
@@ -15,26 +19,29 @@ import { ROLES, STAFF } from '../roles.js';
 
 const router = Router();
 
-// Allowed values. Must match the CHECK constraints in schema.sql.
+// Allowed values. Must match the CHECK constraints in db/schema.sql.
 const STATUSES = ['open', 'in_progress', 'resolved'];
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
-// STAFF (technician, admin, owner) comes from roles.js
 
-// Length limits, so nobody can store a 10 MB "title"
+// Length limits, so nobody can store a 10 MB "title".
 const MAX_TITLE = 200;
 const MAX_DESCRIPTION = 5000;
 const MAX_COMMENT = 5000;
 
-// Every route: must be logged in. requireRole with EVERY role never blocks anyone by role,
-// but it re-reads the role from the database (so req.user.role is always up to date) and
-// refuses disabled accounts.
+// Every route needs a login. Listing every role blocks no one, but requireRole refreshes
+// req.user.role from the database and refuses disabled accounts.
 router.use(requireAuth, requireRole(...ROLES));
 
+/** True for technicians, admins and owners. */
 const isStaff = (user) => STAFF.includes(user.role);
 
-// The columns we send back for a ticket. The JOINs swap ids for names:
-// "created_by: 4" becomes "created_by_name: 'Alice'". LEFT (not plain) JOIN for the assignee
-// and category because those can be empty, and a plain JOIN would drop those tickets.
+// --- Queries ---
+
+/**
+ * The columns sent back for a ticket. The joins swap stored ids for names
+ * (created_by 4 becomes created_by_name 'Alice'). The assignee and category use LEFT JOIN
+ * because they can be empty, and a plain JOIN would drop those tickets.
+ */
 const TICKET_SELECT = `
   SELECT t.id, t.title, t.description, t.status, t.priority,
          t.category_id, category.name AS category_name,
@@ -46,9 +53,11 @@ const TICKET_SELECT = `
     LEFT JOIN users assignee      ON assignee.id = t.assigned_to
     LEFT JOIN categories category ON category.id = t.category_id`;
 
-// The columns we send back for a comment, including every earlier version ("edits").
-// json_agg gathers the matching comment_edits rows into one JSON list per comment;
-// COALESCE turns "no edits" (NULL) into an empty list.
+/**
+ * The columns sent back for a comment, including `edits`: every earlier version of its text.
+ * json_agg gathers the matching comment_edits rows into one JSON list per comment, and
+ * COALESCE turns "no edits" (null) into an empty list.
+ */
 const COMMENT_SELECT = `
   SELECT c.id, c.ticket_id, c.body, c.is_internal, c.created_at, c.edited_at,
          c.author_id, author.name AS author_name, author.role AS author_role,
@@ -61,20 +70,22 @@ const COMMENT_SELECT = `
     FROM ticket_comments c
     JOIN users author ON author.id = c.author_id`;
 
-// Turn "42" into 42, or null if it isn't a positive whole number
+// --- Helpers ---
+
+/** Turns "42" into 42, or null if it isn't a positive whole number. */
 function parseId(value) {
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-// Clean up optional text: trim spaces; empty or missing becomes null
+/** Trims text. Missing or blank text becomes null. */
 function cleanText(value) {
   if (value === undefined || value === null) return null;
   const text = String(value).trim();
   return text === '' ? null : text;
 }
 
-// Check a title or description. Returns { text } or { error }.
+/** Checks required text (title, description, comment). Returns { text } or { error }. */
 function checkText(value, label, max) {
   const text = cleanText(value);
   if (!text) return { error: `${label} is required` };
@@ -82,8 +93,10 @@ function checkText(value, label, max) {
   return { text };
 }
 
-// Check a category_id from the request. null means "no category".
-// Returns { id, name } or { error }. Archived categories can't be picked for new changes.
+/**
+ * Checks a category_id from the request; null means "no category".
+ * Archived categories can't be picked. Returns { id, name } or { error }.
+ */
 async function checkCategory(value) {
   if (value === null) return { id: null, name: null };
   const id = parseId(value);
@@ -92,8 +105,10 @@ async function checkCategory(value) {
   return { id, name: result.rows[0].name };
 }
 
-// Check an assigned_to from the request. null means "unassigned".
-// Only active staff can be assigned a ticket. Returns { id, name } or { error }.
+/**
+ * Checks an assigned_to from the request; null means "unassigned".
+ * Only active staff can be assigned a ticket. Returns { id, name } or { error }.
+ */
 async function checkAssignee(value) {
   if (value === null) return { id: null, name: null };
   const id = parseId(value);
@@ -105,8 +120,12 @@ async function checkAssignee(value) {
   return { id, name: person.name };
 }
 
-// Load a ticket the current user is allowed to see, or null.
-// Someone else's ticket counts as "not found" too (see GET /:id for why).
+/**
+ * Loads a ticket the user is allowed to see, or returns null.
+ *
+ * Security: someone else's ticket returns null too, so the route answers 404, the same as a
+ * ticket that doesn't exist. A 403 would confirm "ticket 57 exists" and leak information.
+ */
 async function findVisibleTicket(id, user) {
   const result = await pool.query(`${TICKET_SELECT} WHERE t.id = $1`, [id]);
   const ticket = result.rows[0];
@@ -114,7 +133,7 @@ async function findVisibleTicket(id, user) {
   return ticket;
 }
 
-// A ticket's history, oldest first: who changed what, and when
+/** A ticket's history, oldest first: who changed what, and when. */
 async function loadHistory(ticketId) {
   const result = await pool.query(
     `SELECT e.id, e.action, e.field, e.old_value, e.new_value, e.created_at,
@@ -128,14 +147,20 @@ async function loadHistory(ticketId) {
   return result.rows;
 }
 
-// The ticket plus its history: what GET, POST and PATCH all send back
+/** The ticket plus its history: the response shape for GET, POST and PATCH. */
 async function ticketWithHistory(id) {
   const ticket = await pool.query(`${TICKET_SELECT} WHERE t.id = $1`, [id]);
   return { ticket: ticket.rows[0], history: await loadHistory(id) };
 }
 
-// POST /api/tickets: anyone logged in can open a ticket.
-// Body: { "title": "...", "description": "...", "category_id"?: 3, "priority"?: "high" (staff only) }
+// --- Ticket routes ---
+
+/**
+ * POST /api/tickets
+ * Opens a ticket. It always starts open and unassigned, and records a "created" history entry.
+ * Access: anyone logged in.
+ * Body: { title, description, category_id?, priority? (staff only) }
+ */
 router.post('/', async (req, res) => {
   const body = req.body ?? {}; // Express 5 leaves req.body undefined if no JSON was sent
   const title = checkText(body.title, 'Title', MAX_TITLE);
@@ -143,9 +168,9 @@ router.post('/', async (req, res) => {
   const description = checkText(body.description, 'Description', MAX_DESCRIPTION);
   if (description.error) return res.status(400).json({ error: description.error });
 
-  // Only staff choose a priority. A priority sent by a regular user is
-  // ignored, like created_by: otherwise everyone would mark everything "urgent".
-  // New tickets start at medium; staff (and later the AI) adjust it.
+  // Why: only staff choose a priority. A priority sent by a regular user is ignored (like
+  // created_by below), otherwise everyone would mark everything urgent. New tickets start at
+  // medium, and staff (later the AI) adjust it.
   const priority = isStaff(req.user) ? (body.priority ?? 'medium') : 'medium';
   if (!PRIORITIES.includes(priority)) {
     return res.status(400).json({ error: `Priority must be one of: ${PRIORITIES.join(', ')}` });
@@ -153,9 +178,9 @@ router.post('/', async (req, res) => {
   const category = await checkCategory(body.category_id ?? null); // optional
   if (category.error) return res.status(400).json({ error: category.error });
 
-  // Create the ticket AND its first history entry ("created") together, all or nothing.
-  // created_by comes from the login token, NEVER from the body: you can't open a ticket as someone else.
-  // status and assigned_to aren't accepted here either: new tickets always start open and unassigned.
+  // The ticket and its "created" history entry are saved together, or not at all.
+  // Security: created_by comes from the login token, never the body, so nobody can open a
+  // ticket as someone else. status and assigned_to aren't accepted here either.
   const id = await withTransaction(async (db) => {
     const inserted = await db.query(
       `INSERT INTO tickets (title, description, priority, category_id, created_by)
@@ -171,11 +196,14 @@ router.post('/', async (req, res) => {
     return ticketId;
   });
 
-  res.status(201).json(await ticketWithHistory(id)); // 201 = Created
+  res.status(201).json(await ticketWithHistory(id));
 });
 
-// GET /api/tickets: the ticket list, newest first.
-// Staff see every ticket; regular users see only the ones they created.
+/**
+ * GET /api/tickets
+ * The ticket list, newest first. Staff see every ticket; users see only their own.
+ * Access: anyone logged in.
+ */
 router.get('/', async (req, res) => {
   const result = isStaff(req.user)
     ? await pool.query(`${TICKET_SELECT} ORDER BY t.created_at DESC, t.id DESC`)
@@ -185,8 +213,13 @@ router.get('/', async (req, res) => {
   res.json({ tickets: result.rows });
 });
 
-// GET /api/tickets/assignees: who a ticket can be assigned to (for the dropdown). Staff only.
-// Defined BEFORE /:id, otherwise Express would treat "assignees" as a ticket id.
+/**
+ * GET /api/tickets/assignees
+ * Active staff a ticket can be assigned to, for the "Assign to" dropdown (no emails).
+ * Access: staff.
+ *
+ * Note: defined before /:id, otherwise Express would treat "assignees" as a ticket id.
+ */
 router.get('/assignees', requireRole(...STAFF), async (req, res) => {
   const result = await pool.query(
     `SELECT id, name, role FROM users WHERE role = ANY($1) AND disabled_at IS NULL ORDER BY name`,
@@ -195,24 +228,30 @@ router.get('/assignees', requireRole(...STAFF), async (req, res) => {
   res.json({ assignees: result.rows });
 });
 
-// GET /api/tickets/:id: one ticket, with its full history
+/**
+ * GET /api/tickets/:id
+ * One ticket with its full history. Someone else's ticket answers 404.
+ * Access: the ticket's creator, or staff.
+ */
 router.get('/:id', async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid ticket id' });
 
-  // Someone else's ticket gets the SAME 404 as a ticket that doesn't exist.
-  // A 403 would confirm "ticket 57 exists", which leaks information.
   const ticket = await findVisibleTicket(id, req.user);
   if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
   res.json({ ticket, history: await loadHistory(id) });
 });
 
-// PATCH /api/tickets/:id: change a ticket. Send only the fields you want to change.
-// Body (any of): { "title", "description", "status", "priority", "category_id", "assigned_to" }
-// null for assigned_to or category_id clears it.
-//   Staff: any field.
-//   The ticket's creator (a regular user): title and description while it's still 'open',
-//   and status -> 'resolved' (closing it: "never mind, it works now").
+/**
+ * PATCH /api/tickets/:id
+ * Changes a ticket. Send only the fields to change; null clears assigned_to or category_id.
+ * Each changed field gets a history entry. Returns the ticket with its history.
+ * Access:
+ *   Staff: any field.
+ *   The creator: title and description while the ticket is still open, and status 'resolved'
+ *   (closing it themselves).
+ * Body (any of): { title, description, status, priority, category_id, assigned_to }
+ */
 router.patch('/:id', async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid ticket id' });
@@ -221,7 +260,7 @@ router.patch('/:id', async (req, res) => {
   const body = req.body ?? {};
   const staff = isStaff(req.user);
 
-  // ---- 1. Who may send which fields ----
+  // Step 1: who may send which fields.
   const STAFF_ONLY = ['priority', 'category_id', 'assigned_to'];
   const blocked = STAFF_ONLY.filter((field) => body[field] !== undefined);
   if (!staff && blocked.length > 0) {
@@ -231,7 +270,8 @@ router.patch('/:id', async (req, res) => {
     return res.status(403).json({ error: 'You can close your ticket (resolved), but only staff can set other statuses' });
   }
 
-  // ---- 2. Check each value. `wanted` = field -> { value for the column, text for the history } ----
+  // Step 2: check each value. `wanted` maps a field to { column, value for the database,
+  // text for the history }, e.g. category: { column: 'category_id', value: 2, text: 'Hardware' }.
   const wanted = {};
   for (const [field, label, max] of [['title', 'Title', MAX_TITLE], ['description', 'Description', MAX_DESCRIPTION]]) {
     if (body[field] !== undefined) {
@@ -268,20 +308,21 @@ router.patch('/:id', async (req, res) => {
     });
   }
 
-  // ---- 3. Save the changes and their history together ----
+  // Step 3: save the changes and their history together.
   const outcome = await withTransaction(async (db) => {
-    // FOR UPDATE locks this ticket's row until we COMMIT, so two people saving at the same
-    // moment take turns instead of overwriting each other's history.
-    // ("OF t": lock only the ticket row, not the joined users/category rows.)
+    // Why: FOR UPDATE locks the ticket's row until COMMIT, so two people saving at the same
+    // moment take turns instead of writing conflicting history. "OF t" locks only the ticket
+    // row, not the joined users and category rows.
     const locked = await db.query(`${TICKET_SELECT} WHERE t.id = $1 FOR UPDATE OF t`, [id]);
     const current = locked.rows[0];
 
-    // A regular user may edit the text only while nobody has started on the ticket
+    // A user may edit the text only while nobody has started on the ticket. Checked after the
+    // lock, so the status can't change in between.
     if (!staff && (wanted.title || wanted.description) && current.status !== 'open') {
       return { status: 403, error: 'You can only edit a ticket while it is still open. Add a comment instead.' };
     }
 
-    // What each field looks like right now: the column value, and the text for the history
+    // Each field as it is now: the database value, and the text for the history.
     const before = {
       title: { value: current.title, text: current.title },
       description: { value: current.description, text: current.description },
@@ -291,17 +332,18 @@ router.patch('/:id', async (req, res) => {
       assignee: { value: current.assigned_to, text: current.assigned_to_name },
     };
 
-    // Keep only the fields that ACTUALLY change (sending the same value isn't a change)
+    // Keep only fields that actually change; re-sending the current value isn't a change.
     const changed = Object.keys(wanted).filter((field) => wanted[field].value !== before[field].value);
     if (changed.length === 0) return { unchanged: true };
 
-    // Build "title = $1, status = $2" from the changes. Safe from SQL injection: column NAMES
-    // come from our own code (the `wanted` table above), and VALUES go through $1, $2.
+    // Security: builds "title = $1, status = $2". Column names come from the `wanted` table in
+    // our own code, never the request, and values go through placeholders, so this is safe
+    // from SQL injection.
     const setList = changed.map((field, i) => `${wanted[field].column} = $${i + 1}`);
     const values = changed.map((field) => wanted[field].value);
 
-    // resolved_at records WHEN a ticket was resolved (for "average time to fix" in Phase 3).
-    // Set it when the status becomes resolved; clear it if the ticket is reopened.
+    // resolved_at records when a ticket was resolved (used for average time to resolve).
+    // Set when the status becomes resolved; cleared when it's reopened.
     if (changed.includes('status')) {
       setList.push(wanted.status.value === 'resolved' ? 'resolved_at = NOW()' : 'resolved_at = NULL');
     }
@@ -309,7 +351,8 @@ router.patch('/:id', async (req, res) => {
     values.push(id);
     await db.query(`UPDATE tickets SET ${setList.join(', ')}, updated_at = NOW() WHERE id = $${values.length}`, values);
 
-    // One history row per changed field, saving the before/after TEXT as people saw it
+    // One history row per changed field. Why: it stores the text people saw (e.g. the
+    // assignee's name, not their id), so the history still reads correctly if names change.
     for (const field of changed) {
       await db.query(
         `INSERT INTO ticket_events (ticket_id, actor_id, action, field, old_value, new_value)
@@ -324,16 +367,21 @@ router.patch('/:id', async (req, res) => {
   res.json(await ticketWithHistory(id));
 });
 
-// GET /api/tickets/:id/comments: the conversation on a ticket, oldest first.
-// The creator and staff can read it. Internal notes are left out for regular users.
-// Each comment includes `edits`: every earlier version of its text.
+// --- Comment routes ---
+
+/**
+ * GET /api/tickets/:id/comments
+ * The conversation on a ticket, oldest first. Each comment includes `edits`, its earlier versions.
+ * Access: the ticket's creator, or staff. Internal notes are left out for users.
+ */
 router.get('/:id/comments', async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid ticket id' });
   if (!(await findVisibleTicket(id, req.user))) return res.status(404).json({ error: 'Ticket not found' });
 
-  // "is_internal = FALSE OR $2": staff pass TRUE (see everything), users pass FALSE (public only).
-  // The filtering happens in SQL, so internal notes never leave the database for a user.
+  // Security: "is_internal = FALSE OR $2" is true for every comment when $2 (is staff) is true,
+  // and only for public comments otherwise. Filtering in SQL means internal notes never reach
+  // a user's browser, not even in the raw response.
   const result = await pool.query(
     `${COMMENT_SELECT}
       WHERE c.ticket_id = $1 AND (c.is_internal = FALSE OR $2)
@@ -343,7 +391,12 @@ router.get('/:id/comments', async (req, res) => {
   res.json({ comments: result.rows });
 });
 
-// POST /api/tickets/:id/comments: add a comment. Body: { "body": "...", "is_internal"?: true }
+/**
+ * POST /api/tickets/:id/comments
+ * Adds a comment. Only staff can mark it internal.
+ * Access: the ticket's creator, or staff.
+ * Body: { body, is_internal? }
+ */
 router.post('/:id/comments', async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid ticket id' });
@@ -357,23 +410,26 @@ router.post('/:id/comments', async (req, res) => {
     return res.status(403).json({ error: 'Only technicians, admins and owners can write internal notes' });
   }
 
-  // author_id comes from the login token, never the body (same rule as created_by on tickets)
+  // Security: the author comes from the login token, never the body.
   const inserted = await pool.query(
     `INSERT INTO ticket_comments (ticket_id, author_id, body, is_internal)
      VALUES ($1, $2, $3, $4)
      RETURNING id`,
     [id, req.user.id, text.text, isInternal]
   );
-  // A new comment counts as activity on the ticket
-  await pool.query('UPDATE tickets SET updated_at = NOW() WHERE id = $1', [id]);
+  await pool.query('UPDATE tickets SET updated_at = NOW() WHERE id = $1', [id]); // a comment counts as activity
 
   const comment = await pool.query(`${COMMENT_SELECT} WHERE c.id = $1`, [inserted.rows[0].id]);
   res.status(201).json({ comment: comment.rows[0] });
 });
 
-// PATCH /api/tickets/:id/comments/:commentId: edit your OWN comment. Body: { "body": "new text" }
-// The old text is saved in comment_edits first, so everyone who can see the comment can
-// also see exactly what it said before. Comments can't be deleted.
+/**
+ * PATCH /api/tickets/:id/comments/:commentId
+ * Edits your own comment. The old text is saved in comment_edits first, so anyone who can see
+ * the comment can see what it said before. Comments can't be deleted.
+ * Access: the comment's author.
+ * Body: { body }
+ */
 router.patch('/:id/comments/:commentId', async (req, res) => {
   const id = parseId(req.params.id);
   const commentId = parseId(req.params.commentId);
@@ -384,13 +440,13 @@ router.patch('/:id/comments/:commentId', async (req, res) => {
   if (text.error) return res.status(400).json({ error: text.error });
 
   const outcome = await withTransaction(async (db) => {
-    // Lock the comment so two edits at once can't lose a version
+    // Lock the comment, so two quick edits can't lose a version.
     const found = await db.query(
       'SELECT author_id, body, is_internal FROM ticket_comments WHERE id = $1 AND ticket_id = $2 FOR UPDATE',
       [commentId, id]
     );
     const comment = found.rows[0];
-    // An internal note is invisible to regular users, so for them it "doesn't exist" (404)
+    // An internal note is invisible to users, so for them it doesn't exist (404).
     if (!comment || (comment.is_internal && !isStaff(req.user))) {
       return { status: 404, error: 'Comment not found' };
     }

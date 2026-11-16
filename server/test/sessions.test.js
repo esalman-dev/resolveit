@@ -1,10 +1,12 @@
-// Staying logged in: refresh tokens, rotation, reuse detection, logout, 30/90-day limits
+// Tests for staying logged in: refresh tokens, rotation, reuse detection, logout, and the
+// 30- and 90-day limits.
+
 import { describe, it, expect } from 'vitest';
 import { app, pool, request, signUp, refreshCookie } from './helpers.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Expiry of the newest refresh token in the database, as "days from now"
+/** The newest refresh token's expiry, in days from now. */
 async function newestExpiryInDays() {
   const { rows } = await pool.query('SELECT expires_at FROM refresh_tokens ORDER BY id DESC LIMIT 1');
   return (rows[0].expires_at.getTime() - Date.now()) / DAY_MS;
@@ -53,11 +55,11 @@ describe('POST /api/auth/refresh', () => {
     const second = await request(app).post('/api/auth/refresh').set('Cookie', cookieA);
     const cookieB = refreshCookie(second);
 
-    // An attacker replays the old cookie A
+    // An attacker replays the old cookie A.
     const replay = await request(app).post('/api/auth/refresh').set('Cookie', cookieA);
     expect(replay.status).toBe(401);
 
-    // The real user's newer cookie B was revoked too
+    // The real user's newer cookie B was revoked too.
     const victim = await request(app).post('/api/auth/refresh').set('Cookie', cookieB);
     expect(victim.status).toBe(401);
   });
@@ -86,7 +88,7 @@ describe('session length limits', () => {
 
   it('never extends past 90 days after the ORIGINAL login', async () => {
     const { agent } = await signUp();
-    // Pretend they logged in 80 days ago and have used the app ever since
+    // Pretend they logged in 80 days ago and have used the app ever since.
     await pool.query("UPDATE refresh_tokens SET session_started_at = NOW() - INTERVAL '80 days'");
     const res = await agent.post('/api/auth/refresh');
     expect(res.status).toBe(200);

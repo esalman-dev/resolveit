@@ -1,12 +1,14 @@
-// Make an existing account an OWNER (or remove owner) from the command line.
-// Usage (from the server folder):
-//   npm run make-owner -- someone@example.com            -> becomes owner
-//   npm run make-owner -- --remove someone@example.com   -> owner goes back to admin
+// make-owner script: makes an existing account an owner, or turns an owner back into an admin.
 //
-// Why only here? Owners sit at the top: they control the admins, and no owner can demote
-// another. So the website has NO way to create or remove an owner (see roles.js).
-// Running this script needs access to the server and its database, which is exactly
-// who should decide who the owners are.
+// Usage (from the server folder):
+//   npm run make-owner -- someone@example.com            makes them an owner
+//   npm run make-owner -- --remove someone@example.com   turns an owner back into an admin
+//
+// Why: owners sit at the top. They control the admins, and no owner can demote another, so
+// the website has no way to create or remove an owner (see roles.js). Running this needs
+// access to the server and its database. The change is logged in the account history with
+// no actor ("server command").
+
 import pool, { withTransaction } from '../db/index.js';
 
 const args = process.argv.slice(2);
@@ -22,17 +24,17 @@ if (!email) {
 const newRole = remove ? 'admin' : 'owner';
 
 try {
-  // Change the role AND write it to the account history, all or nothing (see db/index.js)
+  // The role change and its history entry are saved together, or not at all (see db/index.js).
   const outcome = await withTransaction(async (db) => {
     const found = await db.query('SELECT id, name, email, role FROM users WHERE email = $1', [email]);
     const user = found.rows[0];
     if (!user) return { error: `No account found for ${email}. Sign up on the website first, then run this again.` };
-    // --remove only works on someone who IS an owner, so it can never accidentally promote anyone
+    // --remove only works on someone who is an owner, so it can never promote anyone by accident.
     if (remove && user.role !== 'owner') return { error: `${email} isn't an owner. Nothing changed.` };
     if (user.role === newRole) return { user, unchanged: true };
 
     await db.query('UPDATE users SET role = $1 WHERE id = $2', [newRole, user.id]);
-    // actor_id NULL = "done by a server command", shown as "server" in the history
+    // actor_id NULL means "done by a server command" in the history.
     await db.query(
       `INSERT INTO account_events (user_id, actor_id, action, old_value, new_value)
        VALUES ($1, NULL, 'role_changed', $2, $3)`,
@@ -50,5 +52,5 @@ try {
     console.log('Permissions change immediately. Their screen updates after they refresh the page or log in again.');
   }
 } finally {
-  await pool.end(); // close the DB connection so the script exits
+  await pool.end(); // close the connections, or Node keeps running
 }
