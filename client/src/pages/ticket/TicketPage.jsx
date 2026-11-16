@@ -9,15 +9,15 @@
 
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
-import { apiFetch } from './api.js'
-import ConfirmDialog from './ConfirmDialog.jsx'
-import EmptyState from './EmptyState.jsx'
-import RelativeTime from './RelativeTime.jsx'
+import { apiFetch } from '../../lib/api.js'
+import ConfirmDialog from '../../components/ConfirmDialog.jsx'
+import EmptyState from '../../components/EmptyState.jsx'
+import RelativeTime from '../../components/RelativeTime.jsx'
 import TicketActivity from './TicketActivity.jsx'
 import TicketSidePanel from './TicketSidePanel.jsx'
-import { isStaff } from './roles.js'
-import { statusLabel } from './ticketLabels.js'
-import { usePageTitle } from './usePageTitle.js'
+import { isStaff } from '../../lib/roles.js'
+import { statusLabel } from '../../lib/ticketLabels.js'
+import { usePageTitle } from '../../lib/usePageTitle.js'
 import './TicketPage.css'
 
 // Note: these match MAX_TITLE and MAX_DESCRIPTION in server/routes/tickets.js.

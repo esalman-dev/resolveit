@@ -6,13 +6,13 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
-import { apiFetch } from './api.js'
-import { PriorityBadge, StatusBadge } from './Badges.jsx'
-import EmptyState from './EmptyState.jsx'
-import RelativeTime from './RelativeTime.jsx'
-import { isStaff } from './roles.js'
-import { PRIORITIES, STATUSES, priorityLabel, statusLabel } from './ticketLabels.js'
-import { usePageTitle } from './usePageTitle.js'
+import { apiFetch } from '../lib/api.js'
+import { PriorityBadge, StatusBadge } from '../components/Badges.jsx'
+import EmptyState from '../components/EmptyState.jsx'
+import RelativeTime from '../components/RelativeTime.jsx'
+import { isStaff } from '../lib/roles.js'
+import { PRIORITIES, STATUSES, priorityLabel, statusLabel } from '../lib/ticketLabels.js'
+import { usePageTitle } from '../lib/usePageTitle.js'
 import './TicketsPage.css'
 
 /** The filter names used in the address, e.g. ?q=wifi&status=open&mine=1 */

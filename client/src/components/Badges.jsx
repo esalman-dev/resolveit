@@ -2,7 +2,7 @@
 //
 // Every badge shows its word as well as its color, so it still works for colorblind people.
 
-import { priorityLabel, statusLabel } from './ticketLabels.js'
+import { priorityLabel, statusLabel } from '../lib/ticketLabels.js'
 import './Badges.css'
 
 /**

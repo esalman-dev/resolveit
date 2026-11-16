@@ -1,9 +1,9 @@
 // Ticket side panel: the facts beside a ticket. Staff get dropdowns to change them; the person
 // who opened the ticket sees plain text and a "Close ticket" button.
 
-import { PriorityBadge, StatusBadge } from './Badges.jsx'
-import RelativeTime from './RelativeTime.jsx'
-import { PRIORITIES, STATUSES, priorityLabel, statusLabel } from './ticketLabels.js'
+import { PriorityBadge, StatusBadge } from '../../components/Badges.jsx'
+import RelativeTime from '../../components/RelativeTime.jsx'
+import { PRIORITIES, STATUSES, priorityLabel, statusLabel } from '../../lib/ticketLabels.js'
 
 /**
  * The right-hand panel of the ticket page.

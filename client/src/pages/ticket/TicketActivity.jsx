@@ -2,8 +2,8 @@
 // one timeline in time order, like a GitHub issue, with the comment box underneath.
 
 import { useState } from 'react'
-import RelativeTime from './RelativeTime.jsx'
-import { priorityLabel, statusLabel } from './ticketLabels.js'
+import RelativeTime from '../../components/RelativeTime.jsx'
+import { priorityLabel, statusLabel } from '../../lib/ticketLabels.js'
 import './TicketActivity.css'
 
 // Note: matches MAX_COMMENT in server/routes/tickets.js.

@@ -5,8 +5,8 @@
 
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
-import { isAdminOrOwner, isStaff } from './roles.js'
-import logo from './assets/resolveit-logo-horizontal.png' // Vite turns this into the file's URL
+import { isAdminOrOwner, isStaff } from '../lib/roles.js'
+import logo from '../assets/resolveit-logo-horizontal.png' // Vite turns this into the file's URL
 import './AppShell.css'
 
 /**

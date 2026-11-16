@@ -4,9 +4,9 @@
 // form, but old tickets keep it, so the ticket list and reports stay correct.
 
 import { useEffect, useState } from 'react'
-import { apiFetch } from './api.js'
-import ConfirmDialog from './ConfirmDialog.jsx'
-import { usePageTitle } from './usePageTitle.js'
+import { apiFetch } from '../lib/api.js'
+import ConfirmDialog from '../components/ConfirmDialog.jsx'
+import { usePageTitle } from '../lib/usePageTitle.js'
 import './CategoriesPage.css'
 
 // Note: matches MAX_NAME in server/routes/categories.js.

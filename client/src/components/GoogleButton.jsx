@@ -3,7 +3,7 @@
 // Hidden when VITE_GOOGLE_CLIENT_ID isn't set; email and password login still works.
 
 import { useEffect, useRef, useState } from 'react'
-import { apiFetch, setAccessToken } from './api.js'
+import { apiFetch, setAccessToken } from '../lib/api.js'
 
 // The app's public ID from Google Cloud Console. Not a secret: every page that uses it shows it.
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID

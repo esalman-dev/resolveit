@@ -1,8 +1,8 @@
 // Login page: one form for both "log in" and "create account", plus Sign in with Google.
 
 import { useState } from 'react'
-import { apiFetch, setAccessToken } from './api.js'
-import GoogleButton from './GoogleButton.jsx'
+import { apiFetch, setAccessToken } from '../lib/api.js'
+import GoogleButton from '../components/GoogleButton.jsx'
 
 /**
  * The login / create-account form.

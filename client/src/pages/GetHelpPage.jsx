@@ -5,8 +5,8 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { apiFetch } from './api.js'
-import { usePageTitle } from './usePageTitle.js'
+import { apiFetch } from '../lib/api.js'
+import { usePageTitle } from '../lib/usePageTitle.js'
 import './GetHelpPage.css'
 
 // Note: these match MAX_TITLE and MAX_DESCRIPTION in server/routes/tickets.js. The server

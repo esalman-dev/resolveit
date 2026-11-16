@@ -96,29 +96,34 @@ Authentication is built by hand rather than with an auth service, so each decisi
 resolveit/
 ├── client/                  React frontend (Vite)
 │   ├── src/
-│   │   ├── api.js           All API calls: attaches and renews the login token
-│   │   ├── App.jsx          Restores the session on load, maps each address to a page
-│   │   ├── AppShell.jsx     Sidebar and header around every page after login
-│   │   ├── LoginPage.jsx    Log in / create account form
-│   │   ├── GoogleButton.jsx Sign in with Google
-│   │   ├── GetHelpPage.jsx  "Get help": the form that opens a ticket
-│   │   ├── TicketsPage.jsx  The ticket list: search and filters
-│   │   ├── TicketPage.jsx   One ticket: loads it, saves changes, asks "Are you sure?" for big ones
-│   │   ├── TicketSidePanel.jsx  Status, priority, category, assignee (dropdowns for staff)
-│   │   ├── TicketActivity.jsx   Comments and history in one timeline, plus the comment box
-│   │   ├── UsersPage.jsx    Admin/owner: manage users and roles
-│   │   ├── CategoriesPage.jsx Admin/owner: add, rename, archive, and restore categories
-│   │   ├── ConfirmDialog.jsx Reusable "Are you sure?" box
-│   │   ├── Badges.jsx       Status and priority labels
-│   │   ├── EmptyState.jsx   Reusable "nothing here yet" box
-│   │   ├── RelativeTime.jsx "2 hours ago", with the exact time on hover
-│   │   ├── usePageTitle.js  Lets a page set the header and browser tab title
-│   │   ├── ticketLabels.js  Status and priority names in words
-│   │   ├── roles.js         Role ranking (mirrors the server, for a tidy UI)
-│   │   ├── assets/          Logos: stacked SVG (login screen), horizontal PNG (sidebar)
-│   │   ├── index.css        App-wide styles, built only from the theme variables
-│   │   └── styles/
-│   │       └── theme.css    Colors, spacing and fonts in one place (contrast-checked)
+│   │   ├── main.jsx             Starts the app (with the router)
+│   │   ├── App.jsx              Restores the session on load, maps each address to a page
+│   │   ├── index.css            App-wide styles, built only from the theme variables
+│   │   ├── pages/               One file per screen (each with its own CSS)
+│   │   │   ├── LoginPage.jsx        Log in / create account
+│   │   │   ├── GetHelpPage.jsx      "Get help": the form that opens a ticket
+│   │   │   ├── TicketsPage.jsx      The ticket list: search and filters
+│   │   │   ├── UsersPage.jsx        Admin/owner: manage users and roles
+│   │   │   ├── CategoriesPage.jsx   Admin/owner: add, rename, archive, and restore categories
+│   │   │   └── ticket/              One ticket's page, in three parts
+│   │   │       ├── TicketPage.jsx       Loads it, saves changes, asks "Are you sure?" for big ones
+│   │   │       ├── TicketSidePanel.jsx  Status, priority, category, assignee (dropdowns for staff)
+│   │   │       └── TicketActivity.jsx   Comments and history in one timeline, plus the comment box
+│   │   ├── components/          Pieces shared by several screens
+│   │   │   ├── AppShell.jsx         Sidebar and header around every page after login
+│   │   │   ├── ConfirmDialog.jsx    Reusable "Are you sure?" box
+│   │   │   ├── EmptyState.jsx       Reusable "nothing here yet" box
+│   │   │   ├── Badges.jsx           Status and priority labels
+│   │   │   ├── RelativeTime.jsx     "2 hours ago", with the exact time on hover
+│   │   │   └── GoogleButton.jsx     Sign in with Google
+│   │   ├── lib/                 Helpers with no screen of their own
+│   │   │   ├── api.js               All API calls: attaches and renews the login token
+│   │   │   ├── roles.js             Role ranking (mirrors the server, for a tidy UI)
+│   │   │   ├── ticketLabels.js      Status and priority names in words
+│   │   │   └── usePageTitle.js      Lets a page set the header and browser tab title
+│   │   ├── styles/
+│   │   │   └── theme.css            Colors, spacing and fonts in one place (contrast-checked)
+│   │   └── assets/              Logos: stacked SVG (login screen), horizontal PNG (sidebar)
 │   ├── public/favicon.svg   Browser tab icon
 │   ├── vite.config.js       Dev proxy: forwards /api to the Express server
 │   └── vercel.json          Production: forwards /api to the hosted API, every other address to the app

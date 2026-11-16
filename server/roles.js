@@ -7,7 +7,7 @@
 // users, owners can't demote each other, and nobody can make someone an owner from the website
 // (owners are created on the server with `npm run make-owner -- email`).
 //
-// Note: client/src/roles.js is a copy used to tidy the screen. Keep the two in sync.
+// Note: client/src/lib/roles.js is a copy used to tidy the screen. Keep the two in sync.
 
 /** Every role, lowest to highest. Must match the CHECK constraint in db/schema.sql. */
 export const ROLES = ['user', 'technician', 'admin', 'owner'];

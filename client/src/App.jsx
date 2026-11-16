@@ -6,17 +6,17 @@
 
 import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router'
-import { apiFetch, refreshSession, logout, setOnSessionLost } from './api.js'
-import AppShell from './AppShell.jsx'
-import CategoriesPage from './CategoriesPage.jsx'
-import EmptyState from './EmptyState.jsx'
-import GetHelpPage from './GetHelpPage.jsx'
-import LoginPage from './LoginPage.jsx'
-import TicketPage from './TicketPage.jsx'
-import TicketsPage from './TicketsPage.jsx'
-import UsersPage from './UsersPage.jsx'
-import { isAdminOrOwner, isStaff } from './roles.js'
-import { usePageTitle } from './usePageTitle.js'
+import { apiFetch, refreshSession, logout, setOnSessionLost } from './lib/api.js'
+import AppShell from './components/AppShell.jsx'
+import CategoriesPage from './pages/CategoriesPage.jsx'
+import EmptyState from './components/EmptyState.jsx'
+import GetHelpPage from './pages/GetHelpPage.jsx'
+import LoginPage from './pages/LoginPage.jsx'
+import TicketPage from './pages/ticket/TicketPage.jsx'
+import TicketsPage from './pages/TicketsPage.jsx'
+import UsersPage from './pages/UsersPage.jsx'
+import { isAdminOrOwner, isStaff } from './lib/roles.js'
+import { usePageTitle } from './lib/usePageTitle.js'
 import logo from './assets/resolveit-logo.svg' // Vite turns this into the file's URL
 
 /** The whole app: the login screen, or the pages inside the app shell. */

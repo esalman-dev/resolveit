@@ -8,10 +8,10 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { apiFetch } from './api.js'
-import { ROLES, canManage, grantableRoles } from './roles.js'
-import ConfirmDialog from './ConfirmDialog.jsx'
-import { usePageTitle } from './usePageTitle.js'
+import { apiFetch } from '../lib/api.js'
+import { ROLES, canManage, grantableRoles } from '../lib/roles.js'
+import ConfirmDialog from '../components/ConfirmDialog.jsx'
+import { usePageTitle } from '../lib/usePageTitle.js'
 import './UsersPage.css'
 
 /**
