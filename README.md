@@ -4,7 +4,7 @@
 
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
-> 🚧 **Status: in development.** Accounts, login (password or Google), and roles are done and covered by automated tests. Tickets are next. See [Progress](#progress).
+> 🚧 **Status: in development.** Accounts, login (password or Google), roles, and the ticket API (with categories and comments) are done and covered by automated tests. The ticket screens are next. See [Progress](#progress).
 
 ## The idea
 
@@ -22,10 +22,10 @@ Most help desk tickets are for common problems with simple fixes: Wi-Fi that won
 **Done**
 - Accounts with email and password, or **Sign in with Google**
 - Stay logged in for up to 30 days, with a hard 90-day maximum
-- Roles: **user**, **technician**, and **admin**, with an admin screen for managing users
+- Roles: **user**, **technician**, **admin**, and **owner**, ranked so you can only manage people below you, with an admin screen for managing users and an "Are you sure?" step before each change
 
 **Planned**
-- Ticket tracking: create, assign, update, search, and filter
+- Ticket tracking screens: create, assign, update, comment, search, and filter
 - AI self-service troubleshooting with safe-fix guardrails
 - A knowledge base that learns from tickets technicians have solved
 - An analytics dashboard: self-solved rate, escalations, most common problems, average resolution time
@@ -42,7 +42,8 @@ Authentication is built by hand rather than with an auth service, so each decisi
 | Stolen refresh tokens | **Rotation:** every refresh token works once. **Reuse detection:** if an old one is presented again, all of that user's sessions are revoked. |
 | Logging out | The server revokes the session, not just the browser. |
 | Permissions | Role checks read the **current role from the database**, so promotions, demotions, and deleted accounts take effect immediately. 401 = not logged in, 403 = not allowed. |
-| Self-promotion | Sign-up always creates a `user`, whatever the request says. The first admin is created from the server with `npm run make-admin`. Admins can't change their own role, so one admin always remains. |
+| Self-promotion | Sign-up always creates a `user`, whatever the request says. The first admin is created from the server with `npm run make-admin`, and owners only with `npm run make-owner`: no website request can create an owner. Nobody can change their own role. |
+| Role hierarchy | user < technician < admin < owner. You can only change the role of someone **ranked below you**, and only give roles **below your own**: admins manage technicians and users, owners also manage admins, and owners can't demote each other. A role change is saved only if the person's role hasn't changed since it was checked (no race between two editors). |
 | Password guessing | **Rate limits:** 10 failed logins per 15 minutes, 10 sign-ups per hour, and a general API cap. |
 | Account fishing | Login gives the same error for an unknown email and a wrong password. |
 | SQL injection | Every query uses parameters (`$1`, `$2`), never string building. |
@@ -67,7 +68,7 @@ Authentication is built by hand rather than with an auth service, so each decisi
 - [x] React frontend and Express backend connected
 - [x] PostgreSQL database and schema
 - [x] User accounts and login (password and Google)
-- [x] Roles: user, technician, admin
+- [x] Roles: user, technician, admin, owner
 - [ ] Create, view, assign, and update tickets
 - [ ] Ticket status and priority
 - [ ] Search and filter
@@ -84,15 +85,20 @@ resolveit/
 │   │   ├── App.jsx          Restores the session on load, picks the screen
 │   │   ├── LoginPage.jsx    Log in / create account form
 │   │   ├── GoogleButton.jsx Sign in with Google
-│   │   └── UsersPage.jsx    Admin: manage users and roles
+│   │   ├── UsersPage.jsx    Admin/owner: manage users and roles
+│   │   ├── ConfirmDialog.jsx Reusable "Are you sure?" box
+│   │   └── roles.js         Role ranking (mirrors the server, for a tidy UI)
 │   ├── vite.config.js       Dev proxy: forwards /api to the Express server
 │   └── vercel.json          Production proxy: forwards /api to the hosted API
 └── server/                  Express API
     ├── app.js               Builds the app: middleware and routes
     ├── index.js             Starts the server
+    ├── roles.js             The four roles, their ranking, and who may manage whom
     ├── routes/
     │   ├── auth.js          Register, login, Google, refresh, logout, /me
-    │   └── users.js         Admin user management
+    │   ├── users.js         Admin user management
+    │   ├── tickets.js       Tickets and their comments: create, list, view, assign, update
+    │   └── categories.js    Admin-managed ticket categories
     ├── middleware/
     │   ├── auth.js          requireAuth (who are you?) and requireRole (are you allowed?)
     │   └── rateLimit.js     Request limits
@@ -100,14 +106,17 @@ resolveit/
     │   ├── index.js         Shared PostgreSQL connection pool
     │   └── schema.sql       Tables and constraints (safe to re-run)
     ├── scripts/
-    │   └── make-admin.js    Promote an account to admin
+    │   ├── make-admin.js    Promote an account to admin
+    │   └── make-owner.js    Make (or remove) an owner: only possible on the server
     └── test/                Automated tests
 ```
 
 ## Database
 
-- **`users`**: name, unique email, an optional bcrypt password hash, an optional Google ID, and a role (`user`, `technician`, or `admin`). A `CHECK` constraint requires at least one way to log in.
-- **`tickets`**: title, description, status, priority, and category, plus foreign keys to the user who created it and the technician it's assigned to.
+- **`users`**: name, unique email, an optional bcrypt password hash, an optional Google ID, and a role (`user`, `technician`, `admin`, or `owner`). A `CHECK` constraint requires at least one way to log in.
+- **`tickets`**: title, description, status, and priority, plus foreign keys to the user who created it, the technician it's assigned to, and its category. `resolved_at` records when it was resolved (for average resolution time).
+- **`categories`**: the list of ticket categories, managed by admins. Names are unique ignoring capital letters, and categories are archived (`active = false`) rather than deleted, so old tickets keep their label.
+- **`ticket_comments`**: the conversation on a ticket. `is_internal` marks staff-only notes that the ticket's creator never sees.
 - **`refresh_tokens`**: one row per logged-in browser. Stores a hash of the token, its expiry, when the session started, and when it was revoked.
 
 Allowed values for role, status, and priority are enforced by the database itself with `CHECK` constraints. See [`server/db/schema.sql`](server/db/schema.sql).
@@ -140,10 +149,12 @@ npm run dev
 
 Open http://localhost:5173 and create an account.
 
-**Make yourself an admin** (from the `server` folder, after signing up):
+**Make yourself an admin or owner** (from the `server` folder, after signing up). Owners can only be created this way, and `npm run make-owner -- --remove you@example.com` turns an owner back into an admin:
 
 ```bash
 npm run make-admin -- you@example.com
+# or, for full control including over admins:
+npm run make-owner -- you@example.com
 ```
 
 **Sign in with Google (optional):** create an OAuth Client ID (type: Web application) in Google Cloud Console, add `http://localhost:5173` as an authorized JavaScript origin, and put the ID in both `server/.env` (`GOOGLE_CLIENT_ID`) and `client/.env` (`VITE_GOOGLE_CLIENT_ID`). Without it, the Google button is simply hidden.
@@ -172,8 +183,18 @@ The tests create and use a separate database, `resolveit_test`, on the same Post
 | POST | `/api/auth/refresh` | Refresh cookie | Get a new access token (rotates the refresh token) |
 | POST | `/api/auth/logout` | Refresh cookie | Revoke this session |
 | GET | `/api/auth/me` | Logged in | The current user |
-| GET | `/api/users` | Admin | List all users |
-| PATCH | `/api/users/:id/role` | Admin | Change a user's role |
+| GET | `/api/users` | Admin, owner | List all users |
+| PATCH | `/api/users/:id/role` | Admin, owner | Change a role: only for people ranked below you, and only to a role below yours |
+| POST | `/api/tickets` | Logged in | Open a ticket (always starts open and unassigned) |
+| GET | `/api/tickets` | Logged in | List tickets: users see their own, technicians, admins and owners see all |
+| GET | `/api/tickets/:id` | Creator, technician, admin | One ticket (404 for other users' tickets, so ids can't be probed) |
+| PATCH | `/api/tickets/:id` | Technician, admin | Change status, priority, category_id, or assignee |
+| GET | `/api/tickets/assignees` | Technician, admin | Technicians and admins a ticket can be assigned to |
+| GET | `/api/tickets/:id/comments` | Creator, technician, admin | Comments, oldest first (internal notes only for technicians and admins) |
+| POST | `/api/tickets/:id/comments` | Creator, technician, admin | Add a comment; technicians and admins can mark it internal |
+| GET | `/api/categories` | Logged in | Active categories (admins can add `?all=true` for archived ones) |
+| POST | `/api/categories` | Admin, owner | Add a category |
+| PATCH | `/api/categories/:id` | Admin, owner | Rename, archive, or restore a category |
 
 Protected endpoints expect `Authorization: Bearer <access token>`.
 
