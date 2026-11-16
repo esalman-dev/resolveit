@@ -4,7 +4,7 @@
 
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
-> 🚧 **Status: in development.** Accounts, login (password or Google), roles, and the ticket API (with categories and comments) are done and covered by automated tests. The ticket screens are being built: the app layout, the "Get help" form, the ticket list with search and filters, and the ticket page (staff controls, comments, and history) are done. Category management is next. See [Progress](#progress).
+> 🚧 **Status: in development.** Accounts, login (password or Google), roles, and the ticket API (with categories and comments) are done and covered by automated tests. The ticket screens are being built: the app layout, the "Get help" form, the ticket list with search and filters, and the ticket page (staff controls, comments, and history) are done. So is the admin Categories screen. See [Progress](#progress).
 
 ## The idea
 
@@ -33,9 +33,10 @@ Most help desk tickets are for common problems with simple fixes: Wi-Fi that won
 - Ticket page in a GitHub-style layout: the description and a timeline of comments and changes on the left; status, priority, category, and assignee on the right, as dropdowns for staff
 - "Are you sure?" only for big changes (resolving, reopening, taking a ticket from someone else, closing your own ticket); small changes save instantly and show in the history
 - Comments with **internal notes** for staff (highlighted, and never sent to the user), editable with every earlier version kept
+- **Categories** managed by admins: add, rename, archive (never deleted, so old tickets keep theirs), and restore
 
 **Planned**
-- Category management screen and a search bar on the Users screen
+- A search bar on the Users screen
 - AI self-service troubleshooting with safe-fix guardrails
 - A knowledge base that learns from tickets technicians have solved
 - An analytics dashboard: self-solved rate, escalations, most common problems, average resolution time
@@ -106,6 +107,7 @@ resolveit/
 │   │   ├── TicketSidePanel.jsx  Status, priority, category, assignee (dropdowns for staff)
 │   │   ├── TicketActivity.jsx   Comments and history in one timeline, plus the comment box
 │   │   ├── UsersPage.jsx    Admin/owner: manage users and roles
+│   │   ├── CategoriesPage.jsx Admin/owner: add, rename, archive, and restore categories
 │   │   ├── ConfirmDialog.jsx Reusable "Are you sure?" box
 │   │   ├── Badges.jsx       Status and priority labels
 │   │   ├── EmptyState.jsx   Reusable "nothing here yet" box
