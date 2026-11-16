@@ -4,7 +4,7 @@
 
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
-> 🚧 **Status: in development.** Accounts, login (password or Google), roles, and the ticket API (with categories and comments) are done and covered by automated tests. The ticket screens are being built: the app layout, the "Get help" form, and a ticket page with its history are done. See [Progress](#progress).
+> 🚧 **Status: in development.** Accounts, login (password or Google), roles, and the ticket API (with categories and comments) are done and covered by automated tests. The ticket screens are being built: the app layout, the "Get help" form, the ticket list with search and filters, and a ticket page with its history are done. See [Progress](#progress).
 
 ## The idea
 
@@ -29,10 +29,11 @@ Most help desk tickets are for common problems with simple fixes: Wi-Fi that won
 - **Comments** that the author can edit, with every earlier version kept and visible
 - App layout with a role-based sidebar; every screen has its own address, so links, refresh, and the Back button work
 - **Get help** form to open a ticket, with tips for a faster fix
+- **Ticket list** with search (title or number) and filters for status, priority, category, and "assigned to me", kept in the address so a refresh or a shared link keeps them
 - Ticket page in a GitHub-style layout: the description and an activity timeline on the left, status, priority, category, and assignee on the right
 
 **Planned**
-- Ticket screens still to come: the ticket list with search and filters, staff controls and comments on the ticket page, and category management
+- Ticket screens still to come: staff controls and comments on the ticket page, and category management
 - AI self-service troubleshooting with safe-fix guardrails
 - A knowledge base that learns from tickets technicians have solved
 - An analytics dashboard: self-solved rate, escalations, most common problems, average resolution time
@@ -82,7 +83,7 @@ Authentication is built by hand rather than with an auth service, so each decisi
 - [x] Roles: user, technician, admin, owner
 - [ ] Create, view, assign, and update tickets
 - [ ] Ticket status and priority
-- [ ] Search and filter
+- [x] Search and filter
 
 **Phase 2: AI self-service fixes** · **Phase 3: Knowledge base and analytics** · **Phase 4: Deployment, CI, password reset**
 
@@ -98,6 +99,7 @@ resolveit/
 │   │   ├── LoginPage.jsx    Log in / create account form
 │   │   ├── GoogleButton.jsx Sign in with Google
 │   │   ├── GetHelpPage.jsx  "Get help": the form that opens a ticket
+│   │   ├── TicketsPage.jsx  The ticket list: search and filters
 │   │   ├── TicketPage.jsx   One ticket: description, activity timeline, details panel
 │   │   ├── UsersPage.jsx    Admin/owner: manage users and roles
 │   │   ├── ConfirmDialog.jsx Reusable "Are you sure?" box
