@@ -1,0 +1,183 @@
+/* Tickets page: the ticket list with search and filters (TicketsPage.jsx). */
+
+.tickets-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* --- Search and filters --- */
+
+/* One row on wide screens; wraps onto more lines as the screen narrows. */
+.tickets-page__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.tickets-page__search {
+  flex: 1 1 220px; /* takes the spare width, but never narrower than 220px */
+}
+
+/* The checkbox sits beside its words, not above them like the other labels. */
+.tickets-page__check {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2); /* lines up with the bottom of the dropdowns */
+}
+
+.tickets-page__check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.tickets-page__clear {
+  padding-bottom: var(--space-2);
+  font-size: 14px;
+}
+
+.tickets-page__count {
+  margin: 0;
+}
+
+/* --- The table --- */
+
+.tickets-page__table {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.tickets-page__table th {
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--page-bg);
+  white-space: nowrap;
+}
+
+.tickets-page__table th,
+.tickets-page__table td {
+  padding: var(--space-3);
+  vertical-align: middle;
+}
+
+.tickets-page__table tbody tr {
+  cursor: pointer;
+}
+
+.tickets-page__table tbody tr:hover {
+  background: var(--color-primary-soft);
+}
+
+.tickets-page__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tickets-page__id,
+.tickets-page__opened {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.tickets-page__title {
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.tickets-page__title:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+/* The category under the title, small and gray. */
+.tickets-page__category {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+}
+
+.tickets-page__none {
+  color: var(--text-muted);
+}
+
+/* --- Phones: each row becomes a card --- */
+
+/* Why: six columns don't fit 390px; the titles got squeezed into a few letters per line. Each
+   row turns into a card instead: "#7 · just now" on top, the title, then the badges. The
+   cells keep their table meaning for screen readers; only the layout changes. */
+@media (max-width: 768px) {
+  .tickets-page__table {
+    overflow: visible;
+    background: none;
+    border: none;
+  }
+
+  /* Hidden from view but still read by screen readers. */
+  .tickets-page__table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .tickets-page__table table,
+  .tickets-page__table tbody {
+    display: block;
+  }
+
+  .tickets-page__table tbody tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    margin-bottom: var(--space-2);
+    padding: var(--space-3);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .tickets-page__table td {
+    order: 3; /* badges and assignee: the bottom line */
+    padding: 0;
+    border: none;
+  }
+
+  .tickets-page__table .tickets-page__id {
+    order: 0;
+    font-size: var(--font-size-small);
+  }
+
+  .tickets-page__id::before {
+    content: '#';
+  }
+
+  .tickets-page__table .tickets-page__opened {
+    order: 1;
+    font-size: var(--font-size-small);
+  }
+
+  .tickets-page__table .tickets-page__title-cell {
+    order: 2;
+    flex-basis: 100%; /* the title gets a line of its own */
+  }
+
+  .tickets-page__assignee {
+    font-size: var(--font-size-small);
+  }
+
+  .tickets-page__assignee::before {
+    content: 'Assignee: ';
+    color: var(--text-muted);
+  }
+}

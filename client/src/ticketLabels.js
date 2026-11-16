@@ -6,6 +6,12 @@
 const STATUS_LABELS = { open: 'Open', in_progress: 'In progress', resolved: 'Resolved' }
 const PRIORITY_LABELS = { low: 'Low', medium: 'Medium', high: 'High', urgent: 'Urgent' }
 
+/** Every status, in workflow order (for dropdowns). */
+export const STATUSES = Object.keys(STATUS_LABELS)
+
+/** Every priority, lowest to highest (for dropdowns). */
+export const PRIORITIES = Object.keys(PRIORITY_LABELS)
+
 /** A status in words, e.g. "in_progress" → "In progress". */
 export const statusLabel = (status) => STATUS_LABELS[status] ?? status
 

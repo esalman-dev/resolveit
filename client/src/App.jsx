@@ -12,6 +12,7 @@ import EmptyState from './EmptyState.jsx'
 import GetHelpPage from './GetHelpPage.jsx'
 import LoginPage from './LoginPage.jsx'
 import TicketPage from './TicketPage.jsx'
+import TicketsPage from './TicketsPage.jsx'
 import UsersPage from './UsersPage.jsx'
 import { isAdminOrOwner, isStaff } from './roles.js'
 import { usePageTitle } from './usePageTitle.js'
@@ -71,7 +72,7 @@ function App() {
       <Route element={<AppShell user={user} serverStatus={serverStatus} onLogout={handleLogout} />}>
         <Route index element={<Navigate to={home} replace />} />
         <Route path="get-help" element={<GetHelpPage />} />
-        <Route path="tickets" element={<TicketsPage staff={isStaff(user.role)} />} />
+        <Route path="tickets" element={<TicketsPage currentUser={user} />} />
         <Route path="tickets/:id" element={<TicketPage />} />
         <Route path="admin/users" element={admin ? <UsersPage currentUser={user} /> : <Navigate to="/" replace />} />
         <Route path="admin/categories" element={admin ? <CategoriesPage /> : <Navigate to="/" replace />} />
@@ -82,12 +83,6 @@ function App() {
 }
 
 // --- Placeholder pages, replaced one by one as the real screens are built ---
-
-/** The ticket list: "My tickets" for users, "Tickets" for staff. */
-function TicketsPage({ staff }) {
-  usePageTitle(staff ? 'Tickets' : 'My tickets')
-  return <EmptyState message="The ticket list is coming soon." actionLabel="Get help" actionTo="/get-help" />
-}
 
 /** Categories: admins add, rename and archive ticket categories. */
 function CategoriesPage() {
