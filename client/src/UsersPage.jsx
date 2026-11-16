@@ -1,40 +1,53 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { apiFetch } from './api.js'
 import { ROLES, canManage, grantableRoles } from './roles.js'
 import ConfirmDialog from './ConfirmDialog.jsx'
 
-// Admin/owner screen: every account, with a dropdown to change its role.
+// Admin/owner screen: every account, with a role dropdown and a Disable/Enable button,
+// plus the account history (who changed what, and when).
 // Hiding this page from others is just for a clean UI; the SERVER is what actually
 // blocks them (GET /api/users returns 403 for anyone who isn't an admin or owner).
 function UsersPage({ currentUser }) {
   const [users, setUsers] = useState([])
+  const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [pending, setPending] = useState(null) // { user, role } waiting for "Are you sure?", or null
+  // The action waiting for "Are you sure?", or null:
+  //   { kind: 'role', user, role }  or  { kind: 'disable', user, disabled }
+  const [pending, setPending] = useState(null)
   const [saving, setSaving] = useState(false)
 
+  // useCallback keeps the same function between renders, so the effect below runs only once
+  const loadHistory = useCallback(
+    () => apiFetch('/api/users/history').then((data) => setHistory(data.history)),
+    []
+  )
+
   useEffect(() => {
-    apiFetch('/api/users')
-      .then((data) => setUsers(data.users))
+    Promise.all([apiFetch('/api/users').then((data) => setUsers(data.users)), loadHistory()])
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
-  }, [])
+  }, [loadHistory])
 
-  // Step 1: picking a role in the dropdown doesn't save anything. It only opens the confirm box.
+  // Step 1: picking a role or clicking Disable doesn't save anything. It only opens the confirm box.
   // The dropdown keeps showing the OLD role (its value comes from `users`), so Cancel needs no undo.
-  function askToChangeRole(user, role) {
+  function ask(action) {
     setError('')
-    setPending({ user, role })
+    setPending(action)
   }
 
   // Step 2: they clicked the confirm button
-  async function confirmChange() {
-    const { user, role } = pending
+  async function confirm() {
+    const { kind, user } = pending
     setSaving(true)
     try {
-      const data = await apiFetch(`/api/users/${user.id}/role`, { method: 'PATCH', body: { role } })
+      const data =
+        kind === 'role'
+          ? await apiFetch(`/api/users/${user.id}/role`, { method: 'PATCH', body: { role: pending.role } })
+          : await apiFetch(`/api/users/${user.id}/disabled`, { method: 'PATCH', body: { disabled: pending.disabled } })
       // Replace just that one user in the list with the server's updated version
-      setUsers((list) => list.map((u) => (u.id === user.id ? { ...u, role: data.user.role } : u)))
+      setUsers((list) => list.map((u) => (u.id === user.id ? { ...u, ...data.user } : u)))
+      await loadHistory() // show the new history entry
     } catch (err) {
       setError(err.message)
     } finally {
@@ -45,24 +58,22 @@ function UsersPage({ currentUser }) {
 
   // Why a row can't be changed (shown as a tooltip), or null if it can
   function lockedReason(u) {
-    if (u.id === currentUser.id) return "You can't change your own role"
+    if (u.id === currentUser.id) return "You can't change your own account"
     if (u.role === 'owner') return 'Owners can only be changed on the server'
-    if (!canManage(currentUser.role, u.role)) return `Only an owner can change an ${u.role}'s role`
+    if (!canManage(currentUser.role, u.role)) return `Only an owner can change an ${u.role}'s account`
     return null
   }
 
   if (loading) return <p>Loading users…</p>
 
   const options = grantableRoles(currentUser.role) // e.g. an admin may give: user, technician
-  // A demotion (moving down the ranking) gets a red button
-  const isDemotion = pending && ROLES.indexOf(pending.role) < ROLES.indexOf(pending.user.role)
 
   return (
     <section>
       <h2>Manage users</h2>
       <p className="hint">
-        Role changes take effect immediately. The person's screen updates the next time they reload the page.
-        {currentUser.role === 'admin' && ' Only an owner can promote or demote admins.'}
+        Changes take effect immediately. Disabling someone logs them out everywhere; their tickets stay.
+        {currentUser.role === 'admin' && ' Only an owner can change admins.'}
       </p>
       {error && <p className="error" role="alert">{error}</p>}
 
@@ -74,13 +85,15 @@ function UsersPage({ currentUser }) {
               <th>Email</th>
               <th>Sign-in</th>
               <th>Role</th>
+              <th>Account</th>
             </tr>
           </thead>
           <tbody>
             {users.map((u) => {
               const reason = lockedReason(u)
+              const disabled = Boolean(u.disabled_at)
               return (
-                <tr key={u.id}>
+                <tr key={u.id} className={disabled ? 'muted' : undefined}>
                   <td>{u.name}{u.id === currentUser.id && ' (you)'}</td>
                   <td>{u.email}</td>
                   <td>{[u.has_password && 'Password', u.has_google && 'Google'].filter(Boolean).join(', ')}</td>
@@ -91,12 +104,26 @@ function UsersPage({ currentUser }) {
                     ) : (
                       <select
                         value={u.role}
-                        onChange={(e) => askToChangeRole(u, e.target.value)}
+                        onChange={(e) => ask({ kind: 'role', user: u, role: e.target.value })}
                         disabled={saving}
                         aria-label={`Role for ${u.name}`}
                       >
                         {options.map((r) => <option key={r} value={r}>{r}</option>)}
                       </select>
+                    )}
+                  </td>
+                  <td>
+                    {reason ? (
+                      <span title={reason}>{disabled ? 'Disabled' : 'Active'}</span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={disabled ? undefined : 'danger-outline'}
+                        onClick={() => ask({ kind: 'disable', user: u, disabled: !disabled })}
+                        disabled={saving}
+                      >
+                        {disabled ? 'Enable' : 'Disable'}
+                      </button>
                     )}
                   </td>
                 </tr>
@@ -106,18 +133,79 @@ function UsersPage({ currentUser }) {
         </table>
       </div>
 
+      <h3>Account history</h3>
+      {history.length === 0 ? (
+        <p className="hint">No changes yet.</p>
+      ) : (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>Who</th>
+                <th>What</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map((e) => (
+                <tr key={e.id}>
+                  <td>{new Date(e.created_at).toLocaleString()}</td>
+                  {/* No actor = it was done with a server command (make-admin / make-owner) */}
+                  <td>{e.actor_name ?? 'Server command'}</td>
+                  <td>{describeEvent(e)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <ConfirmDialog
         open={pending !== null}
-        title="Change role?"
-        message={pending && `${pending.user.name} will go from ${pending.user.role} to ${pending.role}. This takes effect immediately.`}
-        confirmLabel={isDemotion ? 'Demote' : 'Change role'}
-        danger={isDemotion}
+        {...confirmText(pending)}
         busy={saving}
-        onConfirm={confirmChange}
+        onConfirm={confirm}
         onCancel={() => setPending(null)}
       />
     </section>
   )
+}
+
+// One history row in plain words, e.g. "Bob: technician → admin"
+function describeEvent(e) {
+  if (e.action === 'role_changed') return `${e.user_name}: ${e.old_value} → ${e.new_value}`
+  if (e.action === 'disabled') return `Disabled ${e.user_name}`
+  if (e.action === 'enabled') return `Re-enabled ${e.user_name}`
+  return e.action
+}
+
+// What the "Are you sure?" box says for each kind of action
+function confirmText(pending) {
+  if (!pending) return { title: '', message: '' }
+  const { kind, user } = pending
+  if (kind === 'role') {
+    // A demotion (moving down the ranking) gets a red button
+    const demotion = ROLES.indexOf(pending.role) < ROLES.indexOf(user.role)
+    return {
+      title: 'Change role?',
+      message: `${user.name} will go from ${user.role} to ${pending.role}. This takes effect immediately.`,
+      confirmLabel: demotion ? 'Demote' : 'Change role',
+      danger: demotion,
+    }
+  }
+  return pending.disabled
+    ? {
+        title: `Disable ${user.name}?`,
+        message: `${user.name} will be logged out everywhere and won't be able to log in. Their tickets and comments stay. You can re-enable them later.`,
+        confirmLabel: 'Disable',
+        danger: true,
+      }
+    : {
+        title: `Re-enable ${user.name}?`,
+        message: `${user.name} will be able to log in again.`,
+        confirmLabel: 'Enable',
+        danger: false,
+      }
 }
 
 export default UsersPage

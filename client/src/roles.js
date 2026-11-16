@@ -1,4 +1,4 @@
-// The role ranking, mirrored from server/roles.js so the screen only OFFERS changes
+// The role ranking, mirrored from server/roles.js (KEEP IN SYNC) so the screen only OFFERS changes
 // the server will allow. The server still checks every change: this file is for a
 // clear interface, not for security.
 //

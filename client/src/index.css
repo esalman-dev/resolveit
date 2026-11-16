@@ -180,3 +180,16 @@ button.danger {
   background: #d33;
   color: white;
 }
+
+/* An outlined red button for actions that take something away (e.g. Disable) */
+button.danger-outline {
+  border: 1px solid #d33;
+  border-radius: 4px;
+  background: none;
+  color: #d33;
+}
+
+/* A disabled account's row is faded */
+tr.muted td {
+  opacity: 0.55;
+}
