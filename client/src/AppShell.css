@@ -66,11 +66,26 @@
 }
 
 .app-shell__brand-name {
-  padding: 0 var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
   font-size: 18px;
   font-weight: 700;
   color: var(--sidebar-text-active);
   text-decoration: none;
+}
+
+/* The icon sits on a small white tile, like an app icon. Why: its indigo is too dark to stand
+   out on the dark sidebar by itself. */
+.app-shell__brand-icon {
+  padding: 3px;
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.app-shell__brand-accent {
+  color: var(--sidebar-brand-accent);
 }
 
 .app-shell__menu-button {

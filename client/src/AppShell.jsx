@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
 import { isAdminOrOwner, isStaff } from './roles.js'
+import logoIcon from './assets/resolveit-icon.svg' // Vite turns this into the file's URL
 import './AppShell.css'
 
 /**
@@ -26,7 +27,14 @@ function AppShell({ user, serverStatus, onLogout }) {
     <div className="app-shell">
       <aside className={menuOpen ? 'app-shell__sidebar app-shell__sidebar--open' : 'app-shell__sidebar'}>
         <div className="app-shell__brand">
-          <Link className="app-shell__brand-name" to="/">ResolveIT</Link>
+          {/* The icon has empty alt text because the name beside it already says "ResolveIT".
+              Why not the full logo: its dark lettering would disappear on the dark sidebar. */}
+          <Link className="app-shell__brand-name" to="/">
+            <img className="app-shell__brand-icon" src={logoIcon} alt="" width="28" height="28" />
+            <span>
+              Resolve<span className="app-shell__brand-accent">IT</span>
+            </span>
+          </Link>
           <button
             type="button"
             className="app-shell__menu-button"

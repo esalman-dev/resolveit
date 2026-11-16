@@ -21,6 +21,12 @@ body {
   padding: var(--space-6) var(--space-4);
 }
 
+.login-screen__logo {
+  margin: 0 0 var(--space-5);
+  text-align: center;
+  line-height: 0; /* no gap under the image */
+}
+
 /* A bordered box for forms and panels. */
 .card {
   max-width: 380px;

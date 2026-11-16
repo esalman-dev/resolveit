@@ -28,6 +28,7 @@
   --sidebar-item-hover: #273449;
   --sidebar-item-active: #334155;
   --sidebar-heading: #94a3b8;      /* small "ADMIN" section label */
+  --sidebar-brand-accent: #a5b4fc; /* the "IT" in the sidebar name: 7.3 : 1 here, where the main indigo is only 2.3 : 1 */
 
   /* Page and surfaces. */
   --page-bg: #f8fafc;              /* behind everything in the main area */

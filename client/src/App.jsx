@@ -17,6 +17,7 @@ import TicketsPage from './TicketsPage.jsx'
 import UsersPage from './UsersPage.jsx'
 import { isAdminOrOwner, isStaff } from './roles.js'
 import { usePageTitle } from './usePageTitle.js'
+import logo from './assets/resolveit-logo.svg' // Vite turns this into the file's URL
 
 /** The whole app: the login screen, or the pages inside the app shell. */
 function App() {
@@ -57,7 +58,10 @@ function App() {
   if (!user) {
     return (
       <main className="login-screen">
-        <h1>ResolveIT</h1>
+        {/* The logo is the page's heading; its alt text gives screen readers the name. */}
+        <h1 className="login-screen__logo">
+          <img src={logo} alt="ResolveIT" width="192" height="120" />
+        </h1>
         <LoginPage onLoggedIn={setUser} />
         <footer>API: {serverStatus}</footer>
       </main>
