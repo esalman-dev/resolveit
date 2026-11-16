@@ -4,7 +4,7 @@
 
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
-> 🚧 **Status: in development.** Accounts, login (password or Google), roles, and the ticket API (with categories and comments) are done and covered by automated tests. The ticket screens are being built: the app layout, the "Get help" form, the ticket list with search and filters, and a ticket page with its history are done. See [Progress](#progress).
+> 🚧 **Status: in development.** Accounts, login (password or Google), roles, and the ticket API (with categories and comments) are done and covered by automated tests. The ticket screens are being built: the app layout, the "Get help" form, the ticket list with search and filters, and the ticket page (staff controls, comments, and history) are done. Category management is next. See [Progress](#progress).
 
 ## The idea
 
@@ -30,10 +30,12 @@ Most help desk tickets are for common problems with simple fixes: Wi-Fi that won
 - App layout with a role-based sidebar; every screen has its own address, so links, refresh, and the Back button work
 - **Get help** form to open a ticket, with tips for a faster fix
 - **Ticket list** with search (title or number) and filters for status, priority, category, and "assigned to me", kept in the address so a refresh or a shared link keeps them
-- Ticket page in a GitHub-style layout: the description and an activity timeline on the left, status, priority, category, and assignee on the right
+- Ticket page in a GitHub-style layout: the description and a timeline of comments and changes on the left; status, priority, category, and assignee on the right, as dropdowns for staff
+- "Are you sure?" only for big changes (resolving, reopening, taking a ticket from someone else, closing your own ticket); small changes save instantly and show in the history
+- Comments with **internal notes** for staff (highlighted, and never sent to the user), editable with every earlier version kept
 
 **Planned**
-- Ticket screens still to come: staff controls and comments on the ticket page, and category management
+- Category management screen and a search bar on the Users screen
 - AI self-service troubleshooting with safe-fix guardrails
 - A knowledge base that learns from tickets technicians have solved
 - An analytics dashboard: self-solved rate, escalations, most common problems, average resolution time
@@ -81,8 +83,8 @@ Authentication is built by hand rather than with an auth service, so each decisi
 - [x] PostgreSQL database and schema
 - [x] User accounts and login (password and Google)
 - [x] Roles: user, technician, admin, owner
-- [ ] Create, view, assign, and update tickets
-- [ ] Ticket status and priority
+- [x] Create, view, assign, and update tickets
+- [x] Ticket status and priority
 - [x] Search and filter
 
 **Phase 2: AI self-service fixes** · **Phase 3: Knowledge base and analytics** · **Phase 4: Deployment, CI, password reset**
@@ -100,7 +102,9 @@ resolveit/
 │   │   ├── GoogleButton.jsx Sign in with Google
 │   │   ├── GetHelpPage.jsx  "Get help": the form that opens a ticket
 │   │   ├── TicketsPage.jsx  The ticket list: search and filters
-│   │   ├── TicketPage.jsx   One ticket: description, activity timeline, details panel
+│   │   ├── TicketPage.jsx   One ticket: loads it, saves changes, asks "Are you sure?" for big ones
+│   │   ├── TicketSidePanel.jsx  Status, priority, category, assignee (dropdowns for staff)
+│   │   ├── TicketActivity.jsx   Comments and history in one timeline, plus the comment box
 │   │   ├── UsersPage.jsx    Admin/owner: manage users and roles
 │   │   ├── ConfirmDialog.jsx Reusable "Are you sure?" box
 │   │   ├── Badges.jsx       Status and priority labels
