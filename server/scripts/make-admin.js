@@ -4,7 +4,8 @@
 // Why a script? Sign-up always creates a plain 'user' (so nobody can make themselves admin),
 // which means the FIRST admin can't be created through the website. Running this requires
 // access to the server and its database, which is exactly who should be allowed to do it.
-// After that, admins can change other people's roles from the admin screen.
+// After that, admins can change technicians' and users' roles from the admin screen.
+// Owners (ranked above admins) have their own script: npm run make-owner.
 import pool from '../db/index.js';
 
 const email = process.argv[2]?.trim().toLowerCase();
@@ -16,12 +17,14 @@ if (!email) {
 
 try {
   const result = await pool.query(
-    "UPDATE users SET role = 'admin' WHERE email = $1 RETURNING id, name, email, role",
+    // AND role <> 'owner': this script must never quietly demote an owner (use make-owner --remove)
+    "UPDATE users SET role = 'admin' WHERE email = $1 AND role <> 'owner' RETURNING id, name, email, role",
     [email]
   );
 
   if (result.rowCount === 0) {
-    console.error(`No account found for ${email}. Sign up on the website first, then run this again.`);
+    console.error(`No account found for ${email} (or they're an owner). Sign up on the website first, then run this again.`);
+    console.error('To turn an owner back into an admin, use: npm run make-owner -- --remove ' + email);
     process.exitCode = 1;
   } else {
     const user = result.rows[0];

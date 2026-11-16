@@ -1,6 +1,6 @@
 // Roles: who can manage users, and role changes taking effect immediately
 import { describe, it, expect } from 'vitest';
-import { app, pool, request, signUp, signUpAdmin, bearer } from './helpers.js';
+import { app, pool, request, signUp, signUpAdmin, signUpOwner, bearer } from './helpers.js';
 
 describe('GET /api/users (admins only)', () => {
   it('requires login (401)', async () => {
@@ -71,10 +71,10 @@ describe('PATCH /api/users/:id/role', () => {
 
 describe('role changes take effect immediately', () => {
   it('a demoted admin loses access at once, even with a token that still says "admin"', async () => {
-    const { token: aliceToken } = await signUpAdmin({ email: 'alice@example.com' });
+    const { token: aliceToken } = await signUpOwner({ email: 'alice@example.com' });
     const { token: bobToken, user: bob } = await signUpAdmin({ email: 'bob@example.com', name: 'Bob' });
 
-    // Alice demotes Bob. Bob's token was issued while he was admin and is still unexpired.
+    // Alice (an owner) demotes Bob. Bob's token was issued while he was admin and is still unexpired.
     await request(app).patch(`/api/users/${bob.id}/role`).set(bearer(aliceToken)).send({ role: 'user' });
 
     const res = await request(app).get('/api/users').set(bearer(bobToken));

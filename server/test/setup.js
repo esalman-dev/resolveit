@@ -4,7 +4,7 @@ import pool from '../db/index.js';
 
 beforeEach(async () => {
   // TRUNCATE empties tables instantly. RESTART IDENTITY resets ids to 1. CASCADE handles foreign keys.
-  await pool.query('TRUNCATE users, tickets, refresh_tokens RESTART IDENTITY CASCADE');
+  await pool.query('TRUNCATE users, tickets, refresh_tokens, categories, ticket_comments RESTART IDENTITY CASCADE');
 });
 
 afterAll(async () => {

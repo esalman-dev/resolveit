@@ -21,6 +21,13 @@ export async function signUpAdmin(options = {}) {
   return account;
 }
 
+// Same idea for an owner (like `npm run make-owner`)
+export async function signUpOwner(options = {}) {
+  const account = await signUp({ name: 'Owner', email: 'owner@example.com', ...options });
+  await pool.query("UPDATE users SET role = 'owner' WHERE id = $1", [account.user.id]);
+  return account;
+}
+
 // "Authorization: Bearer <token>" header for a request
 export const bearer = (token) => ({ Authorization: `Bearer ${token}` });
 

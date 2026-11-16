@@ -10,6 +10,8 @@ import { apiLimiter } from './middleware/rateLimit.js';
 import pool from './db/index.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
+import ticketRoutes from './routes/tickets.js';
+import categoryRoutes from './routes/categories.js';
 
 // Fail fast: without a secret, login tokens can't be signed or checked safely
 if (!process.env.JWT_SECRET) {
@@ -48,6 +50,12 @@ app.use('/api/auth', authRoutes);
 
 // User management (admins only): /api/users, /api/users/:id/role
 app.use('/api/users', userRoutes);
+
+// Tickets and their comments: /api/tickets, /api/tickets/:id, /api/tickets/:id/comments, /api/tickets/assignees
+app.use('/api/tickets', ticketRoutes);
+
+// Ticket categories (everyone reads, admins manage): /api/categories, /api/categories/:id
+app.use('/api/categories', categoryRoutes);
 
 // Error handler: catches anything a route throws (Express 5 forwards async errors here automatically).
 // Logs the details for us, but only sends a generic message so internals never leak to the browser.

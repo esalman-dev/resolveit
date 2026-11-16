@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     email         TEXT NOT NULL UNIQUE,                               -- no two accounts with the same email
     password_hash TEXT NOT NULL,                                      -- scrambled password, never the real one
     role          TEXT NOT NULL DEFAULT 'user'
-                  CHECK (role IN ('user', 'technician', 'admin')),    -- only these three values allowed
+                  CHECK (role IN ('user', 'technician', 'admin')),    -- REPLACED: 'owner' added below
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS tickets (
                 CHECK (status IN ('open', 'in_progress', 'resolved')),
     priority    TEXT NOT NULL DEFAULT 'medium'
                 CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
-    category    TEXT,                                                 -- e.g. 'Network', 'Printer' (optional)
+    category    TEXT,                                                 -- REPLACED by category_id (see 'Categories' below)
 
     -- Foreign keys: point to a row in users instead of copying the person's info
     created_by  INTEGER NOT NULL REFERENCES users(id),                -- who submitted it (required)
@@ -73,3 +73,83 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id)
 -- When the user originally logged in. Copied from token to token on every rotation, so we can
 -- enforce a hard 90-day maximum: after that, they must log in again even if they use the app daily.
 ALTER TABLE refresh_tokens ADD COLUMN IF NOT EXISTS session_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+-- ---------------------------------------------------------------------------
+-- 2026-11-15: Tickets API
+-- When a ticket was marked resolved (empty while open / in progress). Cleared if it's reopened.
+-- Needed later for the Phase 3 dashboard's "average time to resolve".
+-- ---------------------------------------------------------------------------
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ;
+
+-- ---------------------------------------------------------------------------
+-- 2026-11-15: Categories (a list admins manage, instead of free text)
+-- Free text let "Network", "network" and "Wifi" become three different categories.
+-- Now tickets point to one row in this table.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS categories (
+    id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name       TEXT NOT NULL,
+    active     BOOLEAN NOT NULL DEFAULT TRUE,   -- FALSE = archived: hidden for new tickets, kept on old ones
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- No duplicates, ignoring capital letters: "Network" and "network" can't both exist
+CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name_lower ON categories (LOWER(name));
+
+-- Starter list, added only when the table is empty (so a re-run never brings back
+-- a category an admin renamed)
+INSERT INTO categories (name)
+SELECT starter.name
+  FROM (VALUES ('Network'), ('Hardware'), ('Software'), ('Printer'),
+               ('Email'), ('Account & Access'), ('Other')) AS starter(name)
+ WHERE NOT EXISTS (SELECT 1 FROM categories);
+
+-- Tickets now point to a category by id (empty = no category yet)
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES categories(id);
+CREATE INDEX IF NOT EXISTS idx_tickets_category_id ON tickets(category_id);
+
+-- One-time move from the old free-text column, then remove it.
+-- The DO block only runs the steps if the old column still exists, so this is safe to re-run.
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'tickets' AND column_name = 'category') THEN
+        -- Turn each distinct old text value into a category (skipping ones that already exist)
+        INSERT INTO categories (name)
+        SELECT DISTINCT TRIM(category) FROM tickets
+         WHERE category IS NOT NULL AND TRIM(category) <> ''
+        ON CONFLICT DO NOTHING;
+
+        -- Point each ticket at the matching category
+        UPDATE tickets t SET category_id = c.id
+          FROM categories c
+         WHERE LOWER(c.name) = LOWER(TRIM(t.category));
+
+        ALTER TABLE tickets DROP COLUMN category;
+    END IF;
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- 2026-11-15: Ticket comments
+-- The conversation on a ticket. is_internal = a staff-only note the user never sees.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ticket_comments (
+    id          INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    ticket_id   INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE, -- delete ticket = delete its comments
+    author_id   INTEGER NOT NULL REFERENCES users(id),
+    body        TEXT NOT NULL,
+    is_internal BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ticket_comments_ticket_id ON ticket_comments(ticket_id);
+
+-- ---------------------------------------------------------------------------
+-- 2026-11-15: Owner role (ranked above admin)
+-- Owners manage admins; they're created only on the server (npm run make-owner).
+-- The original CHECK was written inside CREATE TABLE, so PostgreSQL named it
+-- users_role_check. Drop it and add the four-role version. Safe to re-run.
+-- ---------------------------------------------------------------------------
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE users ADD CONSTRAINT users_role_check
+    CHECK (role IN ('user', 'technician', 'admin', 'owner'));
