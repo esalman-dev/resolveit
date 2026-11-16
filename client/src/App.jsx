@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { apiFetch, refreshSession, logout, setOnSessionLost } from './api.js'
 import LoginPage from './LoginPage.jsx'
 import UsersPage from './UsersPage.jsx'
+import { isAdminOrOwner } from './roles.js'
 
 function App() {
   const [user, setUser] = useState(null)         // the logged-in user, or null
@@ -33,7 +34,7 @@ function App() {
     setPage('home')
   }
 
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = isAdminOrOwner(user?.role) // owners get everything admins get
 
   return (
     <main>
