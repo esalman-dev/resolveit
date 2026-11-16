@@ -1,0 +1,142 @@
+/*
+  Categories page (CategoriesPage.jsx).
+
+  Desktop: the list on the left and a short "About categories" note on the right, the same
+  shape as the Get help page. Phones: one column, with the note underneath.
+*/
+
+.categories-page {
+  display: grid;
+  grid-template-columns: minmax(0, 640px) 240px;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.categories-page__card {
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* --- Adding --- */
+
+/* Why: the global form style stacks fields; here the box and button share one row. */
+.categories-page__add,
+.categories-page__rename {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.categories-page__add input,
+.categories-page__rename input {
+  flex: 1;
+  min-width: 0; /* lets the box shrink on narrow screens instead of pushing the buttons out */
+}
+
+.categories-page__add {
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.categories-page__error {
+  margin-top: var(--space-3);
+}
+
+.categories-page__empty {
+  margin: var(--space-4) 0 0;
+}
+
+/* --- The list --- */
+
+.categories-page__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.categories-page__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-height: 40px; /* the same height whether showing buttons or the rename box */
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.categories-page__row:last-child {
+  border-bottom: none;
+}
+
+.categories-page__rename {
+  flex: 1;
+}
+
+.categories-page__name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.categories-page__row--archived .categories-page__name {
+  font-weight: normal;
+  color: var(--text-muted);
+}
+
+.categories-page__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.categories-page__actions button,
+.categories-page__row--archived button,
+.categories-page__rename button {
+  padding: var(--space-1) var(--space-3);
+  font-size: 14px;
+}
+
+/* --- Archived --- */
+
+.categories-page__archived {
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.categories-page__archived > button {
+  font-size: 14px;
+  text-decoration: none;
+}
+
+/* --- About panel --- */
+
+.categories-page__about {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.categories-page__about-heading {
+  margin: 0 0 var(--space-2);
+  font-size: 14px;
+  color: var(--text);
+}
+
+.categories-page__about p {
+  margin: 0 0 var(--space-3);
+}
+
+/* --- Phones --- */
+
+@media (max-width: 768px) {
+  .categories-page {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+
+  .categories-page__card {
+    padding: var(--space-3) var(--space-4);
+  }
+}

@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router'
 import { apiFetch, refreshSession, logout, setOnSessionLost } from './api.js'
 import AppShell from './AppShell.jsx'
+import CategoriesPage from './CategoriesPage.jsx'
 import EmptyState from './EmptyState.jsx'
 import GetHelpPage from './GetHelpPage.jsx'
 import LoginPage from './LoginPage.jsx'
@@ -82,13 +83,7 @@ function App() {
   )
 }
 
-// --- Placeholder pages, replaced one by one as the real screens are built ---
-
-/** Categories: admins add, rename and archive ticket categories. */
-function CategoriesPage() {
-  usePageTitle('Categories')
-  return <EmptyState message="Managing categories is coming soon." />
-}
+// --- Not found ---
 
 /** Any address that doesn't match a page. */
 function NotFoundPage() {
