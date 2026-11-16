@@ -67,4 +67,36 @@ describe('POST /api/auth/google', () => {
     const res = await request(app).post('/api/auth/google').send({});
     expect(res.status).toBe(400);
   });
+
+  it('does NOT replace an existing Google link with a different Google account (409)', async () => {
+    await googleLogin(googleToken()); // ada@gmail.com linked to google-123
+    const res = await googleLogin(googleToken({ sub: 'google-999' })); // another Google account, same email
+    expect(res.status).toBe(409);
+
+    const { rows } = await pool.query('SELECT google_id FROM users');
+    expect(rows).toEqual([{ google_id: 'google-123' }]); // still the original link
+  });
+
+  it('updates the email when it changed (and is verified) at Google', async () => {
+    await googleLogin(googleToken());
+    const res = await googleLogin(googleToken({ email: 'ada.lovelace@gmail.com' }));
+    expect(res.body.user.email).toBe('ada.lovelace@gmail.com');
+  });
+
+  it('keeps the old email if the new one is unverified or already used by another account', async () => {
+    await googleLogin(googleToken());
+    const unverified = await googleLogin(googleToken({ email: 'other@gmail.com', email_verified: false }));
+    expect(unverified.body.user.email).toBe('ada@gmail.com');
+
+    await signUp({ email: 'taken@gmail.com' });
+    const taken = await googleLogin(googleToken({ email: 'taken@gmail.com' }));
+    expect(taken.status).toBe(200); // still logs in
+    expect(taken.body.user.email).toBe('ada@gmail.com');
+  });
+
+  it('refuses a disabled account (403)', async () => {
+    const first = await googleLogin(googleToken());
+    await pool.query('UPDATE users SET disabled_at = NOW() WHERE id = $1', [first.body.user.id]);
+    expect((await googleLogin(googleToken())).status).toBe(403);
+  });
 });

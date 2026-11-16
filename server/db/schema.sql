@@ -153,3 +153,65 @@ CREATE INDEX IF NOT EXISTS idx_ticket_comments_ticket_id ON ticket_comments(tick
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
 ALTER TABLE users ADD CONSTRAINT users_role_check
     CHECK (role IN ('user', 'technician', 'admin', 'owner'));
+
+-- ---------------------------------------------------------------------------
+-- 2026-11-15: Disabled accounts
+-- Accounts are disabled, not deleted, so their tickets and comments stay.
+-- Empty = active. A time = disabled since then (can't log in; sessions revoked).
+-- ---------------------------------------------------------------------------
+ALTER TABLE users ADD COLUMN IF NOT EXISTS disabled_at TIMESTAMPTZ;
+
+-- ---------------------------------------------------------------------------
+-- 2026-11-15: Ticket history ("who changed what, and when"), shown on the ticket itself
+-- One row per change. Values are saved as the TEXT that was shown at the time
+-- (e.g. the assignee's name), so history still reads correctly if a name changes later.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ticket_events (
+    id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    ticket_id  INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    actor_id   INTEGER NOT NULL REFERENCES users(id),            -- who did it
+    action     TEXT NOT NULL CHECK (action IN ('created', 'changed')),
+    field      TEXT CHECK (field IN ('title', 'description', 'status', 'priority', 'category', 'assignee')),
+    old_value  TEXT,                                             -- empty for 'created', or when it was blank
+    new_value  TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    -- 'created' rows have no field; 'changed' rows must say which field changed
+    CONSTRAINT ticket_events_field_matches_action
+        CHECK ((action = 'created' AND field IS NULL) OR (action = 'changed' AND field IS NOT NULL))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ticket_events_ticket_id ON ticket_events(ticket_id);
+
+-- ---------------------------------------------------------------------------
+-- 2026-11-15: Account history (role changes, disable, enable)
+-- actor_id is empty when the change came from a server command (make-admin / make-owner).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS account_events (
+    id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id),            -- whose account
+    actor_id   INTEGER REFERENCES users(id),                     -- who did it (empty = server command)
+    action     TEXT NOT NULL CHECK (action IN ('role_changed', 'disabled', 'enabled')),
+    old_value  TEXT,                                             -- e.g. 'technician'
+    new_value  TEXT,                                             -- e.g. 'admin'
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_account_events_user_id ON account_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_account_events_created_at ON account_events(created_at);
+
+-- ---------------------------------------------------------------------------
+-- 2026-11-15: Editable comments, with every earlier version kept
+-- edited_at = when the comment was last edited (empty = never).
+-- comment_edits = one row per edit, holding the text as it was BEFORE that edit.
+-- Only the author can edit, so the editor is always the comment's author.
+-- ---------------------------------------------------------------------------
+ALTER TABLE ticket_comments ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS comment_edits (
+    id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    comment_id INTEGER NOT NULL REFERENCES ticket_comments(id) ON DELETE CASCADE,
+    old_body   TEXT NOT NULL,
+    edited_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_comment_edits_comment_id ON comment_edits(comment_id);

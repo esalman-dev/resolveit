@@ -23,6 +23,16 @@ const REFRESH_DAYS = 30;             // "stay logged in" window; resets every ti
 const MAX_SESSION_DAYS = 90;         // hard limit: log in again after 90 days, however active you are
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REFRESH_COOKIE = 'resolveit_refresh';
+const MAX_NAME = 100;                // characters
+const MAX_EMAIL = 254;               // the longest an email address can legally be
+const MAX_PASSWORD_BYTES = 72;       // bcrypt silently ignores everything after 72 bytes, so refuse longer ones
+
+// A real bcrypt hash of a throwaway password, made once when the server starts.
+// Login compares against it when the email doesn't exist, so "unknown email" takes as long
+// as "wrong password" (~0.25 s). Otherwise the speed of the answer would reveal which emails
+// have accounts, even though the message is the same.
+const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', SALT_ROUNDS);
+const DISABLED_MESSAGE = 'This account has been disabled. Contact an administrator.';
 
 const cookieOptions = {
   httpOnly: true,                                // JavaScript can't read it, so an XSS bug can't steal it
@@ -74,19 +84,28 @@ function endSession(res, status, error) {
 
 // POST /api/auth/register: create a new account
 router.post('/register', signupLimiter, async (req, res) => {
-  const name = req.body.name?.trim();
-  const email = req.body.email?.trim().toLowerCase(); // so "Bob@X.com" and "bob@x.com" are the same account
-  const password = req.body.password;
+  const body = req.body ?? {};
+  // typeof checks: someone could send a number or a list instead of text
+  const name = typeof body.name === 'string' ? body.name.trim() : '';
+  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''; // "Bob@X.com" = "bob@x.com"
+  const password = typeof body.password === 'string' ? body.password : '';
 
   // Validate input before touching the database
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'Name, email, and password are required' }); // 400 = Bad Request
   }
-  if (!/^\S+@\S+\.\S+$/.test(email)) {
+  if (name.length > MAX_NAME) {
+    return res.status(400).json({ error: `Name must be ${MAX_NAME} characters or fewer` });
+  }
+  if (email.length > MAX_EMAIL || !/^\S+@\S+\.\S+$/.test(email)) {
     return res.status(400).json({ error: 'Please enter a valid email address' });
   }
   if (password.length < 8) {
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  // Bytes, not characters: an emoji is 1 character but 4 bytes, and bcrypt counts bytes
+  if (Buffer.byteLength(password, 'utf8') > MAX_PASSWORD_BYTES) {
+    return res.status(400).json({ error: 'Password is too long (maximum 72 bytes, about 72 letters)' });
   }
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS); // never store the real password
@@ -113,22 +132,26 @@ router.post('/register', signupLimiter, async (req, res) => {
 
 // POST /api/auth/login: check email + password, hand back a token
 router.post('/login', loginLimiter, async (req, res) => {
-  const email = req.body.email?.trim().toLowerCase();
-  const password = req.body.password;
+  const body = req.body ?? {};
+  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+  const password = typeof body.password === 'string' ? body.password : '';
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
   }
 
   const result = await pool.query(
-    'SELECT id, name, email, role, password_hash FROM users WHERE email = $1',
+    'SELECT id, name, email, role, password_hash, disabled_at FROM users WHERE email = $1',
     [email]
   );
   const user = result.rows[0];
 
   // bcrypt.compare hashes the attempt with the stored salt and checks for a match.
-  // Google-only accounts have no password_hash, so they can't log in this way.
-  const passwordOk = user?.password_hash && (await bcrypt.compare(password, user.password_hash));
+  // ALWAYS run it, even when there's no such user (against DUMMY_HASH), so every failed
+  // login takes the same time. Google-only accounts have no password_hash, so they can't
+  // log in this way either.
+  const matches = await bcrypt.compare(password, user?.password_hash ?? DUMMY_HASH);
+  const passwordOk = Boolean(user?.password_hash) && matches;
 
   // Same message whether the email or the password was wrong, so attackers
   // can't use this form to discover which emails have accounts
@@ -136,7 +159,12 @@ router.post('/login', loginLimiter, async (req, res) => {
     return res.status(401).json({ error: 'Invalid email or password' });
   }
 
-  const { password_hash, ...safeUser } = user; // strip the hash before sending the user back
+  // Only said AFTER a correct password, so it doesn't reveal anything to a stranger
+  if (user.disabled_at) {
+    return res.status(403).json({ error: DISABLED_MESSAGE });
+  }
+
+  const { password_hash, disabled_at, ...safeUser } = user; // strip internal fields before sending the user back
   res.json({ user: safeUser, token: await startSession(res, safeUser) });
 });
 
@@ -148,7 +176,7 @@ router.post('/google', loginLimiter, async (req, res) => {
   if (!clientId) {
     return res.status(503).json({ error: 'Google sign-in is not set up on this server' });
   }
-  const { credential } = req.body;
+  const { credential } = req.body ?? {};
   if (!credential) {
     return res.status(400).json({ error: 'Missing Google credential' });
   }
@@ -163,38 +191,62 @@ router.post('/google', loginLimiter, async (req, res) => {
     return res.status(401).json({ error: 'Google sign-in failed, please try again' });
   }
 
-  const fields = 'id, name, email, role';
+  const fields = 'id, name, email, role, disabled_at';
+  const googleEmail = google.email?.toLowerCase();
 
   // 2. Returning Google user? Match on Google's permanent ID.
   let result = await pool.query(`SELECT ${fields} FROM users WHERE google_id = $1`, [google.sub]);
   let user = result.rows[0];
 
-  if (!user) {
+  if (user) {
+    // Keep the email in sync if they changed it at Google (only a verified one).
+    // If another ResolveIT account already uses the new email, the UNIQUE rule refuses (23505)
+    // and we simply keep the old email: logging in matters more than the sync.
+    if (google.email_verified && googleEmail && googleEmail !== user.email) {
+      try {
+        result = await pool.query(`UPDATE users SET email = $1 WHERE id = $2 RETURNING ${fields}`, [googleEmail, user.id]);
+        user = result.rows[0];
+      } catch (err) {
+        if (err.code !== '23505') throw err;
+      }
+    }
+  } else {
     // Only trust the email if Google has verified the person owns it. Otherwise someone could
     // create a Google account using YOUR email address and take over your ResolveIT account.
     if (!google.email_verified) {
       return res.status(401).json({ error: 'Your Google email address is not verified' });
     }
-    const email = google.email.toLowerCase();
 
-    // 3. Already signed up with a password using this email? Link Google to that account.
+    // 3. Already signed up with a password using this email? Link Google to that account,
+    //    but ONLY if it isn't linked to a Google account yet ("AND google_id IS NULL").
+    //    Otherwise a second Google account with the same email would silently replace the first.
     result = await pool.query(
-      `UPDATE users SET google_id = $1 WHERE email = $2 RETURNING ${fields}`,
-      [google.sub, email]
+      `UPDATE users SET google_id = $1 WHERE email = $2 AND google_id IS NULL RETURNING ${fields}`,
+      [google.sub, googleEmail]
     );
     user = result.rows[0];
 
-    // 4. Brand-new person: create the account (no password, role defaults to 'user')
     if (!user) {
+      const taken = await pool.query('SELECT 1 FROM users WHERE email = $1', [googleEmail]);
+      if (taken.rowCount > 0) {
+        // The email exists but is already linked to a DIFFERENT Google account
+        return res.status(409).json({ error: 'This email is already linked to a different Google account' });
+      }
+
+      // 4. Brand-new person: create the account (no password, role defaults to 'user')
       result = await pool.query(
         `INSERT INTO users (name, email, google_id) VALUES ($1, $2, $3) RETURNING ${fields}`,
-        [google.name || email.split('@')[0], email, google.sub]
+        [(google.name || googleEmail.split('@')[0]).slice(0, MAX_NAME), googleEmail, google.sub]
       );
       user = result.rows[0];
     }
   }
 
-  res.json({ user, token: await startSession(res, user) });
+  if (user.disabled_at) {
+    return res.status(403).json({ error: DISABLED_MESSAGE });
+  }
+  const { disabled_at, ...safeUser } = user;
+  res.json({ user: safeUser, token: await startSession(res, safeUser) });
 });
 
 // POST /api/auth/refresh: "I have a refresh cookie, give me a new access token"
@@ -206,7 +258,8 @@ router.post('/refresh', async (req, res) => {
   }
 
   const result = await pool.query(
-    `SELECT rt.id, rt.user_id, rt.expires_at, rt.revoked_at, rt.session_started_at, u.name, u.email, u.role
+    `SELECT rt.id, rt.user_id, rt.expires_at, rt.revoked_at, rt.session_started_at,
+            u.name, u.email, u.role, u.disabled_at
        FROM refresh_tokens rt
        JOIN users u ON u.id = rt.user_id
       WHERE rt.token_hash = $1`,
@@ -227,6 +280,11 @@ router.post('/refresh', async (req, res) => {
       [session.user_id]
     );
     return endSession(res, 401, 'Session ended for your security, please log in again');
+  }
+
+  // A disabled account can't refresh. (Disabling also revokes every session, so this is a backstop.)
+  if (session.disabled_at) {
+    return endSession(res, 401, DISABLED_MESSAGE);
   }
 
   // Covers both limits: 30 days unused, and the 90-day maximum (expires_at is capped at login + 90 days)
@@ -267,13 +325,17 @@ router.post('/logout', async (req, res) => {
 // GET /api/auth/me: "who am I?" Protected: requireAuth runs first and sets req.user
 router.get('/me', requireAuth, async (req, res) => {
   const result = await pool.query(
-    'SELECT id, name, email, role, created_at FROM users WHERE id = $1',
+    'SELECT id, name, email, role, created_at, disabled_at FROM users WHERE id = $1',
     [req.user.id]
   );
-  if (!result.rows[0]) {
-    return res.status(404).json({ error: 'User no longer exists' });
+  const user = result.rows[0];
+  // 401 (not 404) for a deleted or disabled account, the same as requireRole:
+  // either way the answer is "your session is no good, log in again"
+  if (!user || user.disabled_at) {
+    return res.status(401).json({ error: user ? DISABLED_MESSAGE : 'Account no longer exists' });
   }
-  res.json({ user: result.rows[0] });
+  const { disabled_at, ...safeUser } = user;
+  res.json({ user: safeUser });
 });
 
 export default router;

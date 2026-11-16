@@ -7,7 +7,7 @@
 // another. So the website has NO way to create or remove an owner (see roles.js).
 // Running this script needs access to the server and its database, which is exactly
 // who should decide who the owners are.
-import pool from '../db/index.js';
+import pool, { withTransaction } from '../db/index.js';
 
 const args = process.argv.slice(2);
 const remove = args.includes('--remove');
@@ -19,25 +19,34 @@ if (!email) {
   process.exit(1);
 }
 
-try {
-  // Removing only works on someone who IS an owner (so --remove can't accidentally promote anyone)
-  const result = remove
-    ? await pool.query(
-        "UPDATE users SET role = 'admin' WHERE email = $1 AND role = 'owner' RETURNING name, email",
-        [email]
-      )
-    : await pool.query("UPDATE users SET role = 'owner' WHERE email = $1 RETURNING name, email", [email]);
+const newRole = remove ? 'admin' : 'owner';
 
-  if (result.rowCount === 0) {
-    console.error(
-      remove
-        ? `${email} isn't an owner (or has no account). Nothing changed.`
-        : `No account found for ${email}. Sign up on the website first, then run this again.`
+try {
+  // Change the role AND write it to the account history, all or nothing (see db/index.js)
+  const outcome = await withTransaction(async (db) => {
+    const found = await db.query('SELECT id, name, email, role FROM users WHERE email = $1', [email]);
+    const user = found.rows[0];
+    if (!user) return { error: `No account found for ${email}. Sign up on the website first, then run this again.` };
+    // --remove only works on someone who IS an owner, so it can never accidentally promote anyone
+    if (remove && user.role !== 'owner') return { error: `${email} isn't an owner. Nothing changed.` };
+    if (user.role === newRole) return { user, unchanged: true };
+
+    await db.query('UPDATE users SET role = $1 WHERE id = $2', [newRole, user.id]);
+    // actor_id NULL = "done by a server command", shown as "server" in the history
+    await db.query(
+      `INSERT INTO account_events (user_id, actor_id, action, old_value, new_value)
+       VALUES ($1, NULL, 'role_changed', $2, $3)`,
+      [user.id, user.role, newRole]
     );
+    return { user };
+  });
+
+  if (outcome.error) {
+    console.error(outcome.error);
     process.exitCode = 1;
   } else {
-    const user = result.rows[0];
-    console.log(remove ? `Done: ${user.name} (${user.email}) is now an admin.` : `Done: ${user.name} (${user.email}) is now an owner.`);
+    const { name } = outcome.user;
+    console.log(outcome.unchanged ? `${name} (${email}) is already an ${newRole}.` : `Done: ${name} (${email}) is now an ${newRole}.`);
     console.log('Permissions change immediately. Their screen updates after they refresh the page or log in again.');
   }
 } finally {

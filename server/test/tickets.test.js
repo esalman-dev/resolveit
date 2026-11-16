@@ -37,13 +37,13 @@ describe('POST /api/tickets', () => {
     const res = await request(app)
       .post('/api/tickets')
       .set(bearer(token))
-      .send({ title: '  Printer jam  ', description: 'Paper stuck', priority: 'high', category_id: printer });
+      .send({ title: '  Printer jam  ', description: 'Paper stuck', category_id: printer });
 
     expect(res.status).toBe(201);
     expect(res.body.ticket).toMatchObject({
       title: 'Printer jam', // spaces trimmed
       status: 'open',
-      priority: 'high',
+      priority: 'medium',
       category_id: printer,
       category_name: 'Printer',
       created_by: user.id,
@@ -66,10 +66,30 @@ describe('POST /api/tickets', () => {
     expect(ticket).toMatchObject({ created_by: user.id, status: 'open', assigned_to: null });
   });
 
+  it('ignores a priority sent by a regular user (staff set priority)', async () => {
+    const { token } = await signUp();
+    const ticket = await createTicket(token, { priority: 'urgent' });
+    expect(ticket.priority).toBe('medium');
+  });
+
+  it('lets staff choose the priority when they open a ticket', async () => {
+    const tech = await signUpAs('technician', 'tech@example.com');
+    const ticket = await createTicket(tech.token, { priority: 'high' });
+    expect(ticket.priority).toBe('high');
+  });
+
+  it('rejects an unknown priority from staff (400)', async () => {
+    const tech = await signUpAs('technician', 'tech@example.com');
+    const res = await request(app)
+      .post('/api/tickets')
+      .set(bearer(tech.token))
+      .send({ title: 'Wi-Fi is down', description: 'Laptop will not connect', priority: 'critical' });
+    expect(res.status).toBe(400);
+  });
+
   it.each([
     ['a missing title', { title: '' }],
     ['a blank description', { description: '   ' }],
-    ['an unknown priority', { priority: 'critical' }],
     ['a title that is too long', { title: 'x'.repeat(201) }],
     ['a description that is too long', { description: 'x'.repeat(5001) }],
     ['a category that does not exist', { category_id: 99999 }],
@@ -251,11 +271,52 @@ describe('PATCH /api/tickets/:id', () => {
     expect(reopened.body.ticket.resolved_at).toBeNull();
   });
 
-  it('does not let a regular user update their own ticket (403)', async () => {
+  it('lets the creator close (resolve) their own ticket', async () => {
     const { token } = await signUp();
     const ticket = await createTicket(token);
     const res = await request(app).patch(`/api/tickets/${ticket.id}`).set(bearer(token)).send({ status: 'resolved' });
+    expect(res.status).toBe(200);
+    expect(res.body.ticket.status).toBe('resolved');
+  });
+
+  it.each([
+    ['set another status', { status: 'in_progress' }],
+    ['change the priority', { priority: 'urgent' }],
+    ['assign it', { assigned_to: 1 }],
+  ])('does not let the creator %s (403)', async (_label, body) => {
+    const { token } = await signUp();
+    const ticket = await createTicket(token);
+    const res = await request(app).patch(`/api/tickets/${ticket.id}`).set(bearer(token)).send(body);
     expect(res.status).toBe(403);
+  });
+
+  it('lets the creator edit the title and description while the ticket is open', async () => {
+    const { token } = await signUp();
+    const ticket = await createTicket(token);
+    const res = await request(app)
+      .patch(`/api/tickets/${ticket.id}`)
+      .set(bearer(token))
+      .send({ title: 'Wi-Fi drops every hour', description: 'Since Monday' });
+    expect(res.status).toBe(200);
+    expect(res.body.ticket).toMatchObject({ title: 'Wi-Fi drops every hour', description: 'Since Monday' });
+  });
+
+  it('stops the creator editing once staff have started on it (403)', async () => {
+    const { token } = await signUp();
+    const admin = await signUpAdmin();
+    const ticket = await createTicket(token);
+    await request(app).patch(`/api/tickets/${ticket.id}`).set(bearer(admin.token)).send({ status: 'in_progress' });
+
+    const res = await request(app).patch(`/api/tickets/${ticket.id}`).set(bearer(token)).send({ title: 'New title' });
+    expect(res.status).toBe(403);
+  });
+
+  it("gives another user a 404 for editing someone else's ticket", async () => {
+    const alice = await signUp({ email: 'alice@example.com' });
+    const bob = await signUp({ email: 'bob@example.com' });
+    const ticket = await createTicket(alice.token);
+    const res = await request(app).patch(`/api/tickets/${ticket.id}`).set(bearer(bob.token)).send({ status: 'resolved' });
+    expect(res.status).toBe(404);
   });
 
   it.each([

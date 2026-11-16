@@ -9,6 +9,7 @@
 //   - owners can't demote each other (another owner isn't below you)
 //   - nobody can make someone an owner from the website (no role ranks above owner)
 //     -> owners are created only on the server: npm run make-owner -- email
+// KEEP IN SYNC with client/src/roles.js (a copy, used only to tidy the screen).
 
 export const ROLES = ['user', 'technician', 'admin', 'owner']; // must match the CHECK in schema.sql
 
