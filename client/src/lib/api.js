@@ -74,7 +74,7 @@ function withRefreshLock(fn) {
 
 /**
  * Calls the API and returns the response data. This is what components use.
- * Throws an Error with the server's message when a request fails.
+ * Throws an Error with the server's message (and its HTTP status as `err.status`) when a request fails.
  *
  * If the access token has expired (401), it refreshes once and retries, so the user never
  * notices. If the refresh fails too, the session is over and onSessionLost runs.
@@ -93,7 +93,7 @@ export async function apiFetch(path, options) {
   }
 
   if (!res.ok) {
-    throw new Error(data.error || `Request failed (${res.status})`)
+    throw Object.assign(new Error(data.error || `Request failed (${res.status})`), { status: res.status })
   }
   return data
 }

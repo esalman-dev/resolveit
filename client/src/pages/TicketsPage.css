@@ -39,8 +39,8 @@
 }
 
 .tickets-page__clear {
-  padding-bottom: var(--space-2);
-  font-size: 14px;
+  align-self: flex-end; /* sits on the same line as the bottom of the filter boxes */
+  margin-bottom: 2px;
 }
 
 .tickets-page__count {

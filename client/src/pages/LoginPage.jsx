@@ -70,7 +70,7 @@ function LoginPage({ onLoggedIn }) {
 
         {error && <p className="error" role="alert">{error}</p>}
 
-        <button type="submit" disabled={busy}>
+        <button type="submit" className="primary" disabled={busy}>
           {busy ? 'Please wait…' : isRegister ? 'Create account' : 'Log in'}
         </button>
       </form>

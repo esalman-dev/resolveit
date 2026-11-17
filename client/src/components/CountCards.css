@@ -1,0 +1,57 @@
+/* Count cards: "number + label" filter buttons (CountCards.jsx). Colors come from theme.css. */
+
+/* As many cards per row as fit; two per row on phones. */
+.count-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-3);
+}
+
+.count-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left-width: 4px; /* the colored edge */
+  border-radius: var(--radius);
+}
+
+.count-card:hover {
+  border-color: var(--border-strong);
+}
+
+/* The selected card, i.e. the active filter. */
+.count-card[aria-pressed='true'] {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+
+.count-card__number {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.count-card__label {
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+}
+
+/* The colored edge. The same colors as the matching badges, so a card and its rows agree. */
+.count-card--green  { border-left-color: var(--status-resolved-text); }
+.count-card--orange { border-left-color: var(--priority-high-text); }
+.count-card--blue   { border-left-color: var(--status-open-text); }
+.count-card--amber  { border-left-color: var(--status-progress-text); }
+.count-card--gray   { border-left-color: var(--border-input); }
+.count-card--red    { border-left-color: var(--error-text); }
+.count-card--indigo { border-left-color: var(--color-primary); }
+
+@media (max-width: 768px) {
+  .count-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

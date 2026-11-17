@@ -112,6 +112,8 @@ function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, bu
         <Fact label="Last updated"><RelativeTime date={ticket.updated_at} /></Fact>
       </dl>
 
+      <StepsTried steps={ticket.steps_tried ?? []} />
+
       {/* Closing marks the ticket resolved. Staff do that with the Status dropdown instead. */}
       {!staff && isCreator && ticket.status !== 'resolved' && (
         <button type="button" className="danger-outline ticket-page__close" disabled={busy} onClick={onClose}>
@@ -132,6 +134,28 @@ function Fact({ label, id, children }) {
       <dt id={id}>{label}</dt>
       <dd>{children}</dd>
     </div>
+  )
+}
+
+/**
+ * The AI's suggested steps, each marked tried or not, on tickets opened through Get help.
+ * Why: the technician sees what the user already did, so they don't ask them to do it again.
+ * Nothing shows for other tickets, or when the problem went straight to a technician.
+ */
+function StepsTried({ steps }) {
+  if (steps.length === 0) return null
+  return (
+    <section className="ticket-page__steps" aria-labelledby="ticket-steps-tried">
+      <h3 id="ticket-steps-tried" className="ticket-page__steps-heading">Steps tried</h3>
+      <ol>
+        {steps.map((step, index) => (
+          <li key={index} className={step.tried ? 'ticket-page__step--tried' : 'ticket-page__step--skipped'}>
+            <span className="ticket-page__step-title">{step.title}</span>
+            <span className="ticket-page__step-mark">{step.tried ? '✓ Tried' : 'Not tried'}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
   )
 }
 

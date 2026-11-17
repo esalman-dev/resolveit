@@ -1,13 +1,17 @@
-// Tickets page: the ticket list. "My tickets" for users (only their own), "Tickets" for staff
-// (everyone's).
+// Tickets page: the ticket list, in two scopes.
+//   scope 'mine' (/my-tickets, everyone): "My tickets", the tickets you opened.
+//   scope 'all'  (/tickets, staff only):  "Tickets", every ticket, the work queue.
 //
 // Search and filters run in the browser on the full list. They're kept in the address
 // (e.g. /tickets?status=open), so a refresh keeps them and a filtered view can be shared.
+// The staff queue also gets count cards across the top (Open, In progress, Resolved, Assigned
+// to me, Unassigned) that double as one-click filters, like the AI help screen.
 
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { apiFetch } from '../lib/api.js'
 import { PriorityBadge, StatusBadge } from '../components/Badges.jsx'
+import CountCards from '../components/CountCards.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import RelativeTime from '../components/RelativeTime.jsx'
 import { isStaff } from '../lib/roles.js'
@@ -16,17 +20,20 @@ import { usePageTitle } from '../lib/usePageTitle.js'
 import './TicketsPage.css'
 
 /** The filter names used in the address, e.g. ?q=wifi&status=open&mine=1 */
-const FILTERS = ['q', 'status', 'priority', 'category', 'mine']
+const FILTERS = ['q', 'status', 'priority', 'category', 'mine', 'unassigned']
 
 /**
  * The ticket list with search and filters.
  *
  * Note: the server already limits users to their own tickets. Hiding the Assignee column and
  * "Assigned to me" from users is only tidiness.
+ *
+ * @param {'mine' | 'all'} scope 'mine' = tickets you opened; 'all' = the staff queue
  */
-function TicketsPage({ currentUser }) {
+function TicketsPage({ currentUser, scope }) {
   const staff = isStaff(currentUser.role)
-  usePageTitle(staff ? 'Tickets' : 'My tickets')
+  const queue = staff && scope === 'all' // the staff work queue: count cards and "Assigned to me"
+  usePageTitle(queue ? 'Tickets' : 'My tickets')
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const [tickets, setTickets] = useState([])
@@ -35,10 +42,11 @@ function TicketsPage({ currentUser }) {
 
   const fetchTickets = useCallback(() => {
     apiFetch('/api/tickets')
-      .then((data) => setTickets(data.tickets))
+      // Staff get every ticket from the server; My tickets keeps only the ones you opened.
+      .then((data) => setTickets(queue ? data.tickets : data.tickets.filter((t) => t.created_by === currentUser.id)))
       .catch(() => setError("Couldn't load tickets."))
       .finally(() => setLoading(false))
-  }, [])
+  }, [queue, currentUser.id])
 
   useEffect(() => {
     fetchTickets()
@@ -57,6 +65,7 @@ function TicketsPage({ currentUser }) {
   const priority = params.get('priority') ?? ''
   const category = params.get('category') ?? ''
   const mine = params.get('mine') === '1'
+  const unassigned = params.get('unassigned') === '1'
   const filtering = FILTERS.some((name) => params.has(name))
 
   /**
@@ -85,8 +94,36 @@ function TicketsPage({ currentUser }) {
       (!status || t.status === status) &&
       (!priority || t.priority === priority) &&
       (!category || (category === 'none' ? !t.category_name : t.category_name === category)) &&
-      (!mine || t.assigned_to === currentUser.id)
+      (!mine || t.assigned_to === currentUser.id) &&
+      (!unassigned || isUnassigned(t))
   )
+
+  // --- Staff count cards ---
+  // Each card is a one-click filter. Choosing one replaces the other card filters (status,
+  // "Assigned to me", "Unassigned"); search, priority and category stay as they are.
+  const statusCount = (value) => tickets.filter((t) => t.status === value).length
+  const cards = [
+    { value: 'open', label: statusLabel('open'), count: statusCount('open'), tone: 'blue' },
+    { value: 'in_progress', label: statusLabel('in_progress'), count: statusCount('in_progress'), tone: 'amber' },
+    { value: 'resolved', label: statusLabel('resolved'), count: statusCount('resolved'), tone: 'green' },
+    { value: 'mine', label: 'Assigned to me', count: tickets.filter((t) => t.assigned_to === currentUser.id).length, tone: 'indigo' },
+    { value: 'unassigned', label: 'Unassigned', count: tickets.filter(isUnassigned).length, tone: 'gray' },
+  ]
+  const onlyOne = [status, mine, unassigned].filter(Boolean).length === 1
+  const selectedCard = !onlyOne ? '' : status || (mine ? 'mine' : 'unassigned')
+
+  function selectCard(value) {
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        for (const name of ['status', 'mine', 'unassigned']) next.delete(name)
+        if (value === 'mine' || value === 'unassigned') next.set(value, '1')
+        else if (value) next.set('status', value)
+        return next
+      },
+      { replace: true }
+    )
+  }
 
   if (loading) return <p className="hint">Loading tickets…</p>
   if (error) {
@@ -102,6 +139,8 @@ function TicketsPage({ currentUser }) {
 
   return (
     <div className="tickets-page">
+      {queue && <CountCards label="Filter tickets" cards={cards} selected={selectedCard} onSelect={selectCard} />}
+
       <div className="tickets-page__toolbar" role="search">
         <label className="tickets-page__search">
           Search
@@ -122,7 +161,7 @@ function TicketsPage({ currentUser }) {
           {categories.map((c) => <option key={c} value={c}>{c}</option>)}
           <option value="none">Not set</option>
         </FilterSelect>
-        {staff && (
+        {queue && (
           <label className="tickets-page__check">
             <input type="checkbox" checked={mine} onChange={(e) => setFilter('mine', e.target.checked ? '1' : '')} />
             Assigned to me
@@ -192,6 +231,9 @@ function FilterSelect({ label, value, onChange, children }) {
     </label>
   )
 }
+
+/** Nobody assigned, and still needs doing (a resolved ticket with nobody on it isn't work to pick up). */
+const isUnassigned = (ticket) => !ticket.assigned_to && ticket.status !== 'resolved'
 
 /** True if the search text is in the title, or is the ticket's number ("12" or "#12"). */
 function matchesSearch(ticket, q) {

@@ -1,0 +1,223 @@
+/*
+  Ask IT page: one question, one answer (AskItPage.jsx).
+
+  Desktop: the question box, the answer and recent questions on the left; a short note on the
+  right, like Get help. Phones: one column, with the note at the bottom.
+*/
+
+.ask-it {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.ask-it__main {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+/* --- The question box --- */
+
+.ask-it__card {
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.ask-it__heading {
+  margin: 0 0 var(--space-3);
+  font-size: 18px;
+}
+
+.ask-it textarea {
+  resize: vertical;
+}
+
+.ask-it__privacy {
+  margin: calc(-1 * var(--space-2)) 0 0; /* sits right under the box */
+}
+
+.ask-it__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.ask-it__actions .hint {
+  margin: 0;
+}
+
+/* Limit reached or AI unavailable: information, not an error. */
+.ask-it__notice {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-primary-soft);
+}
+
+/* --- The answer --- */
+
+.ask-it__answer {
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--status-resolved-text);
+  border-radius: var(--radius);
+}
+
+/* The edge follows the result: green while waiting or helped, orange if it didn't help,
+   indigo (on a light indigo card) when it needs a technician. */
+.ask-it__answer--still_broken {
+  border-left-color: var(--priority-high-text);
+}
+
+.ask-it__answer--escalated {
+  background: var(--color-primary-soft);
+  border-left-color: var(--color-primary);
+}
+
+.ask-it__answer h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 18px;
+}
+
+/* A heading that receives focus from the code, not the keyboard: no focus ring. */
+.ask-it__answer h2:focus {
+  outline: none;
+}
+
+.ask-it__question {
+  margin: 0 0 var(--space-3);
+  font-weight: 600;
+}
+
+.ask-it__text {
+  margin: 0 0 var(--space-3);
+  line-height: 1.6;
+  white-space: pre-wrap; /* keeps the answer's line breaks and numbered steps */
+  overflow-wrap: anywhere;
+}
+
+/* "Did this answer your question?" and what follows it. */
+.ask-it__feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.ask-it__feedback p {
+  flex: 1 1 100%;
+  margin: 0;
+  font-weight: 600;
+}
+
+.ask-it__feedback-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ask-it__thanks {
+  margin: 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+  color: var(--success-text);
+  font-weight: 600;
+}
+
+/* --- Recent questions --- */
+
+.ask-it__recent-heading {
+  margin: 0 0 var(--space-2);
+  font-size: 15px;
+}
+
+.ask-it__recent {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ask-it__recent details {
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.ask-it__recent summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  cursor: pointer;
+}
+
+.ask-it__recent-question {
+  flex: 1 1 200px;
+  font-weight: 600;
+}
+
+/* A recent question's status: a small pill, colored like the AI help results. */
+.ask-it__status {
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ask-it__status--pending      { background: var(--priority-low-bg);    color: var(--priority-low-text); }
+.ask-it__status--fixed        { background: var(--status-resolved-bg); color: var(--status-resolved-text); }
+.ask-it__status--still_broken { background: var(--priority-high-bg);   color: var(--priority-high-text); }
+.ask-it__status--escalated    { background: var(--status-open-bg);     color: var(--status-open-text); }
+
+.ask-it__recent details .ask-it__text {
+  margin-top: var(--space-3);
+}
+
+/* --- Side note --- */
+
+.ask-it__side {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.ask-it__side-heading {
+  margin: 0 0 var(--space-2);
+  font-size: 14px;
+  color: var(--text);
+}
+
+.ask-it__side ul {
+  margin: 0 0 var(--space-4);
+  padding: 0 0 var(--space-4) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.ask-it__side li + li {
+  margin-top: var(--space-2);
+}
+
+.ask-it__side p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* --- Phones --- */
+
+@media (max-width: 768px) {
+  .ask-it {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+}

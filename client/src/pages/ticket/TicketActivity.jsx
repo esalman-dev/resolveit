@@ -15,7 +15,7 @@ const MAX_COMMENT = 5000
  * @param onAddComment called with (text, isInternal); returns a promise that rejects on failure
  * @param onEditComment called with (commentId, text); returns a promise that rejects on failure
  */
-function TicketActivity({ history, comments, currentUser, staff, onAddComment, onEditComment }) {
+function TicketActivity({ history, comments, stepsTried = [], currentUser, staff, onAddComment, onEditComment }) {
   // One list, sorted by time. History lines are small and gray; comments are full cards.
   const items = [
     ...history.map((event) => ({ kind: 'event', at: event.created_at, key: `e${event.id}`, event })),
@@ -29,7 +29,7 @@ function TicketActivity({ history, comments, currentUser, staff, onAddComment, o
         {items.map((item) =>
           item.kind === 'event' ? (
             <li key={item.key} className="activity__event">
-              <strong>{item.event.actor_name}</strong> {describeEvent(item.event)} · <RelativeTime date={item.at} />
+              <strong>{item.event.actor_name}</strong> {describeEvent(item.event, stepsTried)} · <RelativeTime date={item.at} />
             </li>
           ) : (
             <li key={item.key} className="activity__item">
@@ -195,13 +195,20 @@ function CommentForm({ staff, onAdd }) {
   )
 }
 
+/** The words for a ticket opened through Get help, from its steps marked tried or not. */
+function describeGetHelp(steps) {
+  if (steps.length === 0) return 'opened this ticket through Get help; it needed a technician'
+  const tried = steps.filter((s) => s.tried).length
+  return `opened this ticket through Get help after trying ${tried} of ${steps.length} suggested steps`
+}
+
 /**
  * One history entry in words, after the person's name.
  * @example describeEvent({ action: 'changed', field: 'status', old_value: 'open', new_value: 'resolved' })
  * // "changed the status from Open to Resolved"
  */
-function describeEvent({ action, field, old_value: from, new_value: to }) {
-  if (action === 'created') return 'opened this ticket'
+function describeEvent({ action, field, old_value: from, new_value: to }, stepsTried = []) {
+  if (action === 'created') return to === 'get_help' ? describeGetHelp(stepsTried) : 'opened this ticket'
   switch (field) {
     case 'status':
       return `changed the status from ${statusLabel(from)} to ${statusLabel(to)}`

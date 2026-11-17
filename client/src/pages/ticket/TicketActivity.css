@@ -91,7 +91,7 @@
 }
 
 .comment__edited {
-  font-size: 14px;
+  padding: 0 var(--space-2); /* a small button inside the comment header line */
 }
 
 .comment__body {

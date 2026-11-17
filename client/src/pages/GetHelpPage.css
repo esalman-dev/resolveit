@@ -1,8 +1,8 @@
 /*
-  Get help page: the New Ticket form (GetHelpPage.jsx).
+  Get help page: the form, the AI's steps, and the results (GetHelpPage.jsx).
 
-  Desktop: the form on the left and a tips panel on the right, the same shape as the ticket page.
-  Phones: one column, with the tips under the form.
+  Desktop: the form (and the steps below it) on the left, a tips panel on the right, the same
+  shape as the ticket page. Phones: one column, with the tips at the bottom.
 */
 
 .get-help {
@@ -10,6 +10,54 @@
   grid-template-columns: minmax(0, 1fr) 240px; /* matches the ticket page's facts panel */
   gap: var(--space-6);
   align-items: start;
+}
+
+/* --- The main column: the form, then the steps or a result --- */
+
+.get-help__main {
+  display: grid;
+  gap: var(--space-5);
+}
+
+/* --- Unfinished requests (above the form) --- */
+
+.get-help__unfinished {
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-primary-soft);
+  border-radius: var(--radius);
+}
+
+.get-help__unfinished-heading {
+  margin: 0 0 var(--space-2);
+  font-size: 15px;
+}
+
+.get-help__unfinished ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One request: title, then "2 hours ago", then Continue on the right. Wraps on phones. */
+.get-help__unfinished li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+
+.get-help__unfinished-title {
+  flex: 1 1 180px;
+  font-weight: 600;
+}
+
+/* "Draft restored. Clear" under the form's hint. */
+.get-help__draft {
+  margin: 0 0 var(--space-3);
+  font-size: 14px;
+  color: var(--text-muted);
 }
 
 /* --- The form --- */
@@ -30,10 +78,147 @@
   resize: vertical; /* taller is useful; wider would break the layout */
 }
 
-/* The Submit button sits on the right, where the eye ends up after filling in the form. */
+/* The fields' group box: no border, so it looks like a plain form. */
+.get-help__fields {
+  display: grid;
+  gap: inherit;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0; /* a fieldset is otherwise as wide as its widest child */
+}
+
+/* Locked (steps showing, or sending): every box looks the same, gray and clearly read-only.
+   Why: browsers gray out a locked dropdown but not locked text boxes, which looked editable. */
+.get-help__fields:disabled input,
+.get-help__fields:disabled select,
+.get-help__fields:disabled textarea {
+  background: var(--page-bg);
+  color: var(--text-muted); /* 4.6 : 1 on this background */
+  border-color: var(--border-strong);
+  opacity: 1; /* some browsers fade disabled fields further; keep the text readable */
+  cursor: not-allowed;
+}
+
+.get-help__fields .hint {
+  margin: calc(-1 * var(--space-2)) 0 0; /* sits right under the Details box */
+}
+
+/* Buttons sit on the right, where the eye ends up after filling in the form. */
 .get-help__actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.get-help__actions .hint {
+  margin: 0;
+}
+
+/* "Automatic help isn't available right now": information, not an error. */
+.get-help__notice {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-primary-soft);
+  color: var(--text);
+}
+
+/* --- The steps --- */
+
+.get-help__steps {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+  padding: 0;
+  list-style: none; /* flex items lose the list's numbers, so each title shows its own */
+}
+
+.get-help__step {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.get-help__step > div {
+  flex: 1 1 260px;
+}
+
+.get-help__step p {
+  margin: var(--space-1) 0 0;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* The tick box sits beside its words, not above them like the other labels. */
+.get-help__tried {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.get-help__tried input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+/* --- Results: fixed, or needs a technician --- */
+
+.get-help__result {
+  padding: var(--space-5);
+  border-radius: var(--radius);
+  background: var(--color-primary-soft);
+}
+
+.get-help__result--fixed {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.get-help__result h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 18px;
+}
+
+.get-help__result p {
+  margin: 0 0 var(--space-3);
+}
+
+.get-help__result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* A link that looks like the main button. */
+.get-help__view {
+  display: inline-block;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.get-help__view:hover {
+  background: var(--color-primary-hover);
+}
+
+/* Headings that receive focus from the code, not the keyboard: no focus ring. */
+.get-help h2[tabindex='-1']:focus {
+  outline: none;
 }
 
 /* --- Tips panel --- */

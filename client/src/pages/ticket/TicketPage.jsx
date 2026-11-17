@@ -242,6 +242,7 @@ function TicketPage({ currentUser }) {
         <TicketActivity
           history={history}
           comments={comments}
+          stepsTried={ticket.steps_tried}
           currentUser={currentUser}
           staff={staff}
           onAddComment={addComment}

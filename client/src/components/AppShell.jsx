@@ -47,8 +47,18 @@ function AppShell({ user, serverStatus, onLogout }) {
         {/* Clicking any link closes the phone menu. NavLink marks the current page with
             aria-current="page", which the CSS uses to highlight it. */}
         <nav id="app-shell-nav" className="app-shell__nav" aria-label="Main" onClick={() => setMenuOpen(false)}>
+          {/* Grouped by who it's for, so everyone can tell the parts apart. */}
+          <p className="app-shell__heading">Help</p>
           <NavLink className="app-shell__link" to="/get-help">Get help</NavLink>
-          <NavLink className="app-shell__link" to="/tickets">{staff ? 'Tickets' : 'My tickets'}</NavLink>
+          <NavLink className="app-shell__link" to="/ask">Ask IT</NavLink>
+          <NavLink className="app-shell__link" to="/my-tickets">My tickets</NavLink>
+          {staff && (
+            <>
+              <p className="app-shell__heading">Staff</p>
+              <NavLink className="app-shell__link" to="/tickets">Tickets</NavLink>
+              <NavLink className="app-shell__link" to="/ai-help">AI help</NavLink>
+            </>
+          )}
           {admin && (
             <>
               <p className="app-shell__heading">Admin</p>

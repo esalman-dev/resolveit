@@ -121,8 +121,7 @@
 }
 
 .ticket-page__take {
-  margin-top: var(--space-1);
-  font-size: 14px;
+  margin-top: var(--space-2);
 }
 
 .ticket-page__close {
@@ -153,6 +152,45 @@
 }
 
 /* --- Phones --- */
+
+/* --- Steps tried (tickets opened through Get help) --- */
+
+.ticket-page__steps {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.ticket-page__steps-heading {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.ticket-page__steps ol {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.ticket-page__step-title {
+  display: block;
+}
+
+.ticket-page__step-mark {
+  font-size: var(--font-size-small);
+  font-weight: 600;
+}
+
+.ticket-page__step--tried .ticket-page__step-mark {
+  color: var(--status-resolved-text);
+}
+
+.ticket-page__step--skipped .ticket-page__step-mark {
+  color: var(--text-muted);
+}
 
 @media (max-width: 768px) {
   .ticket-page__layout {

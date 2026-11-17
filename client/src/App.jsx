@@ -7,6 +7,9 @@
 import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router'
 import { apiFetch, refreshSession, logout, setOnSessionLost } from './lib/api.js'
+import { clearAllDrafts } from './lib/drafts.js'
+import AiHelpPage from './pages/AiHelpPage.jsx'
+import AskItPage from './pages/AskItPage.jsx'
 import AppShell from './components/AppShell.jsx'
 import CategoriesPage from './pages/CategoriesPage.jsx'
 import EmptyState from './components/EmptyState.jsx'
@@ -47,6 +50,7 @@ function App() {
 
   async function handleLogout() {
     await logout() // the server revokes the refresh token and deletes the cookie
+    clearAllDrafts() // unsent Get help text shouldn't stay on a shared computer
     setUser(null)
     navigate('/') // the next person to log in starts on their own home page
   }
@@ -76,9 +80,16 @@ function App() {
     <Routes>
       <Route element={<AppShell user={user} serverStatus={serverStatus} onLogout={handleLogout} />}>
         <Route index element={<Navigate to={home} replace />} />
-        <Route path="get-help" element={<GetHelpPage />} />
-        <Route path="tickets" element={<TicketsPage currentUser={user} />} />
+        <Route path="get-help" element={<GetHelpPage currentUser={user} />} />
+        <Route path="ask" element={<AskItPage currentUser={user} />} />
+        {/* key: the two lists are separate screens, so switching between them starts fresh. */}
+        <Route path="my-tickets" element={<TicketsPage key="mine" scope="mine" currentUser={user} />} />
+        <Route
+          path="tickets"
+          element={isStaff(user.role) ? <TicketsPage key="all" scope="all" currentUser={user} /> : <Navigate to="/my-tickets" replace />}
+        />
         <Route path="tickets/:id" element={<TicketPage currentUser={user} />} />
+        <Route path="ai-help" element={isStaff(user.role) ? <AiHelpPage /> : <Navigate to="/" replace />} />
         <Route path="admin/users" element={admin ? <UsersPage currentUser={user} /> : <Navigate to="/" replace />} />
         <Route path="admin/categories" element={admin ? <CategoriesPage /> : <Navigate to="/" replace />} />
         <Route path="*" element={<NotFoundPage />} />
