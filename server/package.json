@@ -9,6 +9,7 @@
     "start": "node index.js",
     "make-admin": "node scripts/make-admin.js",
     "make-owner": "node scripts/make-owner.js",
+    "eval": "node eval/run.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -16,6 +17,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.9.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",

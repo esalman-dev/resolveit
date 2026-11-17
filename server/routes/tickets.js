@@ -24,8 +24,8 @@ const STATUSES = ['open', 'in_progress', 'resolved'];
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 
 // Length limits, so nobody can store a 10 MB "title".
-const MAX_TITLE = 200;
-const MAX_DESCRIPTION = 5000;
+export const MAX_TITLE = 200;
+export const MAX_DESCRIPTION = 5000;
 const MAX_COMMENT = 5000;
 
 // Every route needs a login. Listing every role blocks no one, but requireRole refreshes
@@ -47,7 +47,7 @@ const TICKET_SELECT = `
          t.category_id, category.name AS category_name,
          t.created_by,  creator.name  AS created_by_name,
          t.assigned_to, assignee.name AS assigned_to_name,
-         t.created_at, t.updated_at, t.resolved_at
+         t.created_at, t.updated_at, t.resolved_at, t.steps_tried
     FROM tickets t
     JOIN users creator            ON creator.id  = t.created_by
     LEFT JOIN users assignee      ON assignee.id = t.assigned_to
@@ -73,7 +73,7 @@ const COMMENT_SELECT = `
 // --- Helpers ---
 
 /** Turns "42" into 42, or null if it isn't a positive whole number. */
-function parseId(value) {
+export function parseId(value) {
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;
 }
@@ -86,7 +86,7 @@ function cleanText(value) {
 }
 
 /** Checks required text (title, description, comment). Returns { text } or { error }. */
-function checkText(value, label, max) {
+export function checkText(value, label, max) {
   const text = cleanText(value);
   if (!text) return { error: `${label} is required` };
   if (text.length > max) return { error: `${label} must be ${max} characters or fewer` };
@@ -97,7 +97,7 @@ function checkText(value, label, max) {
  * Checks a category_id from the request; null means "no category".
  * Archived categories can't be picked. Returns { id, name } or { error }.
  */
-async function checkCategory(value) {
+export async function checkCategory(value) {
   if (value === null) return { id: null, name: null };
   const id = parseId(value);
   const result = id ? await pool.query('SELECT name, active FROM categories WHERE id = $1', [id]) : { rows: [] };

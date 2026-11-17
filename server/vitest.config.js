@@ -16,6 +16,10 @@ export default defineConfig({
       JWT_SECRET: 'test-only-secret',
       GOOGLE_CLIENT_ID: 'test-client-id.apps.googleusercontent.com',
       DISABLE_RATE_LIMIT: '1', // test/rateLimit.test.js switches this back off
+      // Security: a key in .env is never used by tests, so they can't spend money. Tests that
+      // need one set a fake key and replace the AI library with a mock.
+      ANTHROPIC_API_KEY: '',
+      AI_MODEL: '',
     },
     globalSetup: './test/globalSetup.js', // once: create the test database and apply schema.sql
     setupFiles: './test/setup.js',        // every file: empty the tables before each test

@@ -13,6 +13,7 @@ import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import ticketRoutes from './routes/tickets.js';
 import categoryRoutes from './routes/categories.js';
+import helpRoutes from './routes/help.js';
 
 // Security: without a secret, login tokens can't be signed or checked, so refuse to start.
 if (!process.env.JWT_SECRET) {
@@ -57,6 +58,7 @@ app.use('/api/auth', authRoutes); // sign up, log in, refresh, log out, /me
 app.use('/api/users', userRoutes); // user management (admins and owners)
 app.use('/api/tickets', ticketRoutes); // tickets, their history and comments
 app.use('/api/categories', categoryRoutes); // ticket categories (everyone reads, admins manage)
+app.use('/api/help', helpRoutes); // AI self-service fixes before a ticket
 
 // --- Error handling ---
 
