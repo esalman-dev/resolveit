@@ -9,7 +9,7 @@
 
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
-> 🚧 **Status: in development.** Phase 1, the core ticket tracker, is complete. Phase 2, **AI self-service fixes**, is built: Get help suggests safe steps first, **Ask IT** answers quick questions, risky problems go straight to a technician, and staff see every AI request and its result. A 500-ticket simulated study measured how many tickets it removes (see [Results](#results-simulated-ticket-reduction-study)). Next: deployment. See [Progress](#progress).
+> 🚧 **Status: in development.** Phase 1, the core ticket tracker, is complete. Phase 2, **AI self-service fixes**, is built: Get help suggests safe steps first, **Ask IT** answers quick questions, risky problems go straight to a technician, and staff see every AI request and its result. A 500-ticket simulated study measured how many tickets it removes (see [Results](#results-simulated-ticket-reduction-study)). **Attachments** (screenshots and files, which the AI can read) are built. Next: the analytics dashboard, then deployment. See [Progress](#progress).
 
 ## The idea
 
@@ -39,7 +39,7 @@ In a **simulated test of 500 help desk tickets**, ResolveIT's AI self-service re
 
 **How it was measured.** The ticket mix follows Fixify's *2026 IT Help Desk Benchmark Report* (50,000+ tickets from 30+ organizations). A large share of real tickets, like app access requests and new-hire accounts, only IT can handle, so at most **26.4%** of these 500 tickets could ever be fixed by the user. 109 scenarios each have a **hidden cause** the AI never sees. 500 tickets were written from them in varied, realistic styles (typos, wrong guesses, missing details), then frozen. Each ticket went through the app's own AI code and safety check. A separate grader, which knows the hidden cause, judged whether the steps would fix it. A person graded 48 of the grader's decisions blind and agreed **91.7%** of the time; in every disagreement the grader was the stricter one. Error ranges are 95% Wilson intervals.
 
-**Limits.** These are simulated tickets, not real users. The ticket mix comes from a vendor's benchmark, and the split of each category into "user can fix", "needs IT" and "risky" is this project's assumption. The tickets were written by the same model that answers them (Claude Haiku 5.5). Four self-fixable tickets mention a red flag (a spill, a virus worry), so escalating them counts against the result.
+**Limits.** These are simulated tickets, not real users. The ticket mix comes from a vendor's benchmark, and the split of each category into "user can fix", "needs IT" and "risky" is this project's assumption. The tickets were written by the same model that answers them (Claude Haiku 5.5). Four self-fixable tickets mention a red flag (a spill, a virus worry), so escalating them counts against the result. The study found that the AI often gave steps for access and license requests that only IT can grant. That was fixed after the study: re-run on the same 40 of those tickets, correct escalations went from 20 to 27. The numbers above are from before the fix.
 
 Everything needed to check or re-run it is in [`server/eval/`](server/eval/): the scenarios, the frozen tickets, the scripts, every run's full results, and a [log of every paid run](server/eval/RUNS.md) with what changed and what it cost.
 
@@ -71,13 +71,17 @@ Everything needed to check or re-run it is in [`server/eval/`](server/eval/): th
 - If the AI is off, down, or a daily limit is reached, the same form quietly becomes a **plain ticket form**: asking for help never breaks.
 - Staff **AI help** screen: every AI request (Get help and Ask IT), who asked, the result, the steps or answer, and anything the safety check blocked, with **count cards** that double as filters and the **self-solved rate**.
 - **Count cards on the staff ticket list** (Open, In progress, Resolved, Assigned to me, Unassigned) and a **My tickets** list for everyone; the sidebar is grouped into Help, Staff, and Admin.
-- A **64-problem test set** (`npm run eval`) that scores the real AI for help rate, safety (every risky problem escalated), consistency over repeats, and cost.
+- A **69-problem test set** (`npm run eval`, 5 with a screenshot) that scores the real AI for help rate, safety (every risky problem escalated), consistency over repeats, and cost.
 - A **500-ticket simulated study** (`npm run study`) of how many tickets the AI removes, with a written method, confidence intervals and a blind human check of the grader. See [Results](#results-simulated-ticket-reduction-study).
+
+**Attachments**
+- **Screenshots and files** (PNG, JPG, WebP, GIF, PDF, `.txt`/`.log` logs; up to 5 MB, 3 per message) on Get help, new tickets, comments and internal notes, by button or drag and drop. Images show as thumbnails; PDFs and logs download.
+- **The AI reads screenshots** on Get help, with a notice on the form, so an error dialog or a status screen can lead straight to the fix. Text inside a screenshot is treated as part of the problem, never as an instruction.
+- Files go with what they're attached to: on a Get help request they move onto the ticket it opens, and files on an internal note are staff-only.
 
 **Planned**
 - A knowledge base that learns from tickets technicians have solved
 - An analytics dashboard: self-solved rate, escalations, most common problems, average resolution time
-- Attachments (screenshots and files on tickets)
 
 ## Security
 
@@ -105,7 +109,9 @@ Authentication is built by hand rather than with an auth service, so each decisi
 | Prompt injection | The user's text is fenced as data, with the fence tags stripped from it; the AI is told to escalate any "ignore your rules" request; and the server check runs anyway. |
 | AI answer format | **Structured output:** the AI must answer in a fixed JSON shape enforced by the API, so the server never guesses what it meant. Its text is shown as plain text, never HTML. |
 | AI cost | Per-person and site-wide **daily limits** (20 and 300 by default), checked under a database lock so parallel requests can't slip past; a per-answer token cap; a short timeout; and a prepaid balance on the AI account. |
-| AI privacy | Only the problem's title, category and details (or the question) are sent to the AI, never names, emails or ids. The API key lives only on the server. Unsent drafts are kept per account in the browser and cleared on log out. |
+| AI privacy | Only the problem's title, category, details and the user's screenshots (or the question) are sent to the AI, never names, emails or ids; the form says screenshots are sent. The API key lives only on the server. Unsent drafts are kept per account in the browser and cleared on log out. |
+| Uploaded files | The real type is read from the file's **first bytes** ("magic bytes"), not its name, so a program renamed `photo.png` is refused. The **5 MB limit is enforced while the file arrives**, files are stored under **random names** (the uploaded name is only ever shown as text), and each one is served only after the same "can you see this ticket?" check, with headers that stop the browser running it (`nosniff`, a sandboxed `Content-Security-Policy`). A daily upload limit per person, and unsent uploads are removed after a day. |
+| Screenshot injection | A screenshot can contain text like "ignore your rules". The AI is told that text in an image is part of the problem, never an instruction, and the server check still reads every step. Tested with a screenshot that asks for registry edits: escalated every time. |
 
 ## Tech stack
 
@@ -131,16 +137,21 @@ Authentication is built by hand rather than with an auth service, so each decisi
 - [x] Ticket status and priority
 - [x] Search and filter
 
-**Phase 2: AI self-service fixes** 🛠️ built, being measured
+**Phase 2: AI self-service fixes** ✅ complete
 - [x] Connect an AI API (Claude Haiku 5.5)
 - [x] "Describe your problem" screen with safe fix steps, easiest first
 - [x] "That fixed it" / "Still broken" buttons
 - [x] Auto-created ticket with the steps already tried
 - [x] Safe-fix guardrails (AI instructions + a server-side check)
 - [x] Ask IT (quick questions) and the staff AI help screen
-- [ ] 500-ticket simulated study of ticket reduction
+- [x] 500-ticket simulated study of ticket reduction ([Results](#results-simulated-ticket-reduction-study))
 
-**Phase 3: Knowledge base and analytics** · **Phase 4: Deployment, password reset**
+**Phase 3: Smarter help desk** 🛠️ in progress
+- [x] Attachments: screenshots and files on tickets, comments and Get help, read by the AI
+- [ ] Analytics dashboard
+- [ ] Knowledge base and AI auto-categorize
+
+**Phase 4: Deployment, password reset**
 
 ## Project structure
 
@@ -192,12 +203,17 @@ resolveit/
     │   ├── users.js         Admin user management
     │   ├── tickets.js       Tickets and their comments: create, list, view, assign, update
     │   ├── categories.js    Admin-managed ticket categories
-    │   └── help.js          AI help: suggest steps, outcomes, Ask IT, daily limits, staff list
+    │   ├── help.js          AI help: suggest steps, outcomes, Ask IT, daily limits, staff list
+    │   └── attachments.js   Upload, download and remove files; attaching them to tickets and requests
     ├── services/
     │   ├── ai.js            The only code that talks to the AI (instructions, answer shapes)
-    │   └── guardrails.js    The server's own safety check on every AI answer, and step order
+    │   ├── guardrails.js    The server's own safety check on every AI answer, and step order
+    │   ├── storage.js       Where files are kept (a local folder for now)
+    │   └── fileCheck.js     A file's real type from its first bytes; safe file names
+    ├── uploads/             Uploaded files while developing (git-ignored)
     ├── eval/
-    │   ├── problems.json    64 test problems with known right answers
+    │   ├── problems.json    69 test problems with known right answers (5 with a screenshot)
+    │   ├── images/          The screenshots those problems use
     │   ├── run.js           `npm run eval`: scores the real AI (costs money; asks first)
     │   ├── runLog.js        Adds a row to RUNS.md after every paid run
     │   ├── RUNS.md          Every paid AI run: what changed, results, cost
@@ -275,6 +291,8 @@ npm run make-owner -- you@example.com
 
 **AI help (optional):** create an API key in the [Anthropic Console](https://console.anthropic.com/) (set a spending limit, or use prepaid credit with auto-reload off) and put it in `server/.env` as `ANTHROPIC_API_KEY`. `AI_MODEL` switches the model (default `claude-haiku-5-5`), and `AI_DAILY_LIMIT_PER_USER` / `AI_DAILY_LIMIT_SITE` change the daily limits (default 20 and 300). Without a key, Get help works as a plain ticket form and Ask IT says it isn't available.
 
+**Attachments:** uploaded files are kept in `server/uploads/` (change it with `UPLOAD_DIR`). `ATTACHMENT_DAILY_LIMIT` sets how many files one person can upload per 24 hours (default 30).
+
 **Sign in with Google (optional):** create an OAuth Client ID (type: Web application) in Google Cloud Console, add `http://localhost:5173` as an authorized JavaScript origin, and put the ID in both `server/.env` (`GOOGLE_CLIENT_ID`) and `client/.env` (`VITE_GOOGLE_CLIENT_ID`). Without it, the Google button is simply hidden.
 
 ### Running the tests
@@ -317,24 +335,28 @@ Add `--note="what this run is testing"` to any paid run; every run adds a row to
 | PATCH | `/api/users/:id/role` | Admin, owner | Change a role: only for people ranked below you, and only to a role below yours |
 | PATCH | `/api/users/:id/disabled` | Admin, owner | Disable or re-enable an account ranked below you |
 | GET | `/api/users/history` | Admin, owner | Account history, newest first (`?user_id=` for one person) |
-| POST | `/api/tickets` | Logged in | Open a ticket (always starts open and unassigned; only staff can choose a priority, otherwise it starts at medium) |
+| POST | `/api/tickets` | Logged in | Open a ticket (always starts open and unassigned; only staff can choose a priority, otherwise it starts at medium); `attachment_ids` attaches uploaded files |
 | GET | `/api/tickets` | Logged in | List tickets: users see their own, technicians, admins and owners see all |
 | GET | `/api/tickets/:id` | Creator, staff | One ticket **with its history** (404 for other users' tickets, so ids can't be probed) |
 | PATCH | `/api/tickets/:id` | Creator, staff | Staff: change anything. Creator: edit title/description while open, or close it. Every change is logged |
 | GET | `/api/tickets/assignees` | Staff | Active technicians, admins, and owners a ticket can be assigned to |
 | GET | `/api/tickets/:id/comments` | Creator, staff | Comments, oldest first, each with its earlier versions (internal notes only for staff) |
-| POST | `/api/tickets/:id/comments` | Creator, staff | Add a comment; staff can mark it internal |
+| POST | `/api/tickets/:id/comments` | Creator, staff | Add a comment, with `attachment_ids`; staff can mark it internal (its files are staff-only too) |
+| GET | `/api/tickets/:id/attachments` | Creator, staff | Every file on the ticket and its comments (files on internal notes only for staff) |
 | PATCH | `/api/tickets/:id/comments/:commentId` | The comment's author | Edit your comment; the old text is kept |
 | GET | `/api/categories` | Logged in | Active categories (admins can add `?all=true` for archived ones) |
 | POST | `/api/categories` | Admin, owner | Add a category |
 | PATCH | `/api/categories/:id` | Admin, owner | Rename, archive, or restore a category |
-| POST | `/api/help/suggest` | Logged in | Get help: safe steps, or a ticket for a technician (counts toward the daily limit) |
+| POST | `/api/help/suggest` | Logged in | Get help: safe steps, or a ticket for a technician (counts toward the daily limit); screenshots in `attachment_ids` are sent to the AI too |
 | POST | `/api/help/:id/outcome` | The person who asked | "That fixed it" / "Still broken" (Get help opens a ticket with the steps tried); "did this help?" for Ask IT |
 | GET | `/api/help/mine` | Logged in | Your unfinished Get help requests (last 7 days) |
 | GET | `/api/help/:id` | The person who asked | Reopen a request where you left off (no new AI call) |
 | POST | `/api/help/ask` | Logged in | Ask IT: one quick question, one answer (counts toward the daily limit) |
 | GET | `/api/help/questions/mine` | Logged in | Your recent Ask IT questions and whether each helped |
 | GET | `/api/help/sessions` | Staff | Every AI request with its result, plus counts per result and source |
+| POST | `/api/attachments` | Logged in | Upload one file (form field `file`); it's attached when sent with a ticket, comment or Get help request |
+| GET | `/api/attachments/:id` | Whoever can see what it's attached to | Download a file (404 for anyone else) |
+| DELETE | `/api/attachments/:id` | The uploader | Remove a file before it's sent |
 
 Protected endpoints expect `Authorization: Bearer <access token>`. "Staff" means a technician, admin, or owner.
 
