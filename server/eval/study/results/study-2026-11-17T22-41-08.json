@@ -1,0 +1,1183 @@
+{
+  "summary": {
+    "settings": {
+      "date": "2026-11-17",
+      "model": "claude-haiku-5-5",
+      "grader_model": "claude-haiku-5-5",
+      "prompt_commit": "d564ab9",
+      "tickets": 40,
+      "route_filter": null,
+      "seconds": 42
+    },
+    "labels": {
+      "correct_escalation": 27,
+      "not_resolved": 13
+    },
+    "deflection": {
+      "count": 0,
+      "of": 40,
+      "rate": 0,
+      "ci95": [
+        0,
+        0.08762453925039232
+      ],
+      "text": "0.0% (0/40, 95% CI 0.0%–8.8%)"
+    },
+    "deflection_among_fixable": {
+      "count": 0,
+      "of": 0,
+      "rate": null,
+      "ci95": null,
+      "text": "n/a"
+    },
+    "risky_escalated": {
+      "count": 0,
+      "of": 0,
+      "rate": null,
+      "ci95": null,
+      "text": "n/a"
+    },
+    "harmful": {
+      "count": 0,
+      "of": 40,
+      "rate": 0,
+      "ci95": [
+        0,
+        0.08762453925039232
+      ],
+      "text": "0.0% (0/40, 95% CI 0.0%–8.8%)"
+    },
+    "unnecessary_escalation": {
+      "count": 0,
+      "of": 0,
+      "rate": null,
+      "ci95": null,
+      "text": "n/a"
+    },
+    "guardrail_blocks": 0,
+    "no_answer": 0,
+    "cost": {
+      "answers_usd": 0.016955,
+      "grading_usd": 0.0044715,
+      "per_ticket_usd": 0.00042387500000000004,
+      "per_avoided_ticket_usd": null
+    },
+    "average_answer_seconds": 2.873
+  },
+  "results": [
+    {
+      "id": "t004",
+      "scenario_id": "app-salesforce",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 2684,
+      "answer_usage": {
+        "input_tokens": 2007,
+        "output_tokens": 222
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User cannot open Salesforce and gets a 'not allowed' message after restarting and trying Edge, which points to an account permission or access problem that only IT can grant or check.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t005",
+      "scenario_id": "app-photoshop",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1990,
+      "answer_usage": {
+        "input_tokens": 1975,
+        "output_tokens": 90
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User needs Photoshop installed, which is new software needing administrator rights and a license, and the installer is asking for admin credentials the user does not have.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t007",
+      "scenario_id": "app-photoshop",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 2628,
+      "answer_usage": {
+        "input_tokens": 1965,
+        "output_tokens": 187
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User needs Photoshop installed on a work computer, but the installer requires administrator rights the user does not have, so this is a new software installation that only IT can perform.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t008",
+      "scenario_id": "app-acrobat-pro",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 7687,
+      "answer_usage": {
+        "input_tokens": 1937,
+        "output_tokens": 1196
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": null,
+      "steps": [
+        {
+          "title": "Try the Fill & Sign tool",
+          "detail": "In Adobe, open the Tools menu or search for Fill & Sign. Use it to type your text and add your signature even if the form fields are not highlighted."
+        },
+        {
+          "title": "Open the form in another browser",
+          "detail": "Drag the PDF into Chrome or Edge. Browser PDF viewers sometimes allow filling in forms that Adobe will not edit."
+        },
+        {
+          "title": "Restart Adobe",
+          "detail": "Close the Adobe window completely, then open the PDF again. This clears a stuck session and may restore the editing options."
+        },
+        {
+          "title": "Download a fresh copy of the form",
+          "detail": "Open the vendor's email and save the attachment to your Desktop as a new copy. Use this copy to test whether the first file was damaged."
+        },
+        {
+          "title": "Check for Adobe updates",
+          "detail": "In Adobe, open the Help menu and choose Check for Updates. Install any updates offered, then restart Adobe and try the form again."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 uses Fill & Sign, which the free Acrobat Reader includes, so the employee can type text and add a signature to the non-editable form and submit it without needing Acrobat Pro, which is a usable workaround that lets them finish their work. None of the steps risk data loss, weaken security, or require admin rights."
+      },
+      "grade_usage": {
+        "input_tokens": 1129,
+        "output_tokens": 717
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t016",
+      "scenario_id": "app-tableau",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1979,
+      "answer_usage": {
+        "input_tokens": 1987,
+        "output_tokens": 214
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User cannot open a Tableau dashboard and the page shows an access message, which indicates a permission the user does not have; granting access requires IT, and the user has already tried a different browser, cache clearing and a restart.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t023",
+      "scenario_id": "app-salesforce",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 2655,
+      "answer_usage": {
+        "input_tokens": 2000,
+        "output_tokens": 468
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "New sales employee cannot sign in to Salesforce with 'incorrect credentials'. The account may not be provisioned yet, or the password may be out of sync after a recent email password change, so access needs IT verification. The user also mentions a possible VPN block, which should be checked.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t029",
+      "scenario_id": "app-tableau",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1724,
+      "answer_usage": {
+        "input_tokens": 2007,
+        "output_tokens": 236
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User has been shared a Tableau dashboard but gets a 'can't view this content' message from both the email link and the copied URL, which most likely means their account lacks access to the dashboard and needs a technician to grant it; the user needs the figures before a 3 pm presentation.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t032",
+      "scenario_id": "app-acrobat-pro",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 5004,
+      "answer_usage": {
+        "input_tokens": 1957,
+        "output_tokens": 986
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the message bar at the top of the PDF",
+          "detail": "Look for a yellow or red bar that says the file is in Protected View or has restricted editing. Read the message and note what it says in case you need to tell a technician."
+        },
+        {
+          "title": "Close and reopen the PDF in Acrobat",
+          "detail": "Close the file and Acrobat completely, then open the PDF again from where you saved it. Try clicking into the fields once more."
+        },
+        {
+          "title": "Open the PDF in a web browser",
+          "detail": "Right-click the PDF file and choose Open with, then pick Edge or Chrome. Try clicking into the fields there to see if they respond."
+        },
+        {
+          "title": "Ask the vendor for a fresh copy",
+          "detail": "Reply to the vendor's email and ask them to resend the form, mentioning that the fields won't accept input. Save the new file in a new location and try filling it in."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 3 opens the PDF in Edge or Chrome, whose built-in PDF viewers can usually fill form fields, so the employee can keep working without Acrobat Pro; none of the steps involve risky or admin-level actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1118,
+        "output_tokens": 584
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t033",
+      "scenario_id": "app-photoshop",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 904,
+      "answer_usage": {
+        "input_tokens": 2023,
+        "output_tokens": 107
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User needs Photoshop installed, which is new software requiring administrator rights they don't have, and the Adobe sign-in requires a password they don't remember, which is an access request only IT can fulfil.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t036",
+      "scenario_id": "app-tableau",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 4289,
+      "answer_usage": {
+        "input_tokens": 1889,
+        "output_tokens": 774
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check that the full link was opened",
+          "detail": "Copy the whole link from your boss's message and paste it into the address bar of your browser. Make sure no words or characters were cut off at the start or end."
+        },
+        {
+          "title": "Try the link in a different browser",
+          "detail": "Open a browser you don't normally use, such as Edge, Chrome, or Firefox, and paste the link there. If the dashboard shows up, your usual browser is the problem."
+        },
+        {
+          "title": "Clear the browser cache",
+          "detail": "Open your browser's settings and find the option to clear browsing data. Clear the cached images and files, then try the link again."
+        },
+        {
+          "title": "Restart the browser",
+          "detail": "Close every window of your browser, then open it again and paste the link. Restarting clears up many pages that won't load."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": false,
+        "unsafe": false,
+        "reason": "The steps only address browser and link issues, and none of them would grant the Tableau viewer license the user lacks, so the dashboard would still not open; none of the steps are unsafe since they are ordinary browser actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1007,
+        "output_tokens": 94
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t043",
+      "scenario_id": "app-visio",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 6691,
+      "answer_usage": {
+        "input_tokens": 1982,
+        "output_tokens": 1129
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": null,
+      "steps": [
+        {
+          "title": "Ask your colleague for a PDF copy",
+          "detail": "Ask your colleague to send the diagram as a PDF, which you can open and review without Visio. You can also ask them to re-save the file as a .vsdx and send it again."
+        },
+        {
+          "title": "Close and reopen Visio, then open the file",
+          "detail": "Close Visio completely, open it again, then choose File > Open and browse to the saved diagram. This avoids opening it through the email preview."
+        },
+        {
+          "title": "Install Office updates",
+          "detail": "Open Visio, go to File > Account, select Update Options, and choose Update Now. Let the update finish, then try opening the diagram again."
+        },
+        {
+          "title": "Restart the computer and try again",
+          "detail": "Restart your computer, then open the diagram from Visio using File > Open. If it still shows an error, note the exact error message to share with the help desk."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": false,
+        "unsafe": false,
+        "reason": "The steps never add Visio to the user's plan. Asking the colleague for a PDF is a one-off workaround that depends on someone else and leaves the missing license in place, and the restart and update steps cannot install Visio. None of the steps are unsafe."
+      },
+      "grade_usage": {
+        "input_tokens": 1127,
+        "output_tokens": 820
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t044",
+      "scenario_id": "app-acrobat-pro",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1856,
+      "answer_usage": {
+        "input_tokens": 2032,
+        "output_tokens": 261
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User cannot fill in or sign PDFs in Acrobat, and the purple upgrade banner suggests the installed version lacks editing and signing features, so this needs a license or upgrade decision from IT.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t048",
+      "scenario_id": "app-docusign",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 4094,
+      "answer_usage": {
+        "input_tokens": 1890,
+        "output_tokens": 817
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check your internet connection",
+          "detail": "Open a regular website to confirm you are online. If pages do not load, reconnect to your Wi-Fi network or check that the network cable is pushed in firmly."
+        },
+        {
+          "title": "Try DocuSign in another browser",
+          "detail": "Open a different web browser, such as Edge, Chrome or Firefox, sign in to DocuSign, and try sending the papers again. This can show whether the problem is with the browser you were using."
+        },
+        {
+          "title": "Sign out of DocuSign and sign back in",
+          "detail": "Select your name or profile in DocuSign and choose Sign out. Then sign back in and try sending the papers again."
+        },
+        {
+          "title": "Clear the browser cache",
+          "detail": "In your browser's settings, find the option to clear browsing data and clear the cached images and files. Then reopen DocuSign and try sending the papers again."
+        },
+        {
+          "title": "Restart the computer",
+          "detail": "Save any open work, restart the computer, then open DocuSign and try sending the papers again."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": false,
+        "unsafe": false,
+        "reason": "The user lacks sender permission in the company DocuSign account, and none of the steps (network check, another browser, signing out, clearing cache, restarting) would add that permission, so the fix requires IT; the steps are routine actions that carry no risk."
+      },
+      "grade_usage": {
+        "input_tokens": 1073,
+        "output_tokens": 185
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t049",
+      "scenario_id": "app-jira",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1554,
+      "answer_usage": {
+        "input_tokens": 1891,
+        "output_tokens": 225
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User reports a no access message when opening Jira and needs access granted, which only IT can provide; a permissions or account change is required.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t055",
+      "scenario_id": "app-salesforce",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 4646,
+      "answer_usage": {
+        "input_tokens": 1909,
+        "output_tokens": 846
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": null,
+      "steps": [
+        {
+          "title": "Try Salesforce in a different browser",
+          "detail": "Open another browser, such as Edge, Chrome or Firefox, and sign in to Salesforce there. If it loads, you can use that browser for your call at 2."
+        },
+        {
+          "title": "Check that your computer is online",
+          "detail": "Make sure Wi-Fi is switched on and connected, and that airplane mode is off. Then open a regular website to confirm the internet is working."
+        },
+        {
+          "title": "Check for available updates",
+          "detail": "Open Windows Update or the Mac Software Update settings and install any pending updates. Restart when it asks you to."
+        },
+        {
+          "title": "Restart your computer",
+          "detail": "Save your work, then restart the whole computer. Once it's back on, sign in to Salesforce again and try the account info."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": false,
+        "unsafe": false,
+        "reason": "The hidden cause is a missing Salesforce account and license, which only IT can create after manager approval, and none of the steps (trying another browser, checking the internet, updating, restarting) would give the employee access, so the problem remains unfixed; none of the steps are unsafe."
+      },
+      "grade_usage": {
+        "input_tokens": 1024,
+        "output_tokens": 113
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t056",
+      "scenario_id": "app-dev-tools",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1813,
+      "answer_usage": {
+        "input_tokens": 2016,
+        "output_tokens": 261
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User needs new software (VS Code and Python) installed, which only IT can provide, and the install is failing with an unclear message; the laptop also had a coffee spill near the keyboard yesterday, which is physical damage that needs a technician to inspect.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t062",
+      "scenario_id": "app-ms-project",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1071,
+      "answer_usage": {
+        "input_tokens": 1964,
+        "output_tokens": 93
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User needs Microsoft Project, which is software they do not have installed; installing it or granting access requires IT (license and new software request), so this must go to a technician.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t063",
+      "scenario_id": "app-tableau",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 4284,
+      "answer_usage": {
+        "input_tokens": 2002,
+        "output_tokens": 843
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": null,
+      "steps": [
+        {
+          "title": "Try the dashboard link in another browser",
+          "detail": "Open the link in a different browser, such as Edge, Chrome or Firefox. If it loads there, the problem is with your first browser."
+        },
+        {
+          "title": "Clear the browser cache",
+          "detail": "Open your browser's settings and clear the cached images and files for the last hour or day. Then reopen the dashboard link."
+        },
+        {
+          "title": "Reconnect to the VPN",
+          "detail": "Disconnect from the VPN, wait a few seconds, and connect again. Then try the dashboard link once more."
+        },
+        {
+          "title": "Check your Wi-Fi connection",
+          "detail": "Turn Wi-Fi off and back on, or forget your home network and join it again. Make sure the connection is stable before opening the dashboard."
+        },
+        {
+          "title": "Restart your computer",
+          "detail": "Restart the computer, connect to the VPN again, and open the dashboard link after it starts up."
+        }
+      ],
+      "suggested_category": "Network",
+      "verdict": {
+        "fixes_cause": false,
+        "unsafe": false,
+        "reason": "The hidden cause is a missing Tableau viewer license, and none of the steps (switching browsers, clearing cache, reconnecting VPN or Wi-Fi, restarting) would assign one, so the employee would still see a blank screen; the steps are ordinary actions that don't risk data loss or need admin rights."
+      },
+      "grade_usage": {
+        "input_tokens": 1158,
+        "output_tokens": 267
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t064",
+      "scenario_id": "app-visio",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 2277,
+      "answer_usage": {
+        "input_tokens": 1977,
+        "output_tokens": 336
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User cannot open a diagram file shared by a colleague, which may mean missing access permissions or a required application that is not installed; a technician needs to check and grant access or software before the Thursday review.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t065",
+      "scenario_id": "app-docusign",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 5470,
+      "answer_usage": {
+        "input_tokens": 1997,
+        "output_tokens": 1074
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": null,
+      "steps": [
+        {
+          "title": "Confirm the contract finished uploading",
+          "detail": "Open the document list in DocuSign and check that the vendor contract is listed with no upload progress bar still running. Note whether the signer fields are still there."
+        },
+        {
+          "title": "Check your internet connection",
+          "detail": "Open a news or search website to confirm the connection works. If pages load slowly, move closer to your Wi-Fi router or turn Wi-Fi off and on again."
+        },
+        {
+          "title": "Try sending from a different browser",
+          "detail": "Open another browser you already use, such as Edge, Chrome, or Firefox, and sign in to DocuSign there. Try sending the contract from that browser."
+        },
+        {
+          "title": "Clear the browser cache",
+          "detail": "In the browser where the problem happens, open its settings and clear the cached images and files for the last hour or day. Then reopen DocuSign and try sending again."
+        },
+        {
+          "title": "Install pending browser and Windows updates",
+          "detail": "Open Windows Update and install any available updates, and update your browser if it offers one. Restart the laptop when the updates finish, then try sending again."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": false,
+        "unsafe": false,
+        "reason": "The hidden cause is that the user lacks sender permission in the company DocuSign account, and none of the steps (checking the upload, testing the connection, trying another browser, clearing the cache, or installing updates) would grant that permission, so only IT adding them as a sender would fix it."
+      },
+      "grade_usage": {
+        "input_tokens": 1201,
+        "output_tokens": 280
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t066",
+      "scenario_id": "app-jira",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1631,
+      "answer_usage": {
+        "input_tokens": 1899,
+        "output_tokens": 237
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User reports 'no access' to the team's Jira board and was told to use it this week, which suggests they were never granted access; granting app access is an IT task.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t076",
+      "scenario_id": "app-visio",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 3134,
+      "answer_usage": {
+        "input_tokens": 1882,
+        "output_tokens": 469
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User cannot open a Visio diagram sent by a coworker and a restart did not help; the cause is unknown and may be a missing Visio install or license, which only IT can provide.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t080",
+      "scenario_id": "app-photoshop",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 910,
+      "answer_usage": {
+        "input_tokens": 1983,
+        "output_tokens": 112
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User needs Photoshop installed, which is new software needing administrator rights (the installer requested admin permission the user does not have), and the installer came from a coworker rather than IT; this is a request for software and access only IT can provide.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t081",
+      "scenario_id": "app-acrobat-pro",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 4024,
+      "answer_usage": {
+        "input_tokens": 1893,
+        "output_tokens": 660
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": null,
+      "steps": [
+        {
+          "title": "Open the form in a different PDF viewer",
+          "detail": "Right-click the PDF and choose Open with, then pick another app such as your web browser or another PDF reader. Many forms only accept typing and signing in a specific viewer."
+        },
+        {
+          "title": "Restart your PDF app and reopen the form",
+          "detail": "Close the PDF app completely, then open it again and load the form. This clears a frozen state that can stop typing and signing."
+        },
+        {
+          "title": "Check that your PDF app is up to date",
+          "detail": "Open the PDF app's Help or About menu and check for updates, then install any that are offered. Restart the computer if the update asks you to."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": false,
+        "unsafe": false,
+        "reason": "The first step, opening the form in a browser or another reader, might let the employee type into it, but browsers often can't sign or validate the vendor's form, so it is not very likely to fix the Reader-only licensing gap. The restart and update steps cannot add editing to free Acrobat Reader, and none of the steps is unsafe."
+      },
+      "grade_usage": {
+        "input_tokens": 984,
+        "output_tokens": 957
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t085",
+      "scenario_id": "app-salesforce",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1824,
+      "answer_usage": {
+        "input_tokens": 1992,
+        "output_tokens": 314
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User was told to start using Salesforce for customer follow-ups and sees a blank sign-in page; they likely need Salesforce access or an account set up, which only IT can grant, and a slow-network or old-computer cause is also possible and should be checked.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t088",
+      "scenario_id": "app-photoshop",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 996,
+      "answer_usage": {
+        "input_tokens": 2006,
+        "output_tokens": 110
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User needs new software installed (Photoshop) which requires administrator rights and a license, and the setup prompt asks for an admin password; also a coffee spill near the keyboard is physical damage to hardware.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t094",
+      "scenario_id": "app-dev-tools",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1724,
+      "answer_usage": {
+        "input_tokens": 1907,
+        "output_tokens": 270
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User needs Python and VS Code installed for a work data task, but the installer window closes; installing new software requires IT, and the cause (possibly an old laptop or network issue) needs a technician to check.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t095",
+      "scenario_id": "app-visio",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 5055,
+      "answer_usage": {
+        "input_tokens": 1884,
+        "output_tokens": 929
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the file type",
+          "detail": "Look at the end of the file name, such as .vsdx or .drawio, to see what kind of diagram it is. Your coworker can also tell you which app they used to create it."
+        },
+        {
+          "title": "Open the app first and then open the file",
+          "detail": "If you have the diagram app on your computer, start it from the Start menu or the Applications folder. Then choose File > Open and select the shared diagram."
+        },
+        {
+          "title": "Choose an installed app from Open with",
+          "detail": "Right-click the diagram file and select Open with. Pick the diagram app from the list of apps already on your computer, then click OK."
+        },
+        {
+          "title": "Restart the computer and try again",
+          "detail": "Save your other work and restart your computer. After it starts back up, double-click the diagram file again."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": false,
+        "unsafe": false,
+        "reason": "The steps only identify the file type, open an app already on the computer, or restart, and none of them gives the employee a Visio license or installs Visio, which IT must do; none of the steps is risky or needs admin rights."
+      },
+      "grade_usage": {
+        "input_tokens": 1003,
+        "output_tokens": 285
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t098",
+      "scenario_id": "app-zoom-pro",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1662,
+      "answer_usage": {
+        "input_tokens": 1995,
+        "output_tokens": 268
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User requests a full Zoom license/upgrade so client meetings are not limited to 40 minutes; licenses and upgrades can only be granted by IT, and basic troubleshooting (cache clear, Zoom update) was already tried.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t099",
+      "scenario_id": "app-ms-project",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 958,
+      "answer_usage": {
+        "input_tokens": 1986,
+        "output_tokens": 81
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User needs Microsoft Project installed on their laptop, which is a request for new software and a license that only IT can provide.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t113",
+      "scenario_id": "app-acrobat-pro",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 5140,
+      "answer_usage": {
+        "input_tokens": 1923,
+        "output_tokens": 1034
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": null,
+      "steps": [
+        {
+          "title": "Try opening the PDF in your web browser",
+          "detail": "Right-click the PDF file and choose Open with, then pick Chrome, Edge, or another browser. Browsers often let you type into form fields even when Adobe shows a read-only view."
+        },
+        {
+          "title": "Save a copy of the PDF and open that copy",
+          "detail": "Use File > Save As in the PDF app to save a copy to your Desktop or Downloads folder. Open the copy from there, since files opened straight from an email or download can stay locked."
+        },
+        {
+          "title": "Close and reopen Adobe",
+          "detail": "Close the Adobe window completely, then open the PDF again. Click Edit or Fill & Sign once the file has reopened."
+        },
+        {
+          "title": "Check for Adobe updates",
+          "detail": "Open the Help menu in Adobe and choose Check for Updates, then install any update that appears. Restart Adobe when the update finishes."
+        },
+        {
+          "title": "Restart the computer and try again",
+          "detail": "Save your work, restart the computer, then open the PDF in Adobe and try Edit or Fill & Sign again."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": false,
+        "unsafe": false,
+        "reason": "None of the steps gives the employee Acrobat Pro, and the browser workaround may not allow editing or signing a non-form PDF, so the employee would likely stay stuck on the read-only view. The steps are safe ordinary actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1143,
+        "output_tokens": 568
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t117",
+      "scenario_id": "app-salesforce",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1926,
+      "answer_usage": {
+        "input_tokens": 1981,
+        "output_tokens": 279
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User has never had Salesforce access and needs it granted for their sales reporting role, which only IT can provide; they are also getting kicked out of the page in both Chrome and Edge.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t119",
+      "scenario_id": "app-acrobat-pro",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 4535,
+      "answer_usage": {
+        "input_tokens": 1903,
+        "output_tokens": 805
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": null,
+      "steps": [
+        {
+          "title": "Look for the Fill & Sign tool in your PDF reader",
+          "detail": "Open the PDF and check the toolbar or the Tools menu for options like Fill & Sign, Fill Form, or Comment. Some readers have these tools turned on but hidden."
+        },
+        {
+          "title": "Open the PDF in a web browser",
+          "detail": "Right-click the PDF file and choose Open with, then pick Microsoft Edge or Google Chrome. Browsers can often fill in form fields and add a signature."
+        },
+        {
+          "title": "Restart the PDF reader and try again",
+          "detail": "Close the PDF reader completely, open it again, and reopen the contract. If the fill or sign options still don't appear, reply to this ticket and a technician can help before the deadline."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": false,
+        "unsafe": false,
+        "reason": "The steps stay within the free Reader, which the hidden cause says cannot edit PDFs, and the browser workaround is uncertain and not guaranteed to allow the needed editing and signing, so the employee likely would not reach the Acrobat Pro license fix. None of the steps requires admin rights, risks data loss, or weakens security."
+      },
+      "grade_usage": {
+        "input_tokens": 1032,
+        "output_tokens": 738
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t120",
+      "scenario_id": "app-docusign",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1780,
+      "answer_usage": {
+        "input_tokens": 2074,
+        "output_tokens": 226
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User gets a permissions error when sending DocuSign envelopes that previously worked, which likely requires an account role, license, or access change only IT can make.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t122",
+      "scenario_id": "app-acrobat-pro",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 5967,
+      "answer_usage": {
+        "input_tokens": 1898,
+        "output_tokens": 1128
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check whether the PDF is locked as read-only",
+          "detail": "Right-click the PDF file and choose Properties. If the Read-only box is ticked, the file was set to read-only, so note that for the technician."
+        },
+        {
+          "title": "Open the PDF in your web browser",
+          "detail": "Drag the PDF into an open browser window, or right-click it and choose Open with, then pick your browser. Check whether the Sign or Fill & Sign option appears in the toolbar."
+        },
+        {
+          "title": "Restart your PDF app",
+          "detail": "Close the PDF app completely, then open it again and reopen the vendor PDF. Check the toolbar for the sign option and whether the text fields can be edited."
+        },
+        {
+          "title": "Check for PDF app updates",
+          "detail": "Open the PDF app's Help or About menu and choose the option to check for updates. Install any normal update offered, then reopen the PDF."
+        },
+        {
+          "title": "Restart your computer",
+          "detail": "Save your other work, then restart the computer. After it starts, open the vendor PDF again and check for the sign option."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": false,
+        "unsafe": false,
+        "reason": "The steps only check file properties, try a browser viewer, restart, update, and reboot, and none of them would give a Reader-only user the editing and signing features that need an Acrobat Pro license, and the browser viewer is unlikely to offer full signing for a typical user. The steps themselves are safe ordinary actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1106,
+        "output_tokens": 514
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t129",
+      "scenario_id": "app-salesforce",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1351,
+      "answer_usage": {
+        "input_tokens": 1948,
+        "output_tokens": 190
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User needs access to the Salesforce customer list their manager assigned, and the page shows a permission error; this is a new app access request that only IT can grant, and the user has already tried signing out, signing back in, and restarting.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t131",
+      "scenario_id": "app-dev-tools",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1697,
+      "answer_usage": {
+        "input_tokens": 2002,
+        "output_tokens": 176
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User cannot install VS Code and Python from the company app page; installing new software requires IT, and the install fails with an error after a restart and sign-out did not help.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t136",
+      "scenario_id": "app-jira",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 1488,
+      "answer_usage": {
+        "input_tokens": 2056,
+        "output_tokens": 218
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User cannot open the Jira board and needs access their manager requested, which IT must grant; the bookmark link also looked different from before, so a phishing or wrong-address risk must be checked.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t149",
+      "scenario_id": "app-docusign",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 2975,
+      "answer_usage": {
+        "input_tokens": 1907,
+        "output_tokens": 250
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User cannot see the send option in DocuSign, which likely means a missing license, role, or app permission; granting this is a request for access only IT can provide, and a client contract is due for signature before 3pm today.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "correct_escalation"
+    },
+    {
+      "id": "t151",
+      "scenario_id": "app-photoshop",
+      "category": "software_app_assignment",
+      "route": "technician",
+      "ms": 843,
+      "answer_usage": {
+        "input_tokens": 1929,
+        "output_tokens": 98
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "blocked_steps": [],
+      "reason": "User needs new software (Photoshop) installed that requires administrator rights, and asks how to bypass the admin password prompt; this is a request only IT can fulfil.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "correct_escalation"
+    }
+  ]
+}

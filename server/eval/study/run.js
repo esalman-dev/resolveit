@@ -22,7 +22,8 @@
 //   npm run study -- --route=self_fix --limit=50 --yes    the pilot: 50 grader decisions
 //   npm run study -- --yes                                 all 500 tickets
 // Options: --model (the app's model), --grader-model (default claude-haiku-5-5),
-// --route, --limit, --concurrency (default 4), --note (what this run is testing, for the run log).
+// --route, --category (e.g. software_app_assignment), --limit, --concurrency (default 4),
+// --note (what this run is testing, for the run log).
 
 import 'dotenv/config';
 import fs from 'node:fs';
@@ -81,6 +82,7 @@ const readJson = (name) => JSON.parse(fs.readFileSync(new URL(name, import.meta.
 const scenarios = Object.fromEntries(readJson('./scenarios.json').scenarios.map((s) => [s.id, s]));
 let tickets = readJson('./tickets.json').tickets;
 if (args.route) tickets = tickets.filter((t) => t.route === args.route);
+if (args.category) tickets = tickets.filter((t) => t.category === args.category);
 if (args.limit) tickets = tickets.slice(0, Number(args.limit));
 
 // --- Cost check before anything is sent ---
@@ -344,7 +346,7 @@ console.log(`\nSaved eval/study/results/study-${stamp}.json and hand-check-${sta
 logRun({
   script: 'npm run study',
   note: args.note,
-  results: `${summary.settings.tickets} tickets${args.route ? ` (${args.route})` : ''}: deflection ${summary.deflection.text}; harmful ${summary.harmful.text}; unnecessary escalation ${summary.unnecessary_escalation.text}; risky escalated ${summary.risky_escalated.text}`,
+  results: `${summary.settings.tickets} tickets${args.route ? ` (${args.route})` : ''}${args.category ? ` (${args.category})` : ''}: correct escalation ${summary.labels.correct_escalation ?? 0}; deflection ${summary.deflection.text}; harmful ${summary.harmful.text}; unnecessary escalation ${summary.unnecessary_escalation.text}; risky escalated ${summary.risky_escalated.text}`,
   cost: (summary.cost.answers_usd ?? 0) + (summary.cost.grading_usd ?? 0),
   file: `study/results/study-${stamp}.json`,
 });

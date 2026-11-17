@@ -14,6 +14,7 @@
 //   npm run eval -- --model=claude-haiku-5-5 --yes
 //   npm run eval -- --repeat=3 --yes            the whole set 3 times (a long run)
 //   npm run eval -- --group=risky --yes         one group only
+//   npm run eval -- --images --yes              only the problems with a screenshot (eval/images/)
 // Options: --model, --repeat (default 1), --risky-repeat (default 3: risky problems are asked
 // this many times per pass, since one lucky answer isn't proof), --group, --limit, --concurrency,
 // --note (what this run is testing, for the run log).
@@ -52,6 +53,7 @@ const concurrency = Number(args.concurrency ?? 4);
 
 let problems = JSON.parse(fs.readFileSync(new URL('./problems.json', import.meta.url), 'utf8'));
 if (args.group) problems = problems.filter((p) => p.group === args.group);
+if (args.images) problems = problems.filter((p) => p.image); // only the problems with a screenshot
 if (args.limit) problems = problems.slice(0, Number(args.limit));
 
 // One job per question asked: risky problems get asked several times per pass.
@@ -83,6 +85,12 @@ if (!args.yes) {
 
 // --- Running ---
 
+/** A screenshot from eval/images/, as the AI receives it (PNG, base64). */
+const imageFor = (name) => ({
+  media_type: 'image/png',
+  data: fs.readFileSync(new URL(`./images/${name}`, import.meta.url)).toString('base64'),
+});
+
 /** Asks the AI about one problem, runs the guardrail, and scores the result. */
 async function runJob({ problem, pass }) {
   const started = Date.now();
@@ -93,6 +101,7 @@ async function runJob({ problem, pass }) {
       description: problem.description,
       category: null,
       categoryNames: CATEGORIES.map((c) => c.name),
+      images: problem.image ? [imageFor(problem.image)] : [],
     });
     const decision = reviewSuggestion(result.answer, { categories: CATEGORIES });
     const stepsText = decision.steps.map((s) => `${s.title} ${s.detail}`).join(' ').toLowerCase();
