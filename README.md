@@ -148,6 +148,7 @@ Authentication is built by hand rather than with an auth service, so each decisi
 
 **Phase 3: Smarter help desk** 🛠️ in progress
 - [x] Attachments: screenshots and files on tickets, comments and Get help, read by the AI
+- [x] Demo data: `npm run seed-demo` (two months of realistic history and three demo logins)
 - [ ] Analytics dashboard
 - [ ] Knowledge base and AI auto-categorize
 
@@ -234,7 +235,9 @@ resolveit/
     │   └── schema.sql       Tables and constraints (safe to re-run)
     ├── scripts/
     │   ├── make-admin.js    Promote an account to admin
-    │   └── make-owner.js    Make (or remove) an owner: only possible on the server
+    │   ├── make-owner.js    Make (or remove) an owner: only possible on the server
+    │   ├── seed-demo.js     `npm run seed-demo`: replace the demo data
+    │   └── demoData.js      Builds the demo history (demo.example.com accounts only)
     └── test/                Automated tests
 ```
 
@@ -288,6 +291,14 @@ npm run make-admin -- you@example.com
 # or, for full control including over admins:
 npm run make-owner -- you@example.com
 ```
+
+**Demo data (optional):** to explore the app with two months of realistic history (about 30 accounts, 280 tickets with replies and history, and the Get help requests behind them), run this in `server/`:
+
+```bash
+npm run seed-demo -- --yes      # re-run any time for a fresh copy; --remove deletes it
+```
+
+Then log in as `demo.user@demo.example.com`, `demo.tech@demo.example.com` or `demo.admin@demo.example.com` (password: `DEMO_PASSWORD` in `.env`, or `try-resolveit-demo`). Demo accounts all use the reserved `demo.example.com` domain, and the script only ever deletes or creates those, so your own accounts and tickets are never touched. The ticket text comes from the [simulated study](#results-simulated-ticket-reduction-study), and the AI answers are the real ones from its full run.
 
 **AI help (optional):** create an API key in the [Anthropic Console](https://console.anthropic.com/) (set a spending limit, or use prepaid credit with auto-reload off) and put it in `server/.env` as `ANTHROPIC_API_KEY`. `AI_MODEL` switches the model (default `claude-haiku-5-5`), and `AI_DAILY_LIMIT_PER_USER` / `AI_DAILY_LIMIT_SITE` change the daily limits (default 20 and 300). Without a key, Get help works as a plain ticket form and Ask IT says it isn't available.
 
