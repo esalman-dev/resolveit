@@ -228,8 +228,8 @@ export async function seedDemoData(db, { tickets, scenarios, studyResults, passw
 
     const inserted = await db.query(
       `INSERT INTO tickets (title, description, status, priority, category_id, created_by, assigned_to,
-                            steps_tried, created_at, updated_at, resolved_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                            steps_tried, created_at, updated_at, resolved_at, first_response_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING id`,
       [
         source.title,
@@ -243,6 +243,8 @@ export async function seedDemoData(db, { tickets, scenarios, studyResults, passw
         openedAt,
         lastActivity,
         resolved ? resolveAt : null,
+        // The first reply is the status change to In progress, a minute after assigning.
+        replied ? new Date(Math.min(replyAt.getTime() + 60 * 1000, now.getTime() - 60 * 1000)) : null,
       ]
     );
     const ticketId = inserted.rows[0].id;

@@ -8,6 +8,15 @@ import pool from '../db/index.js';
 beforeEach(async () => {
   // TRUNCATE empties the tables instantly, RESTART IDENTITY resets ids to 1, and CASCADE handles foreign keys.
   await pool.query('TRUNCATE users, tickets, refresh_tokens, categories, ticket_comments, comment_edits, ticket_events, account_events, help_sessions, attachments RESTART IDENTITY CASCADE');
+  // Note: CASCADE also empties sla_targets (it points at users), but every priority needs a
+  // target, so the defaults from schema.sql are put back.
+  await pool.query(
+    `INSERT INTO sla_targets (priority, first_response_minutes, resolve_minutes)
+     VALUES ('urgent', 60, 240), ('high', 240, 1440), ('medium', 1440, 4320), ('low', 2880, 10080)
+     ON CONFLICT (priority) DO UPDATE
+       SET first_response_minutes = EXCLUDED.first_response_minutes,
+           resolve_minutes = EXCLUDED.resolve_minutes, updated_by = NULL`
+  );
 });
 
 afterAll(async () => {

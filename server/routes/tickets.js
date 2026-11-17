@@ -42,17 +42,23 @@ const isStaff = (user) => STAFF.includes(user.role);
  * The columns sent back for a ticket. The joins swap stored ids for names
  * (created_by 4 becomes created_by_name 'Alice'). The assignee and category use LEFT JOIN
  * because they can be empty, and a plain JOIN would drop those tickets.
+ *
+ * response_due_at and resolve_due_at come from the target times for the ticket's priority
+ * (sla_targets), worked out on every read, so changing a priority or a target moves them at once.
  */
 const TICKET_SELECT = `
   SELECT t.id, t.title, t.description, t.status, t.priority,
          t.category_id, category.name AS category_name,
          t.created_by,  creator.name  AS created_by_name,
          t.assigned_to, assignee.name AS assigned_to_name,
-         t.created_at, t.updated_at, t.resolved_at, t.steps_tried
+         t.created_at, t.updated_at, t.resolved_at, t.steps_tried, t.first_response_at,
+         t.created_at + make_interval(mins => sla.first_response_minutes) AS response_due_at,
+         t.created_at + make_interval(mins => sla.resolve_minutes)        AS resolve_due_at
     FROM tickets t
     JOIN users creator            ON creator.id  = t.created_by
     LEFT JOIN users assignee      ON assignee.id = t.assigned_to
-    LEFT JOIN categories category ON category.id = t.category_id`;
+    LEFT JOIN categories category ON category.id = t.category_id
+    LEFT JOIN sla_targets sla     ON sla.priority = t.priority`;
 
 /**
  * The columns sent back for a comment, including `edits`: every earlier version of its text.
@@ -350,6 +356,10 @@ router.patch('/:id', async (req, res) => {
     // Set when the status becomes resolved; cleared when it's reopened.
     if (changed.includes('status')) {
       setList.push(wanted.status.value === 'resolved' ? 'resolved_at = NOW()' : 'resolved_at = NULL');
+      // A status change by staff is something the user sees, so it counts as the first reply.
+      if (staff && current.created_by !== req.user.id) {
+        setList.push('first_response_at = COALESCE(first_response_at, NOW())');
+      }
     }
 
     values.push(id);
@@ -405,7 +415,8 @@ router.get('/:id/comments', async (req, res) => {
 router.post('/:id/comments', async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid ticket id' });
-  if (!(await findVisibleTicket(id, req.user))) return res.status(404).json({ error: 'Ticket not found' });
+  const ticket = await findVisibleTicket(id, req.user);
+  if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
 
   const body = req.body ?? {};
   const text = checkText(body.body, 'Comment text', MAX_COMMENT);
@@ -426,7 +437,14 @@ router.post('/:id/comments', async (req, res) => {
        RETURNING id`,
       [id, req.user.id, text.text, isInternal]
     );
-    await db.query('UPDATE tickets SET updated_at = NOW() WHERE id = $1', [id]); // a comment counts as activity
+    // A comment counts as activity. A public one from staff (not on their own ticket) is also
+    // the first reply, if there wasn't one yet; an internal note isn't, since the user can't see it.
+    const firstReply = isStaff(req.user) && !isInternal && ticket.created_by !== req.user.id;
+    await db.query(
+      `UPDATE tickets SET updated_at = NOW()${firstReply ? ', first_response_at = COALESCE(first_response_at, NOW())' : ''}
+        WHERE id = $1`,
+      [id]
+    );
     await claimAttachments(db, files.ids, req.user, { ticketId: id, commentId: inserted.rows[0].id });
     return inserted.rows[0].id;
   });

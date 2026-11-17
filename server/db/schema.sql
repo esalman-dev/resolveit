@@ -341,3 +341,45 @@ CREATE INDEX IF NOT EXISTS idx_attachments_ticket_id       ON attachments(ticket
 CREATE INDEX IF NOT EXISTS idx_attachments_help_session_id ON attachments(help_session_id);
 -- The daily upload limit counts one person's uploads over the last 24 hours.
 CREATE INDEX IF NOT EXISTS idx_attachments_uploader_created ON attachments(uploaded_by, created_at);
+
+-- --- Target times (SLA) ---
+-- How fast each priority should get a first reply and be fixed, in minutes of clock time
+-- (24/7) from when the ticket was opened. Admins change them on the Target times screen.
+CREATE TABLE IF NOT EXISTS sla_targets (
+    priority               TEXT PRIMARY KEY CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+    first_response_minutes INTEGER NOT NULL CHECK (first_response_minutes > 0),
+    resolve_minutes        INTEGER NOT NULL CHECK (resolve_minutes > 0),
+    updated_by             INTEGER REFERENCES users(id) ON DELETE SET NULL, -- empty = the defaults
+    updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT sla_targets_reply_before_fix CHECK (resolve_minutes >= first_response_minutes)
+);
+
+-- The defaults, added only for a priority that has no row, so a re-run never undoes an admin's change.
+INSERT INTO sla_targets (priority, first_response_minutes, resolve_minutes)
+VALUES ('urgent', 60, 240), ('high', 240, 1440), ('medium', 1440, 4320), ('low', 2880, 10080)
+ON CONFLICT (priority) DO NOTHING;
+
+-- When staff first did something the user could see: a public comment or a status change.
+-- Empty = no reply yet. Kept as a column so lists and the dashboard don't search the history.
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS first_response_at TIMESTAMPTZ;
+
+-- Fills it in for tickets from before the column existed (only where it's still empty).
+UPDATE tickets t
+   SET first_response_at = first.at
+  FROM (
+    SELECT ticket_id, MIN(at) AS at FROM (
+      SELECT c.ticket_id, c.created_at AS at
+        FROM ticket_comments c
+        JOIN tickets tk ON tk.id = c.ticket_id
+        JOIN users u ON u.id = c.author_id
+       WHERE NOT c.is_internal AND u.role <> 'user' AND c.author_id <> tk.created_by
+      UNION ALL
+      SELECT e.ticket_id, e.created_at
+        FROM ticket_events e
+        JOIN tickets tk ON tk.id = e.ticket_id
+        JOIN users u ON u.id = e.actor_id
+       WHERE e.field = 'status' AND u.role <> 'user' AND e.actor_id <> tk.created_by
+    ) responses
+    GROUP BY ticket_id
+  ) first
+ WHERE t.id = first.ticket_id AND t.first_response_at IS NULL;
