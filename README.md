@@ -79,6 +79,11 @@ Everything needed to check or re-run it is in [`server/eval/`](server/eval/): th
 - **The AI reads screenshots** on Get help, with a notice on the form, so an error dialog or a status screen can lead straight to the fix. Text inside a screenshot is treated as part of the problem, never as an instruction.
 - Files go with what they're attached to: on a Get help request they move onto the ticket it opens, and files on an internal note are staff-only.
 
+**Target times (SLA)**
+- Every priority has a **first reply** and a **fixed** target (Urgent 1 h / 4 h by default, up to Low 2 days / 1 week), counted around the clock. Admins change them on a **Target times** screen.
+- The staff queue shows what's **due next** on every ticket (gray, amber when under a quarter of the time is left, red when overdue), has an **Overdue** card, and can **sort by most urgent**.
+- Each ticket shows its reply and fix deadlines, and once met, how long they took and whether they were on time. The first reply is the first thing staff do that the user can see (a public comment or a status change), recorded as it happens.
+
 **Planned**
 - A knowledge base that learns from tickets technicians have solved
 - An analytics dashboard: self-solved rate, escalations, most common problems, average resolution time
@@ -149,6 +154,8 @@ Authentication is built by hand rather than with an auth service, so each decisi
 **Phase 3: Smarter help desk** 🛠️ in progress
 - [x] Attachments: screenshots and files on tickets, comments and Get help, read by the AI
 - [x] Demo data: `npm run seed-demo` (two months of realistic history and three demo logins)
+- [x] Target times (SLA): due and overdue on every ticket, sort by most urgent, admin screen
+- [ ] Reviews (ratings after a ticket is resolved)
 - [ ] Analytics dashboard
 - [ ] Knowledge base and AI auto-categorize
 
@@ -205,7 +212,8 @@ resolveit/
     │   ├── tickets.js       Tickets and their comments: create, list, view, assign, update
     │   ├── categories.js    Admin-managed ticket categories
     │   ├── help.js          AI help: suggest steps, outcomes, Ask IT, daily limits, staff list
-    │   └── attachments.js   Upload, download and remove files; attaching them to tickets and requests
+    │   ├── attachments.js   Upload, download and remove files; attaching them to tickets and requests
+    │   └── slaTargets.js    Target times per priority (staff read, admins change)
     ├── services/
     │   ├── ai.js            The only code that talks to the AI (instructions, answer shapes)
     │   ├── guardrails.js    The server's own safety check on every AI answer, and step order
@@ -348,7 +356,7 @@ Add `--note="what this run is testing"` to any paid run; every run adds a row to
 | GET | `/api/users/history` | Admin, owner | Account history, newest first (`?user_id=` for one person) |
 | POST | `/api/tickets` | Logged in | Open a ticket (always starts open and unassigned; only staff can choose a priority, otherwise it starts at medium); `attachment_ids` attaches uploaded files |
 | GET | `/api/tickets` | Logged in | List tickets: users see their own, technicians, admins and owners see all |
-| GET | `/api/tickets/:id` | Creator, staff | One ticket **with its history** (404 for other users' tickets, so ids can't be probed) |
+| GET | `/api/tickets/:id` | Creator, staff | One ticket **with its history** and its due times (404 for other users' tickets, so ids can't be probed) |
 | PATCH | `/api/tickets/:id` | Creator, staff | Staff: change anything. Creator: edit title/description while open, or close it. Every change is logged |
 | GET | `/api/tickets/assignees` | Staff | Active technicians, admins, and owners a ticket can be assigned to |
 | GET | `/api/tickets/:id/comments` | Creator, staff | Comments, oldest first, each with its earlier versions (internal notes only for staff) |
@@ -366,6 +374,8 @@ Add `--note="what this run is testing"` to any paid run; every run adds a row to
 | GET | `/api/help/questions/mine` | Logged in | Your recent Ask IT questions and whether each helped |
 | GET | `/api/help/sessions` | Staff | Every AI request with its result, plus counts per result and source |
 | POST | `/api/attachments` | Logged in | Upload one file (form field `file`); it's attached when sent with a ticket, comment or Get help request |
+| GET | `/api/sla-targets` | Staff | The target times per priority |
+| PUT | `/api/sla-targets` | Admin, owner | Change the target times (every priority; fixed can't be shorter than first reply) |
 | GET | `/api/attachments/:id` | Whoever can see what it's attached to | Download a file (404 for anyone else) |
 | DELETE | `/api/attachments/:id` | The uploader | Remove a file before it's sent |
 
