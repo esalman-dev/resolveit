@@ -3,6 +3,8 @@
 
 import { PriorityBadge, StatusBadge } from '../../components/Badges.jsx'
 import RelativeTime from '../../components/RelativeTime.jsx'
+import DueBadge from '../../components/DueBadge.jsx'
+import { nextTarget, stepResult } from '../../lib/sla.js'
 import { PRIORITIES, STATUSES, priorityLabel, statusLabel } from '../../lib/ticketLabels.js'
 
 /**
@@ -110,6 +112,8 @@ function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, bu
 
         <Fact label="Opened"><RelativeTime date={ticket.created_at} /></Fact>
         <Fact label="Last updated"><RelativeTime date={ticket.updated_at} /></Fact>
+        <TargetFact ticket={ticket} step="reply" label="First reply" />
+        <TargetFact ticket={ticket} step="fix" label="Fixed" />
       </dl>
 
       <StepsTried steps={ticket.steps_tried ?? []} />
@@ -135,6 +139,44 @@ function Fact({ label, id, children }) {
       <dd>{children}</dd>
     </div>
   )
+}
+
+/**
+ * One target time: when it's due (with the due badge while it's the next one), or once met,
+ * how long it took and whether it was on time.
+ * @param {'reply' | 'fix'} step
+ */
+function TargetFact({ ticket, step, label }) {
+  if (!ticket.resolve_due_at) return null // no target for this priority
+  const result = stepResult(ticket, step)
+  const dueAt = step === 'reply' ? ticket.response_due_at : ticket.resolve_due_at
+  const isNext = nextTarget(ticket)?.target === step
+  return (
+    <Fact label={label}>
+      {result ? (
+        <span className={result.late ? 'ticket-page__target--late' : 'ticket-page__target--met'}>
+          {result.text} · {result.late ? `${result.lateBy} late` : 'on time'}
+        </span>
+      ) : (
+        <span className="ticket-page__target">
+          <span>by {formatDue(dueAt)}</span>
+          {isNext && <DueBadge ticket={ticket} />}
+        </span>
+      )}
+    </Fact>
+  )
+}
+
+/** "today 3:40 PM", "tomorrow 9:00 AM", or "Nov 21, 9:00 AM". */
+function formatDue(value) {
+  const date = new Date(value)
+  const time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  // Whole days between the due date and today, counted from midnight.
+  const days = Math.round((new Date(date).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000)
+  if (days === 0) return `today ${time}`
+  if (days === 1) return `tomorrow ${time}`
+  if (days === -1) return `yesterday ${time}`
+  return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`
 }
 
 /**

@@ -1,0 +1,32 @@
+/* Due badge: square corners, unlike the round status and priority pills, so the three kinds of
+   label in a ticket row don't look alike. */
+
+.due-badge {
+  display: inline-block;
+  padding: 1px var(--space-2);
+  font-size: var(--font-size-small);
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: 3px;
+}
+
+/* Plenty of time: quiet, so the urgent ones stand out. */
+.due-badge--ok {
+  color: var(--text-muted);
+  border-color: var(--border);
+}
+
+/* Under a quarter of the target left. */
+.due-badge--soon {
+  font-weight: 600;
+  color: var(--status-progress-text);
+  background: var(--status-progress-bg);
+}
+
+/* Past the target. */
+.due-badge--overdue {
+  font-weight: 600;
+  color: var(--error-text);
+  background: var(--error-bg);
+  border-color: var(--color-danger);
+}

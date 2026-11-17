@@ -5,22 +5,25 @@
 // Search and filters run in the browser on the full list. They're kept in the address
 // (e.g. /tickets?status=open), so a refresh keeps them and a filtered view can be shared.
 // The staff queue also gets count cards across the top (Open, In progress, Resolved, Assigned
-// to me, Unassigned) that double as one-click filters, like the AI help screen.
+// to me, Unassigned, Overdue) that double as one-click filters, like the AI help screen, a Due
+// column (target times), and a Sort choice: newest first, or most urgent.
 
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { apiFetch } from '../lib/api.js'
 import { PriorityBadge, StatusBadge } from '../components/Badges.jsx'
 import CountCards from '../components/CountCards.jsx'
+import DueBadge from '../components/DueBadge.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import RelativeTime from '../components/RelativeTime.jsx'
 import { isStaff } from '../lib/roles.js'
+import { byUrgency, nextTarget } from '../lib/sla.js'
 import { PRIORITIES, STATUSES, priorityLabel, statusLabel } from '../lib/ticketLabels.js'
 import { usePageTitle } from '../lib/usePageTitle.js'
 import './TicketsPage.css'
 
 /** The filter names used in the address, e.g. ?q=wifi&status=open&mine=1 */
-const FILTERS = ['q', 'status', 'priority', 'category', 'mine', 'unassigned']
+const FILTERS = ['q', 'status', 'priority', 'category', 'mine', 'unassigned', 'overdue']
 
 /**
  * The ticket list with search and filters.
@@ -66,6 +69,8 @@ function TicketsPage({ currentUser, scope }) {
   const category = params.get('category') ?? ''
   const mine = params.get('mine') === '1'
   const unassigned = params.get('unassigned') === '1'
+  const overdue = params.get('overdue') === '1'
+  const sort = params.get('sort') === 'urgent' ? 'urgent' : 'newest' // not a filter: Clear filters keeps it
   const filtering = FILTERS.some((name) => params.has(name))
 
   /**
@@ -95,8 +100,11 @@ function TicketsPage({ currentUser, scope }) {
       (!priority || t.priority === priority) &&
       (!category || (category === 'none' ? !t.category_name : t.category_name === category)) &&
       (!mine || t.assigned_to === currentUser.id) &&
-      (!unassigned || isUnassigned(t))
+      (!unassigned || isUnassigned(t)) &&
+      (!overdue || isOverdue(t))
   )
+  // The server sends newest first; "Most urgent" puts overdue tickets first, then the soonest due.
+  if (sort === 'urgent') shown.sort((a, b) => byUrgency(a, b))
 
   // --- Staff count cards ---
   // Each card is a one-click filter. Choosing one replaces the other card filters (status,
@@ -108,16 +116,17 @@ function TicketsPage({ currentUser, scope }) {
     { value: 'resolved', label: statusLabel('resolved'), count: statusCount('resolved'), tone: 'green' },
     { value: 'mine', label: 'Assigned to me', count: tickets.filter((t) => t.assigned_to === currentUser.id).length, tone: 'indigo' },
     { value: 'unassigned', label: 'Unassigned', count: tickets.filter(isUnassigned).length, tone: 'gray' },
+    { value: 'overdue', label: 'Overdue', count: tickets.filter(isOverdue).length, tone: 'red' },
   ]
-  const onlyOne = [status, mine, unassigned].filter(Boolean).length === 1
-  const selectedCard = !onlyOne ? '' : status || (mine ? 'mine' : 'unassigned')
+  const onlyOne = [status, mine, unassigned, overdue].filter(Boolean).length === 1
+  const selectedCard = !onlyOne ? '' : status || (mine ? 'mine' : unassigned ? 'unassigned' : 'overdue')
 
   function selectCard(value) {
     setParams(
       (current) => {
         const next = new URLSearchParams(current)
-        for (const name of ['status', 'mine', 'unassigned']) next.delete(name)
-        if (value === 'mine' || value === 'unassigned') next.set(value, '1')
+        for (const name of ['status', 'mine', 'unassigned', 'overdue']) next.delete(name)
+        if (value === 'mine' || value === 'unassigned' || value === 'overdue') next.set(value, '1')
         else if (value) next.set('status', value)
         return next
       },
@@ -167,8 +176,21 @@ function TicketsPage({ currentUser, scope }) {
             Assigned to me
           </label>
         )}
+        {queue && (
+          <label>
+            Sort
+            <select value={sort} onChange={(e) => setFilter('sort', e.target.value === 'urgent' ? 'urgent' : '')}>
+              <option value="newest">Newest first</option>
+              <option value="urgent">Most urgent</option>
+            </select>
+          </label>
+        )}
         {filtering && (
-          <button type="button" className="link tickets-page__clear" onClick={() => setParams({}, { replace: true })}>
+          <button
+            type="button"
+            className="link tickets-page__clear"
+            onClick={() => setParams(sort === 'urgent' ? { sort } : {}, { replace: true })}
+          >
             Clear filters
           </button>
         )}
@@ -191,6 +213,7 @@ function TicketsPage({ currentUser, scope }) {
                 <th scope="col">Title</th>
                 <th scope="col">Status</th>
                 <th scope="col">Priority</th>
+                {queue && <th scope="col">Due</th>}
                 {staff && <th scope="col">Assignee</th>}
                 <th scope="col">Opened</th>
               </tr>
@@ -207,6 +230,7 @@ function TicketsPage({ currentUser, scope }) {
                   </td>
                   <td><StatusBadge status={t.status} /></td>
                   <td><PriorityBadge priority={t.priority} /></td>
+                  {queue && <td className="tickets-page__due"><DueBadge ticket={t} /></td>}
                   {staff && <td className="tickets-page__assignee">{t.assigned_to_name ?? <span className="tickets-page__none">Nobody</span>}</td>}
                   <td className="tickets-page__opened"><RelativeTime date={t.created_at} /></td>
                 </tr>
@@ -234,6 +258,9 @@ function FilterSelect({ label, value, onChange, children }) {
 
 /** Nobody assigned, and still needs doing (a resolved ticket with nobody on it isn't work to pick up). */
 const isUnassigned = (ticket) => !ticket.assigned_to && ticket.status !== 'resolved'
+
+/** Past its reply or fix target, and not resolved yet. */
+const isOverdue = (ticket) => nextTarget(ticket)?.state === 'overdue'
 
 /** True if the search text is in the title, or is the ticket's number ("12" or "#12"). */
 function matchesSearch(ticket, q) {

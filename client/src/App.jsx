@@ -12,6 +12,7 @@ import AiHelpPage from './pages/AiHelpPage.jsx'
 import AskItPage from './pages/AskItPage.jsx'
 import AppShell from './components/AppShell.jsx'
 import CategoriesPage from './pages/CategoriesPage.jsx'
+import SlaTargetsPage from './pages/SlaTargetsPage.jsx'
 import EmptyState from './components/EmptyState.jsx'
 import GetHelpPage from './pages/GetHelpPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -92,6 +93,7 @@ function App() {
         <Route path="ai-help" element={isStaff(user.role) ? <AiHelpPage /> : <Navigate to="/" replace />} />
         <Route path="admin/users" element={admin ? <UsersPage currentUser={user} /> : <Navigate to="/" replace />} />
         <Route path="admin/categories" element={admin ? <CategoriesPage /> : <Navigate to="/" replace />} />
+        <Route path="admin/targets" element={admin ? <SlaTargetsPage /> : <Navigate to="/" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

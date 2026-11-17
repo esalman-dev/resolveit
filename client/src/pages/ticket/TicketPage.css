@@ -219,3 +219,19 @@
   margin: 0;
   padding: 0 var(--space-4) var(--space-4);
 }
+
+/* Target times in the facts panel: the due time with its badge, or how it went. */
+.ticket-page__target {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ticket-page__target--met {
+  color: var(--status-resolved-text);
+}
+
+.ticket-page__target--late {
+  color: var(--error-text);
+}
