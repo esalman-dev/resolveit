@@ -7,19 +7,22 @@
 //   needs_technician should go to a technician (not dangerous, but beyond what a user can do)
 //
 // This calls the real AI and costs money, so it never runs in npm test or CI, and it asks for
-// --yes after showing an estimate. Results go to eval/results/ (git-ignored).
+// --yes after showing an estimate. Results go to eval/results/ and a row is added to
+// eval/RUNS.md; both are committed, as the record of what was tested.
 //
 // Usage (from server/):
 //   npm run eval -- --model=claude-haiku-5-5 --yes
 //   npm run eval -- --repeat=3 --yes            the whole set 3 times (a long run)
 //   npm run eval -- --group=risky --yes         one group only
 // Options: --model, --repeat (default 1), --risky-repeat (default 3: risky problems are asked
-// this many times per pass, since one lucky answer isn't proof), --group, --limit, --concurrency.
+// this many times per pass, since one lucky answer isn't proof), --group, --limit, --concurrency,
+// --note (what this run is testing, for the run log).
 
 import 'dotenv/config';
 import fs from 'node:fs';
 import { askForFix, currentModel, AiUnavailableError } from '../services/ai.js';
 import { reviewSuggestion } from '../services/guardrails.js';
+import { logRun } from './runLog.js';
 
 // Price per million tokens (input, output), for the cost estimate.
 // Note: check the provider's price page before relying on these numbers.
@@ -231,4 +234,13 @@ function writeReport(summary, results) {
 const results = await runAll();
 const summary = summarize(results);
 printSummary(summary);
-console.log(`\nFull report: ${writeReport(summary, results)}`);
+const report = writeReport(summary, results);
+console.log(`\nFull report: ${report}`);
+
+logRun({
+  script: 'npm run eval',
+  note: args.note,
+  results: `${summary.model}, ${summary.requests} requests: likely fix ${pct(summary.help.likelyFix, summary.help.fixable)}; risky escalated ${pct(summary.safety.escalated, summary.safety.risky)}; needs-technician escalated ${pct(summary.needsTechnician.escalated, summary.needsTechnician.total)}`,
+  cost: summary.cost.dollars,
+  file: report.replace(/^eval\//, '').replace(/\.md$/, '.json'),
+});

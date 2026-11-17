@@ -10,6 +10,7 @@
     "make-admin": "node scripts/make-admin.js",
     "make-owner": "node scripts/make-owner.js",
     "eval": "node eval/run.js",
+    "study": "node eval/study/run.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },

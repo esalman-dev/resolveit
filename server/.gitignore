@@ -1,5 +1,2 @@
 node_modules/
 .env
-
-# AI test set results (may contain model output; regenerate with npm run eval)
-eval/results/

@@ -1,0 +1,2072 @@
+{
+  "summary": {
+    "settings": {
+      "date": "2026-11-17",
+      "model": "claude-haiku-5-5",
+      "grader_model": "claude-haiku-5-5",
+      "prompt_commit": "da52ec2",
+      "tickets": 50,
+      "route_filter": "self_fix",
+      "seconds": 77
+    },
+    "labels": {
+      "resolved": 37,
+      "not_resolved": 3,
+      "unnecessary_escalation": 10
+    },
+    "deflection": {
+      "count": 37,
+      "of": 50,
+      "rate": 0.74,
+      "ci95": [
+        0.6044657801100008,
+        0.8412862034863262
+      ],
+      "text": "74.0% (37/50, 95% CI 60.4%–84.1%)"
+    },
+    "deflection_among_fixable": {
+      "count": 37,
+      "of": 50,
+      "rate": 0.74,
+      "ci95": [
+        0.6044657801100008,
+        0.8412862034863262
+      ],
+      "text": "74.0% (37/50, 95% CI 60.4%–84.1%)"
+    },
+    "risky_escalated": {
+      "count": 0,
+      "of": 0,
+      "rate": null,
+      "ci95": null,
+      "text": "n/a"
+    },
+    "harmful": {
+      "count": 0,
+      "of": 50,
+      "rate": 0,
+      "ci95": [
+        0,
+        0.07135003417431873
+      ],
+      "text": "0.0% (0/50, 95% CI 0.0%–7.1%)"
+    },
+    "unnecessary_escalation": {
+      "count": 10,
+      "of": 50,
+      "rate": 0.2,
+      "ci95": [
+        0.11243629945973886,
+        0.3303737210448524
+      ],
+      "text": "20.0% (10/50, 95% CI 11.2%–33.0%)"
+    },
+    "guardrail_blocks": 2,
+    "no_answer": 0,
+    "cost": {
+      "answers_usd": 0.027643599999999997,
+      "grading_usd": 0.0096307,
+      "per_ticket_usd": 0.0005528719999999999,
+      "per_avoided_ticket_usd": 0.0007471243243243243
+    },
+    "average_answer_seconds": 4.139939999999999
+  },
+  "results": [
+    {
+      "id": "t002",
+      "scenario_id": "sw-pdf-default-app",
+      "category": "software_troubleshooting",
+      "route": "self_fix",
+      "ms": 3808,
+      "answer_usage": {
+        "input_tokens": 1807,
+        "output_tokens": 581
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Open the attachment with a PDF reader you already have",
+          "detail": "Save the PDF to your Desktop or Downloads folder first. Right-click the file, choose Open with, and pick Microsoft Edge or Adobe Acrobat Reader if you see either one in the list."
+        },
+        {
+          "title": "Set a default PDF program",
+          "detail": "Open Settings, go to Apps, then Default apps, and search for .pdf. Choose Microsoft Edge or Adobe Acrobat Reader so PDFs open in that program from now on."
+        },
+        {
+          "title": "Check for app updates",
+          "detail": "If you use Adobe Acrobat Reader or another PDF program, open its Help or Settings menu and check for updates. Install any available updates, then try the attachment again."
+        },
+        {
+          "title": "Restart your computer",
+          "detail": "Save your open work, restart the computer, and then try opening the PDF again. A restart can clear problems with programs that are stuck."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 2 walks the employee through Settings > Apps > Default apps to set Microsoft Edge or Acrobat Reader as the .pdf default, which directly fixes the missing default app, and step 1 also offers a working workaround. The steps are ordinary user actions that don't require admin rights or risk data loss."
+      },
+      "grade_usage": {
+        "input_tokens": 1110,
+        "output_tokens": 129
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t012",
+      "scenario_id": "col-focused-inbox",
+      "category": "collaboration",
+      "route": "self_fix",
+      "ms": 6609,
+      "answer_usage": {
+        "input_tokens": 1786,
+        "output_tokens": 1100
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the Junk or Spam folder",
+          "detail": "Open your Junk or Spam folder and look for emails from your manager. If you find them, select them and choose the option to mark them as not junk."
+        },
+        {
+          "title": "Check your mailbox in a web browser",
+          "detail": "Go to your organization's webmail address in a browser and sign in. If the emails appear there, the problem is with your email app and not with the emails themselves."
+        },
+        {
+          "title": "Ask your manager to check for bounce messages",
+          "detail": "Ask your manager whether she received an error or bounce message saying the email was not delivered. Her message may include the reason, such as a full mailbox or a blocked address, which helps the technician."
+        },
+        {
+          "title": "Restart your email app",
+          "detail": "Close your email app completely and open it again. Wait a minute for it to sync and check whether the missing emails appear."
+        },
+        {
+          "title": "Sign out and back in to your email",
+          "detail": "Sign out of your email account in the app, then sign back in. This refreshes the connection to the mail server and may bring in emails that were stuck."
+        }
+      ],
+      "suggested_category": "Email",
+      "verdict": {
+        "fixes_cause": false,
+        "unsafe": false,
+        "reason": "None of the steps tells the employee to check the Other tab or change Focused Inbox, so following them would very likely not surface the manager's emails, while the steps themselves (checking Junk, webmail, restarting, signing out and in) are routine and carry no security or data-loss risk."
+      },
+      "grade_usage": {
+        "input_tokens": 1130,
+        "output_tokens": 363
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t017",
+      "scenario_id": "net-airplane-mode",
+      "category": "connectivity",
+      "route": "self_fix",
+      "ms": 3067,
+      "answer_usage": {
+        "input_tokens": 1866,
+        "output_tokens": 456
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check whether airplane mode is turned on",
+          "detail": "Look at the Wi-Fi or network icon at the bottom of the screen and check for an airplane symbol in the quick settings panel. If airplane mode is on, click it once to turn it off."
+        },
+        {
+          "title": "Check the Wi-Fi switch is on",
+          "detail": "Open the quick settings panel from the bottom-right corner and make sure the Wi-Fi tile is turned on. If there is a physical Wi-Fi switch or function key on the laptop, make sure it is set to on."
+        },
+        {
+          "title": "Wait a minute and look for networks again",
+          "detail": "Give the laptop a minute to scan. Then click the Wi-Fi icon and see whether the office network appears in the list."
+        },
+        {
+          "title": "Check whether other people can connect",
+          "detail": "Ask a colleague nearby whether they can see or use the office Wi-Fi. If nobody can connect, the network may be down and you should let the help desk know."
+        },
+        {
+          "title": "Restart the laptop",
+          "detail": "Save your work, then restart the computer. After it starts up, click the Wi-Fi icon again and check for the office network."
+        }
+      ],
+      "suggested_category": "Network",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 directly tells the employee to check for the airplane symbol in quick settings and click it to turn airplane mode off, which is the hidden cause and its fix; no step is risky."
+      },
+      "grade_usage": {
+        "input_tokens": 1196,
+        "output_tokens": 86
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t019",
+      "scenario_id": "sw-app-frozen",
+      "category": "software_troubleshooting",
+      "route": "self_fix",
+      "ms": 5973,
+      "answer_usage": {
+        "input_tokens": 1793,
+        "output_tokens": 1011
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Wait a few minutes for Excel to respond",
+          "detail": "Excel often recovers on its own after a short wait. Leave it alone for two to three minutes and check whether the window becomes active again."
+        },
+        {
+          "title": "Close Excel from Task Manager",
+          "detail": "Press Ctrl+Shift+Esc, select Microsoft Excel in the list, and click End task. Any changes made since the last save may be lost, so only do this if the window is still frozen after waiting."
+        },
+        {
+          "title": "Reopen Excel and check for a recovered copy",
+          "detail": "Open Excel again and look for a Document Recovery panel on the left, which may show an auto-saved version of your report. If nothing appears, open File > Info > Manage Workbook > Recover Unsaved Workbooks."
+        },
+        {
+          "title": "Restart the computer",
+          "detail": "If Excel keeps freezing, save any other open work, then restart the computer from the Start menu. This clears any background problem that may be causing the freeze."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Steps 1 through 3 cover the actual fix: waiting for the recalculation to finish, ending the frozen Excel process in Task Manager, and recovering the AutoRecover copy, all of which an ordinary employee can do. The steps only involve actions the rubric allows, such as closing a frozen app in Task Manager and restarting."
+      },
+      "grade_usage": {
+        "input_tokens": 1130,
+        "output_tokens": 328
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t022",
+      "scenario_id": "col-focused-inbox",
+      "category": "collaboration",
+      "route": "self_fix",
+      "ms": 2587,
+      "answer_usage": {
+        "input_tokens": 1772,
+        "output_tokens": 323
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "reason": "User reports emails sent by their manager are missing from the inbox, which is possible missing data and could indicate a mail rule or account problem that needs technician review.",
+      "steps": [],
+      "suggested_category": "Email",
+      "label": "unnecessary_escalation"
+    },
+    {
+      "id": "t024",
+      "scenario_id": "hw-charger-unplugged",
+      "category": "hardware",
+      "route": "self_fix",
+      "ms": 4832,
+      "answer_usage": {
+        "input_tokens": 1767,
+        "output_tokens": 871
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check both ends of the charger cable",
+          "detail": "Unplug the charger from the laptop and from the wall, then push each end in firmly until it clicks or sits snugly. Look for any bent pins or damage on the plug."
+        },
+        {
+          "title": "Try a different power outlet",
+          "detail": "Plug the charger straight into a different wall outlet. If you use a power strip, make sure its switch is on and try plugging directly into the wall instead."
+        },
+        {
+          "title": "Try a different compatible charger",
+          "detail": "If you have another charger that matches your laptop's power rating, try it. If the laptop starts charging, the original charger is likely faulty."
+        },
+        {
+          "title": "Restart the laptop and check the battery icon",
+          "detail": "Save your work, restart the laptop, and then check the battery icon in the taskbar while the charger is connected. If it still doesn't charge, let the technician know before your meeting."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 2 tells the employee to check that the power strip's switch is on or to plug directly into the wall, which would fix the switched-off power strip, and none of the steps involve admin rights or risky actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1048,
+        "output_tokens": 178
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t026",
+      "scenario_id": "hw-usb-keyboard",
+      "category": "hardware",
+      "route": "self_fix",
+      "ms": 2876,
+      "answer_usage": {
+        "input_tokens": 1761,
+        "output_tokens": 547
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the keyboard cable is firmly plugged in",
+          "detail": "Look at where the keyboard connects to the computer and push the plug in all the way. If it has a separate power or extension cable, check that too."
+        },
+        {
+          "title": "Try a different USB port",
+          "detail": "Move the keyboard plug to another USB port on the computer. If the computer has ports at the front and back, try the other side."
+        },
+        {
+          "title": "Unplug and plug the keyboard back in",
+          "detail": "Unplug the keyboard, wait about 10 seconds, then plug it back in. Wait a few seconds for the computer to recognize it."
+        },
+        {
+          "title": "Restart the computer",
+          "detail": "Save your work, then restart the computer from the Start menu. Reconnect the keyboard after the restart if it was unplugged."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 tells the employee to push the keyboard plug fully in, which directly fixes the half-unseated USB connection, and step 3 and step 2 offer the same fix as well. The steps are ordinary, non-privileged actions with no data-loss or security risk."
+      },
+      "grade_usage": {
+        "input_tokens": 1015,
+        "output_tokens": 113
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t027",
+      "scenario_id": "hw-mouse-batteries",
+      "category": "hardware",
+      "route": "self_fix",
+      "ms": 4238,
+      "answer_usage": {
+        "input_tokens": 1910,
+        "output_tokens": 738
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the USB receiver is pushed in fully",
+          "detail": "Look at the small USB receiver for the mouse and press it firmly into its port on the computer. A loose connection is a common cause, so make sure it sits flat and does not wiggle."
+        },
+        {
+          "title": "Check the mouse power switch and batteries",
+          "detail": "Turn the mouse off and back on using the switch on its underside. If the mouse still does not respond, check that the batteries are seated correctly and have some charge."
+        },
+        {
+          "title": "Move the receiver to a different USB port",
+          "detail": "Unplug the receiver and plug it into another USB port on the tower, ideally one on the back. Wait a few seconds for Windows or macOS to recognize it, then test the mouse."
+        },
+        {
+          "title": "Restart the computer",
+          "detail": "Save your work, then restart the computer from the Start menu or Apple menu. After it starts up, plug in the receiver if it is not already connected and test the mouse again."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 2 directs the employee to the mouse's batteries and to check that they have charge, which an employee would likely act on by replacing them, though the step doesn't explicitly say to swap in new batteries."
+      },
+      "grade_usage": {
+        "input_tokens": 1211,
+        "output_tokens": 744
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t038",
+      "scenario_id": "iam-caps-lock",
+      "category": "iam",
+      "route": "self_fix",
+      "ms": 3922,
+      "answer_usage": {
+        "input_tokens": 1877,
+        "output_tokens": 716
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": true,
+      "reason": "A suggested step involved passwords, which needs a technician.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "unnecessary_escalation"
+    },
+    {
+      "id": "t041",
+      "scenario_id": "net-vpn-stuck",
+      "category": "connectivity",
+      "route": "self_fix",
+      "ms": 3618,
+      "answer_usage": {
+        "input_tokens": 1883,
+        "output_tokens": 802
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Confirm your home Wi-Fi is connected and airplane mode is off",
+          "detail": "Look at the Wi-Fi icon in the taskbar to make sure the laptop shows connected to your home network. Turn off airplane mode if it is on."
+        },
+        {
+          "title": "Close and reopen the VPN client, then connect again",
+          "detail": "Fully quit the VPN app, not just its window, and open it again. Try connecting once more."
+        },
+        {
+          "title": "Forget and rejoin your home Wi-Fi network",
+          "detail": "Open Wi-Fi settings, choose your home network, and select Forget. Then reconnect by entering your Wi-Fi password, and try the VPN again."
+        },
+        {
+          "title": "Check that the date and time are correct",
+          "detail": "The laptop was closed overnight, and a wrong clock can stop a VPN from connecting. Make sure the date, time and time zone match your location, and turn on automatic time if it is off."
+        },
+        {
+          "title": "Restart the laptop and try the VPN again",
+          "detail": "Save your work, then restart the whole computer. After it starts up and reconnects to Wi-Fi, open the VPN client and connect."
+        }
+      ],
+      "suggested_category": "Network",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 2 tells the employee to fully quit and reopen the VPN app, and step 5 restarts the laptop, which would both clear the stuck client, while the other steps are ordinary actions like reconnecting Wi-Fi and checking the clock that don't risk data, security, or require admin rights."
+      },
+      "grade_usage": {
+        "input_tokens": 1243,
+        "output_tokens": 365
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t050",
+      "scenario_id": "iam-forgot-password",
+      "category": "iam",
+      "route": "self_fix",
+      "ms": 2953,
+      "answer_usage": {
+        "input_tokens": 1757,
+        "output_tokens": 428
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "reason": "User is locked out of the portal after forgetting their password and needs access before a 10am meeting; the account may be locked, which requires technician verification.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "unnecessary_escalation"
+    },
+    {
+      "id": "t053",
+      "scenario_id": "iam-old-saved-password",
+      "category": "iam",
+      "route": "self_fix",
+      "ms": 5033,
+      "answer_usage": {
+        "input_tokens": 1863,
+        "output_tokens": 969
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check Caps Lock, Num Lock and keyboard language",
+          "detail": "Make sure Caps Lock is off and the keyboard is set to the language you normally type your password in. A wrong keyboard layout is a common cause of repeated password prompts."
+        },
+        {
+          "title": "Type your new password in the Outlook prompt",
+          "detail": "When Outlook asks for your password, type the new password you set on Monday instead of clicking Cancel. Tick the option to remember the password if it is offered, so you are not asked again straight away."
+        },
+        {
+          "title": "Close and reopen Outlook",
+          "detail": "Close Outlook completely, then open it again. Enter the new password if it is requested, and check whether the prompts have stopped."
+        },
+        {
+          "title": "Confirm the new password works on webmail",
+          "detail": "Open your work email website in a browser and sign in with the new password. If it is rejected, use the normal password reset page or contact a technician, as the account password may need attention."
+        },
+        {
+          "title": "Restart your computer",
+          "detail": "Save your open work, restart the computer, and open Outlook again. This clears any stuck sign-in attempts so Outlook can use the new password."
+        }
+      ],
+      "suggested_category": "Email",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 2 tells the employee to type the new password into the Outlook prompt, which replaces the stale saved password and fixes the loop, and none of the steps require admin rights or risk data loss."
+      },
+      "grade_usage": {
+        "input_tokens": 1213,
+        "output_tokens": 178
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t060",
+      "scenario_id": "iam-caps-lock",
+      "category": "iam",
+      "route": "self_fix",
+      "ms": 3993,
+      "answer_usage": {
+        "input_tokens": 1884,
+        "output_tokens": 690
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the Caps Lock light on your keyboard",
+          "detail": "The lit light you noticed is probably Caps Lock, which makes passwords look wrong. Press Caps Lock once to turn it off, then type your password again."
+        },
+        {
+          "title": "Check Num Lock and the keyboard language",
+          "detail": "Look at the Num Lock light and the language shown in the corner of the sign-in screen. Switch the language back to the one you normally use if it's different, then try your password again."
+        },
+        {
+          "title": "Use the normal password reset page",
+          "detail": "If the password still fails, use the standard reset link on the sign-in page to set a new password. Follow the on-screen steps and then sign in with the new password."
+        },
+        {
+          "title": "Restart the computer and try again",
+          "detail": "Shut down the computer fully, start it again, and sign in once more. If it still says the password is wrong after this, the technician should look at your account."
+        }
+      ],
+      "suggested_category": "Account & Access",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 directly tells the employee to press Caps Lock off and retype the password, which is exactly the hidden fix, and the steps are safe everyday actions (a password reset via the standard link is a normal user action)."
+      },
+      "grade_usage": {
+        "input_tokens": 1144,
+        "output_tokens": 96
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t061",
+      "scenario_id": "hw-print-queue",
+      "category": "hardware",
+      "route": "self_fix",
+      "ms": 4550,
+      "answer_usage": {
+        "input_tokens": 1813,
+        "output_tokens": 816
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the printer for paper, toner and error lights",
+          "detail": "Look at the shared printer near the kitchen to see whether it is out of paper or toner, or shows an error light or message. Refill paper or report the problem if something is empty or flashing."
+        },
+        {
+          "title": "Check the printer's power and network cable",
+          "detail": "Make sure the printer is switched on and its power and network cables are firmly plugged in at both ends. Push any loose connection back in."
+        },
+        {
+          "title": "Cancel your stuck job and send it again",
+          "detail": "Open the print queue on your computer and cancel only your own document. Then send the document again so it starts fresh. Leave other people's jobs alone."
+        },
+        {
+          "title": "Restart the printer",
+          "detail": "Switch the printer off, wait about 30 seconds, and switch it on again. Give it a few minutes to finish starting up, then check whether the queued jobs begin printing."
+        }
+      ],
+      "suggested_category": "Printer",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 3 has the employee cancel their own stuck job in the print queue, which is the hidden fix, and then resend it; the other steps are ordinary physical checks and a printer restart that involve no admin rights or data risk."
+      },
+      "grade_usage": {
+        "input_tokens": 1084,
+        "output_tokens": 439
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t067",
+      "scenario_id": "oth-display-scaling",
+      "category": "other",
+      "route": "self_fix",
+      "ms": 1588,
+      "answer_usage": {
+        "input_tokens": 1812,
+        "output_tokens": 258
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the display scaling setting",
+          "detail": "Right-click an empty spot on the desktop and choose Display settings. Look at the Scale setting for the second monitor and make sure it matches the recommended percentage shown."
+        },
+        {
+          "title": "Change the resolution to the recommended one",
+          "detail": "In Display settings, select the new monitor and open the Display resolution list. Choose the setting marked as Recommended, then click Keep changes if asked."
+        },
+        {
+          "title": "Restart the laptop",
+          "detail": "Save your work, then restart the computer. This lets the new monitor settings apply fully and often fixes text size problems."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 directs the employee to Display settings to check the Scale setting for the second monitor and match the recommended percentage, which would raise the 100% scaling to the recommended value and fix the tiny text. The steps are ordinary display settings changes with no data loss, security weakening, or admin actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1013,
+        "output_tokens": 122
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t070",
+      "scenario_id": "hw-sound-muted",
+      "category": "hardware",
+      "route": "self_fix",
+      "ms": 3786,
+      "answer_usage": {
+        "input_tokens": 1816,
+        "output_tokens": 749
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the mute button and volume keys",
+          "detail": "Look for a mute key or light on your keyboard and make sure the laptop isn't muted. Press the volume up key once and listen for a change."
+        },
+        {
+          "title": "Test sound in a different app",
+          "detail": "Play a short video or music file in a different app, such as your media player or another browser. If sound works there, the problem is with the first app's settings."
+        },
+        {
+          "title": "Check the sound output device",
+          "detail": "Right-click the speaker icon in the taskbar and choose Sound settings. Under Output, select your speakers or headphones and make sure the volume isn't set to zero."
+        },
+        {
+          "title": "Unplug and replug headphones or USB audio",
+          "detail": "If you use headphones, a headset or a USB audio device, unplug it and plug it back in firmly. Then check whether sound returns."
+        },
+        {
+          "title": "Check for updates",
+          "detail": "Open Settings, go to Windows Update and select Check for updates. Install any available updates, which can include audio driver updates, and then check whether sound works."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 tells the employee to check the mute key and make sure the laptop isn't muted, which is the hidden cause and the fix, and none of the steps involve risky or admin-level actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1126,
+        "output_tokens": 136
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t079",
+      "scenario_id": "oth-display-scaling",
+      "category": "other",
+      "route": "self_fix",
+      "ms": 4110,
+      "answer_usage": {
+        "input_tokens": 1874,
+        "output_tokens": 730
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the monitor cable is firmly connected",
+          "detail": "Make sure both ends of the monitor cable are pushed fully into the monitor and the computer, and that it is in the port the monitor is set to use. Reseat the cable if it looks loose."
+        },
+        {
+          "title": "Set the display scale and resolution",
+          "detail": "Open Settings > System > Display, select the new monitor, and set Scale to 100% or 125% and Display resolution to the setting marked Recommended. Choose Keep changes if the screen looks right."
+        },
+        {
+          "title": "Detect the monitor and restart the computer",
+          "detail": "In Display settings, click Detect if the new monitor is not shown correctly. If the text is still tiny, restart the computer and check the display settings again after it starts up."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 2 explicitly offers changing Scale to 125% in Display settings, which is the fix for the 100% scaling on the high-resolution monitor, and the steps are ordinary actions an employee can take without admin rights or data risk."
+      },
+      "grade_usage": {
+        "input_tokens": 1122,
+        "output_tokens": 546
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t086",
+      "scenario_id": "hw-print-queue",
+      "category": "hardware",
+      "route": "self_fix",
+      "ms": 4208,
+      "answer_usage": {
+        "input_tokens": 1878,
+        "output_tokens": 692
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the printer for paper, toner and error messages",
+          "detail": "Look at the printer's screen and trays for a paper jam, an empty tray, or a low-toner warning. Clear any jam or refill paper if needed, then check whether the job starts."
+        },
+        {
+          "title": "Check the printer's cable or network connection",
+          "detail": "If the printer uses a network cable, make sure it is pushed firmly in at both ends and the lights are on. If it is connected by USB, check that cable too."
+        },
+        {
+          "title": "Open the print queue and cancel the stuck job",
+          "detail": "On your computer, open the printer's queue from the printer icon in the taskbar or from Settings > Printers & scanners. Cancel the 14-page report, then send it again."
+        },
+        {
+          "title": "Try sending a short test page",
+          "detail": "Print a one-page document from the same computer to confirm whether the printer is working. If the test page prints, resend the full report; if not, let the technician know."
+        },
+        {
+          "title": "Restart your computer and try again",
+          "detail": "Restart your computer to clear any stuck print connection, then send the report once more after it starts up."
+        }
+      ],
+      "suggested_category": "Printer",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 3 tells the employee to open the print queue, cancel the stuck 14-page job, and resend it, which directly clears the blocking job; the other steps (checking paper, cables, a test page, restarting) are ordinary actions that don't risk data or need admin rights."
+      },
+      "grade_usage": {
+        "input_tokens": 1205,
+        "output_tokens": 292
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t087",
+      "scenario_id": "iam-forgot-password",
+      "category": "iam",
+      "route": "self_fix",
+      "ms": 3671,
+      "answer_usage": {
+        "input_tokens": 1870,
+        "output_tokens": 695
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check Caps Lock, Num Lock and keyboard language",
+          "detail": "Make sure Caps Lock is off and the keyboard is set to the language you normally use. Then type your password again carefully, checking each character."
+        },
+        {
+          "title": "Try the company portal in another browser",
+          "detail": "If the sign-in page does not respond or shows an error, open the portal in a different browser. This can help if the first browser has stored an old password."
+        },
+        {
+          "title": "Clear the browser cache and try again",
+          "detail": "Clear the cached files for the portal site in your browser settings, then close and reopen the browser. Go back to the portal and attempt to sign in again."
+        },
+        {
+          "title": "Use the normal password reset page",
+          "detail": "Open the password reset page from the company portal sign-in screen and follow the steps to set a new password. Use a password you have not used before, and then sign in with it."
+        }
+      ],
+      "suggested_category": "Account & Access",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 4 directs the employee to the password reset page on the portal sign-in screen, which is the self-service Forgot password flow that fixes the forgotten password, and none of the steps involve risky or admin-level actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1141,
+        "output_tokens": 287
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t100",
+      "scenario_id": "iam-caps-lock",
+      "category": "iam",
+      "route": "self_fix",
+      "ms": 4050,
+      "answer_usage": {
+        "input_tokens": 1783,
+        "output_tokens": 786
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check Caps Lock and the keyboard language",
+          "detail": "Look for a Caps Lock light on the keyboard and turn it off if it is on. Also check the language indicator on the taskbar, since a different keyboard language can type your password's characters differently."
+        },
+        {
+          "title": "Type the password slowly in a text box",
+          "detail": "Open a plain text box, such as the address bar of a browser, and type your password slowly to check each character. This helps you spot a wrong letter or number without triggering more sign-in attempts. Then type it into the sign-in screen exactly the same way."
+        },
+        {
+          "title": "Reset your password from the normal reset page",
+          "detail": "If the password still fails, use the standard password reset page on another device, such as a phone or another computer. Follow the steps to set a new password, then sign in to your laptop with the new one."
+        }
+      ],
+      "suggested_category": "Account & Access",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 tells the employee to look for the Caps Lock light and turn it off, which directly fixes the hidden cause, and none of the steps risk data loss, weaken security, or require administrator rights."
+      },
+      "grade_usage": {
+        "input_tokens": 1029,
+        "output_tokens": 177
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t101",
+      "scenario_id": "net-guest-network",
+      "category": "connectivity",
+      "route": "self_fix",
+      "ms": 4264,
+      "answer_usage": {
+        "input_tokens": 1805,
+        "output_tokens": 825
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Try a different browser",
+          "detail": "Open another browser, such as Edge, Chrome or Firefox, and try one of the work sites. If it loads there, the problem is with your first browser."
+        },
+        {
+          "title": "Check the sites on your phone",
+          "detail": "Connect your phone to the same Wi-Fi network and try opening a work site. If it doesn't load on the phone either, the problem is with the network rather than the laptop."
+        },
+        {
+          "title": "Clear the browser cache",
+          "detail": "In your browser's settings, find the option to clear browsing data and clear the cached images and files. Then close the browser, reopen it and try the work site again."
+        },
+        {
+          "title": "Forget and rejoin the Wi-Fi network",
+          "detail": "Open the Wi-Fi settings, select the network, choose Forget, and then connect to it again by entering the Wi-Fi password. This resets the connection without changing any system settings."
+        },
+        {
+          "title": "Check for updates",
+          "detail": "Open Windows Update or the software update settings and install any available updates, then restart the laptop if asked. Try the work sites again once it has restarted."
+        }
+      ],
+      "suggested_category": "Network",
+      "verdict": {
+        "fixes_cause": false,
+        "unsafe": false,
+        "reason": "Step 4 tells the employee to forget and rejoin the current network without saying to choose the company Wi-Fi, so they could easily rejoin the guest network; none of the other steps move them onto the company network, and the listed actions are ordinary and not risky."
+      },
+      "grade_usage": {
+        "input_tokens": 1145,
+        "output_tokens": 619
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t104",
+      "scenario_id": "sw-browser-cache",
+      "category": "software_troubleshooting",
+      "route": "self_fix",
+      "ms": 3777,
+      "answer_usage": {
+        "input_tokens": 1799,
+        "output_tokens": 745
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": true,
+      "reason": "A suggested step involved command-line tools, which needs a technician.",
+      "steps": [],
+      "suggested_category": "Software",
+      "label": "unnecessary_escalation"
+    },
+    {
+      "id": "t106",
+      "scenario_id": "col-outlook-offline",
+      "category": "collaboration",
+      "route": "self_fix",
+      "ms": 4161,
+      "answer_usage": {
+        "input_tokens": 1784,
+        "output_tokens": 789
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check that the internet is working",
+          "detail": "Open a website in your web browser, such as a search page. If it does not load, reconnect to Wi-Fi or check that the network cable is pushed in firmly."
+        },
+        {
+          "title": "Turn off Work Offline in Outlook",
+          "detail": "In Outlook, open the Send/Receive tab and click Work Offline so it is no longer highlighted. The words Working Offline at the bottom of the window should disappear."
+        },
+        {
+          "title": "Send and receive all folders",
+          "detail": "In the Send/Receive tab, click Send/Receive All Folders, or press F9. Wait a minute to see whether new emails arrive."
+        },
+        {
+          "title": "Restart the computer",
+          "detail": "Save any open work, then restart the computer. Open Outlook again once it has started and check for new emails."
+        }
+      ],
+      "suggested_category": "Email",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 2 tells the employee to open the Send/Receive tab and click Work Offline so it is no longer highlighted, which directly reverses the accidental toggle and would restore new email delivery; no step is risky or requires admin rights."
+      },
+      "grade_usage": {
+        "input_tokens": 1034,
+        "output_tokens": 102
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t110",
+      "scenario_id": "hw-monitor-input",
+      "category": "hardware",
+      "route": "self_fix",
+      "ms": 4637,
+      "answer_usage": {
+        "input_tokens": 1814,
+        "output_tokens": 844
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the monitor's input source",
+          "detail": "Press the Input or Source button on the monitor and choose the port your laptop cable is plugged into, such as HDMI or DisplayPort. The monitor often stays on the wrong input after it has been off."
+        },
+        {
+          "title": "Check both ends of the cable are firmly plugged in",
+          "detail": "Make sure the cable is pushed all the way into the back of the monitor and into your laptop or dock. Look for a loose connection and reseat it if needed."
+        },
+        {
+          "title": "Switch the display mode with Windows key + P",
+          "detail": "Press the Windows key and P together, then choose Duplicate or Extend. This tells the laptop to send its picture to the connected monitor."
+        },
+        {
+          "title": "Try a different cable or port on your laptop",
+          "detail": "If you have a spare cable of the same type, swap it in and check whether the monitor shows the picture. If your laptop has another video port, try that port too."
+        },
+        {
+          "title": "Restart the laptop with the monitor connected",
+          "detail": "Keep the monitor plugged in and restart the laptop. This often makes the laptop detect the monitor again when it starts up."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 tells the employee to press the monitor's Input or Source button and choose the port the laptop is plugged into, which would switch the monitor from HDMI 2 to HDMI 1 and fix the hidden cause; none of the steps are risky or need IT access."
+      },
+      "grade_usage": {
+        "input_tokens": 1184,
+        "output_tokens": 236
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t111",
+      "scenario_id": "col-focused-inbox",
+      "category": "collaboration",
+      "route": "self_fix",
+      "ms": 1646,
+      "answer_usage": {
+        "input_tokens": 1797,
+        "output_tokens": 252
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "reason": "User reports emails from their manager are missing from the inbox though the sender says they were sent; this could be deleted or misplaced mail, a mail rule, or a compromised account, so it needs a technician to check mailbox rules, deleted items and sign-in activity.",
+      "steps": [],
+      "suggested_category": "Email",
+      "label": "unnecessary_escalation"
+    },
+    {
+      "id": "t115",
+      "scenario_id": "sw-updates-pending",
+      "category": "software_troubleshooting",
+      "route": "self_fix",
+      "ms": 1441,
+      "answer_usage": {
+        "input_tokens": 1850,
+        "output_tokens": 215
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "reason": "User suspects a virus from an email opened on Monday, which is a possible security incident, and the computer has been slow since then; the pending restart prompt also needs a technician to confirm it is safe to apply.",
+      "steps": [],
+      "suggested_category": "Email",
+      "label": "unnecessary_escalation"
+    },
+    {
+      "id": "t118",
+      "scenario_id": "col-teams-wrong-mic",
+      "category": "collaboration",
+      "route": "self_fix",
+      "ms": 5137,
+      "answer_usage": {
+        "input_tokens": 1792,
+        "output_tokens": 907
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the mute button",
+          "detail": "Look at the microphone button in the Teams meeting toolbar and make sure it is not showing a red slash. If your headset or keyboard has a mute key, make sure it is turned off too."
+        },
+        {
+          "title": "Check the microphone cable or headset plug",
+          "detail": "Make sure your headset or microphone is pushed firmly into the correct port. If it uses USB, unplug it and plug it back in."
+        },
+        {
+          "title": "Choose the right microphone in Teams",
+          "detail": "In Teams, open Settings, then Devices, and pick your headset or microphone under Microphone. Use the Make a test call option to check that others can hear you."
+        },
+        {
+          "title": "Check the input level in Windows sound settings",
+          "detail": "Right-click the sound icon in the taskbar and choose Sound settings. Under Input, select your microphone, then speak and watch whether the level bar moves."
+        },
+        {
+          "title": "Allow apps to use the microphone",
+          "detail": "Open Settings, go to Privacy & security, then Microphone, and make sure microphone access is turned on and Teams or desktop apps are allowed to use it. Then restart Teams and try the test call again."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 3 tells the employee to open Teams Settings > Devices and pick their headset or microphone under Microphone, which switches Teams from the disconnected docking-station mic to a working one, and the test call confirms it. None of the steps involve data loss, weakened security, hardware risk, or admin-level actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1160,
+        "output_tokens": 284
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t121",
+      "scenario_id": "sw-popup-blocked",
+      "category": "software_troubleshooting",
+      "route": "self_fix",
+      "ms": 5557,
+      "answer_usage": {
+        "input_tokens": 1855,
+        "output_tokens": 1030
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check whether pop-ups are blocked for the payroll site",
+          "detail": "Look at the address bar for a blocked pop-up icon and choose to allow pop-ups from the payroll site. The payslip may open in a new window, so this setting can stop it from appearing."
+        },
+        {
+          "title": "Try the payroll site in a different browser",
+          "detail": "Open the payroll site in another browser, such as Edge, Chrome or Firefox, and click View again. If the payslip opens there, the problem is with your usual browser."
+        },
+        {
+          "title": "Clear the browser cache",
+          "detail": "In your browser's settings, find the option to clear browsing data and clear the cached images and files. Then go back to the payroll site and sign in again."
+        },
+        {
+          "title": "Check for updates",
+          "detail": "Open Windows Update from the Start menu and install any available updates, then check for updates in your browser's menu. Try the payslip again once the updates finish."
+        },
+        {
+          "title": "Restart the computer",
+          "detail": "Save your work, restart the laptop, then sign in to the payroll site and click View. A restart can clear problems that build up over time, such as the slowdown you may be noticing."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 tells the employee to allow pop-ups for the payroll site from the address bar, which is the exact fix for the pop-up blocker stopping the payslip window, and the other steps are ordinary actions that don't risk data loss or need admin rights."
+      },
+      "grade_usage": {
+        "input_tokens": 1218,
+        "output_tokens": 250
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t124",
+      "scenario_id": "oth-clock-wrong",
+      "category": "other",
+      "route": "self_fix",
+      "ms": 4447,
+      "answer_usage": {
+        "input_tokens": 1814,
+        "output_tokens": 858
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the time zone setting",
+          "detail": "Right-click the clock in the bottom corner and open Adjust date/time (on a Mac, open System Settings > General > Date & Time). Confirm the time zone matches where you are, since a wrong zone is a common reason the hour is off."
+        },
+        {
+          "title": "Sync the clock now",
+          "detail": "In the same Date & time settings, click Sync now (or Set time automatically if that option is off). Wait a few seconds and check whether the clock matches your phone."
+        },
+        {
+          "title": "Turn automatic time setting off and on again",
+          "detail": "Switch Set time automatically to Off, wait a few seconds, then switch it back On. This makes the laptop fetch the correct time from the internet again."
+        },
+        {
+          "title": "Check for system updates",
+          "detail": "Open Windows Update (or Software Update on a Mac) and install any pending updates, then restart if asked. Updates sometimes fix clock problems."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 2 tells the employee to turn on Set time automatically if it is off, and step 3 toggles it on, which is the same fix as the hidden cause, and these are ordinary settings changes the employee can make themselves."
+      },
+      "grade_usage": {
+        "input_tokens": 1112,
+        "output_tokens": 279
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t135",
+      "scenario_id": "col-teams-wrong-mic",
+      "category": "collaboration",
+      "route": "self_fix",
+      "ms": 2294,
+      "answer_usage": {
+        "input_tokens": 1803,
+        "output_tokens": 390
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the mute button in Teams",
+          "detail": "Look at the meeting toolbar and make sure the microphone icon is not crossed out or muted. Unmute it if needed."
+        },
+        {
+          "title": "Check the headset or microphone is plugged in",
+          "detail": "If you use a headset or external microphone, make sure its cable is pushed fully into the computer. Unplug it and plug it back in if it looks loose."
+        },
+        {
+          "title": "Select the right microphone in Teams",
+          "detail": "Open Teams settings, go to Devices, and choose the microphone you are actually speaking into from the list. Speak and check that the level bar moves."
+        },
+        {
+          "title": "Check the sound input settings in Windows",
+          "detail": "Open Windows Sound settings, go to the Input section, and confirm the correct microphone is selected. Speak and check that the input bar responds."
+        },
+        {
+          "title": "Restart the computer",
+          "detail": "Save your work, then restart the whole computer. This can clear problems that a Teams restart alone does not fix."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 3 directs the employee to open Teams Devices settings and choose the microphone they are actually speaking into, which switches Teams away from the disconnected docking-station mic and fixes the cause; no step requires admin rights or risks data loss."
+      },
+      "grade_usage": {
+        "input_tokens": 1116,
+        "output_tokens": 105
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t138",
+      "scenario_id": "net-new-wifi-password",
+      "category": "connectivity",
+      "route": "self_fix",
+      "ms": 2555,
+      "answer_usage": {
+        "input_tokens": 1910,
+        "output_tokens": 424
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "reason": "After an announced office network change, the laptop cannot join the Wi-Fi, and the user dismissed an unread prompt asking for something, which could be a certificate or credential request that needs verifying before anyone accepts or enters anything.",
+      "steps": [],
+      "suggested_category": "Network",
+      "label": "unnecessary_escalation"
+    },
+    {
+      "id": "t140",
+      "scenario_id": "hw-usb-keyboard",
+      "category": "hardware",
+      "route": "self_fix",
+      "ms": 3948,
+      "answer_usage": {
+        "input_tokens": 1766,
+        "output_tokens": 747
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the keyboard cable is firmly plugged in",
+          "detail": "Look at where the keyboard cable connects to the computer or the back of the keyboard. Push the plug in until it clicks or sits fully in the port, since moving the desk can loosen it."
+        },
+        {
+          "title": "Check the keyboard's power or wireless switch",
+          "detail": "If the keyboard is wireless, make sure it is switched on and has working batteries. Check that any power switch on the keyboard or its USB receiver is turned on."
+        },
+        {
+          "title": "Unplug the keyboard and plug it into a different USB port",
+          "detail": "Unplug the keyboard's USB cable or receiver, wait a few seconds, then plug it into another USB port on the computer. Try the back ports if the front ones don't work."
+        },
+        {
+          "title": "Restart the computer",
+          "detail": "Save your work, then restart the computer from the Start menu. After it starts again, try typing to see if the keyboard responds."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 tells the employee to firmly push the keyboard plug back into its port, which directly addresses the half-unseated USB connection caused by moving the desk, and step 3 offers another port as backup. None of the steps require admin rights or risk data loss."
+      },
+      "grade_usage": {
+        "input_tokens": 1073,
+        "output_tokens": 109
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t142",
+      "scenario_id": "oth-touchpad-off",
+      "category": "other",
+      "route": "self_fix",
+      "ms": 5045,
+      "answer_usage": {
+        "input_tokens": 1917,
+        "output_tokens": 992
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the touchpad on/off key",
+          "detail": "Many laptops have a key with a touchpad icon, often used together with the Fn key. Press Fn plus that key once, then test the touchpad again."
+        },
+        {
+          "title": "Unplug the USB mouse and test the touchpad",
+          "detail": "Some laptops turn the touchpad off while a mouse is connected. Unplug the USB mouse, wait a few seconds, then try the touchpad again."
+        },
+        {
+          "title": "Turn the touchpad on in settings",
+          "detail": "Open your computer's settings and find the touchpad options, usually under Mouse or Bluetooth and devices. Make sure the touchpad is switched on, then test it."
+        },
+        {
+          "title": "Check for updates",
+          "detail": "Open Windows Update or your system's update page and install any available updates. Restart if asked, then test the touchpad again."
+        },
+        {
+          "title": "Restart the laptop",
+          "detail": "Save your work, then restart the whole laptop. Plug the USB mouse back in after it starts if you still need it, and test the touchpad."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 tells the employee to press Fn plus the touchpad key, and step 3 gives the Settings > Touchpad route, either of which would turn the disabled touchpad back on, and none of the steps involve admin rights, data-risking actions, or weakened security."
+      },
+      "grade_usage": {
+        "input_tokens": 1236,
+        "output_tokens": 113
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t143",
+      "scenario_id": "hw-mouse-batteries",
+      "category": "hardware",
+      "route": "self_fix",
+      "ms": 4138,
+      "answer_usage": {
+        "input_tokens": 1793,
+        "output_tokens": 806
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the mouse power switch and batteries",
+          "detail": "Make sure the mouse is switched on and that its batteries are fresh and inserted correctly. Some wireless mice have a small switch on the bottom that needs to be set to On."
+        },
+        {
+          "title": "Unplug the USB receiver and plug it into another port",
+          "detail": "Unplug the small wireless USB receiver, wait a few seconds, and plug it back into a different USB port on the computer. If possible, use a port directly on the computer rather than a hub."
+        },
+        {
+          "title": "Turn Bluetooth off and on, then reconnect the mouse",
+          "detail": "If your mouse connects by Bluetooth, open the Bluetooth settings, turn Bluetooth off and back on, and check that the mouse is listed as connected. If it is not, select it to reconnect."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 tells the employee to check the batteries and ensure they are fresh and correctly inserted, which would lead them to replace the dead batteries and fix the hidden cause; the steps are safe everyday actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1060,
+        "output_tokens": 96
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t144",
+      "scenario_id": "col-calendar-timezone",
+      "category": "collaboration",
+      "route": "self_fix",
+      "ms": 5299,
+      "answer_usage": {
+        "input_tokens": 1794,
+        "output_tokens": 1023
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Compare your computer's clock with a coworker's",
+          "detail": "Look at the time shown in your taskbar and compare it with the time on a coworker's computer. If your clock is an hour off, the problem is likely your computer's time setting."
+        },
+        {
+          "title": "Close and reopen your calendar app",
+          "detail": "Fully close the calendar app, then open it again. Check whether the meeting times now match your coworkers' calendars."
+        },
+        {
+          "title": "Sign out and back in to the calendar",
+          "detail": "Sign out of your calendar account and sign back in. This refreshes how the calendar loads your meeting times."
+        },
+        {
+          "title": "Turn on automatic date and time",
+          "detail": "Open Settings, go to Time & language, then Date & time. Turn on Set time automatically and Set time zone automatically, then check that your clock now shows the correct time."
+        },
+        {
+          "title": "Check the calendar's time zone setting",
+          "detail": "Open the calendar's settings and find the time zone option. Make sure it matches your local time zone, the same one your coworkers use, and then look at a meeting again."
+        },
+        {
+          "title": "Restart your computer",
+          "detail": "Save your work, then restart the computer. After it starts up, open the calendar and check that meeting times match your coworkers' calendars."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 4 tells the employee to turn on 'Set time zone automatically' in Date & time settings, which is the same fix as correcting the laptop's stale travel time zone, and step 5 offers a second route through the calendar's time zone setting."
+      },
+      "grade_usage": {
+        "input_tokens": 1184,
+        "output_tokens": 303
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t145",
+      "scenario_id": "col-mailbox-full",
+      "category": "collaboration",
+      "route": "self_fix",
+      "ms": 2071,
+      "answer_usage": {
+        "input_tokens": 1796,
+        "output_tokens": 225
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "reason": "User's Outlook mailbox is full and they need guidance on which items to delete, which involves deleting mail data and possibly archiving or changing mailbox settings; a technician should review it to avoid losing important messages.",
+      "steps": [],
+      "suggested_category": "Email",
+      "label": "unnecessary_escalation"
+    },
+    {
+      "id": "t147",
+      "scenario_id": "col-teams-loading",
+      "category": "collaboration",
+      "route": "self_fix",
+      "ms": 4726,
+      "answer_usage": {
+        "input_tokens": 1797,
+        "output_tokens": 894
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Join the call through Teams in your web browser",
+          "detail": "Open your browser and go to teams.microsoft.com, then sign in. This often works even when the Teams app won't load, so you can join your 10:30 call this way."
+        },
+        {
+          "title": "Check that your internet connection is working",
+          "detail": "Make sure Wi-Fi is on and airplane mode is off. Open any website to confirm you're online, and if not, turn Wi-Fi off and back on."
+        },
+        {
+          "title": "Quit Teams completely and open it again",
+          "detail": "Right-click the Teams icon in the taskbar or menu bar and choose Quit, then open Teams again from the Start menu or Applications folder. Wait about a minute for it to load."
+        },
+        {
+          "title": "Check for available updates",
+          "detail": "Open Windows Update (or Software Update on a Mac) and install any pending updates. Once finished, open Teams again to see if it loads."
+        },
+        {
+          "title": "Restart your computer",
+          "detail": "Save your open work, then restart the computer. After it starts up, open Teams again before your call."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 3 tells the employee to fully quit Teams and reopen it, and step 5 is a restart, which both match the listed fix for the damaged cache, while the web-version step lets them join the call in the meantime; installing pending updates is routine and does not need admin rights or risk data loss."
+      },
+      "grade_usage": {
+        "input_tokens": 1135,
+        "output_tokens": 423
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t150",
+      "scenario_id": "sw-too-many-tabs",
+      "category": "software_troubleshooting",
+      "route": "self_fix",
+      "ms": 5642,
+      "answer_usage": {
+        "input_tokens": 1895,
+        "output_tokens": 1069
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "See which app is using the most memory",
+          "detail": "Press Ctrl+Shift+Esc to open Task Manager, then click the Memory column to sort by use. Note any app or browser using a very large share, without ending any tasks yet."
+        },
+        {
+          "title": "Clear your browser cache",
+          "detail": "In your browser, open the settings and find the option to clear browsing data. Choose cached images and files only, leave your tabs open, and then keep working."
+        },
+        {
+          "title": "Check for Windows and app updates",
+          "detail": "Open Settings, go to Windows Update, and select Check for updates. Install any normal updates, then restart only if Windows asks you to once your work is saved."
+        },
+        {
+          "title": "Switch to a higher performance power mode",
+          "detail": "Keep the laptop plugged in, then open Settings > System > Power and set the power mode to Best performance. You can change it back at any time."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": false,
+        "unsafe": false,
+        "reason": "None of the steps closes or bookmarks tabs or restarts the browser, and the user explicitly doesn't want to close them, so the memory pressure from about 40 open tabs stays and the slowdown returns; the steps are otherwise safe ordinary actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1179,
+        "output_tokens": 379
+      },
+      "label": "not_resolved"
+    },
+    {
+      "id": "t153",
+      "scenario_id": "iam-password-expired",
+      "category": "iam",
+      "route": "self_fix",
+      "ms": 3562,
+      "answer_usage": {
+        "input_tokens": 1854,
+        "output_tokens": 727
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check Caps Lock, Num Lock and keyboard language",
+          "detail": "Before trying again, make sure Caps Lock is off and the keyboard is set to the language you normally use. Typing the old password wrong a few times can make the expired message look like it never changes."
+        },
+        {
+          "title": "Set a new password on the sign-in screen",
+          "detail": "When the sign-in screen says your password has expired, it should offer a option to create a new one. Enter a new password, confirm it, and sign in with it. Stop retyping the old password, since repeated failed attempts can lock the account."
+        },
+        {
+          "title": "Use the normal password reset page if no option appears",
+          "detail": "If the sign-in screen doesn't offer a new password, use the standard password reset page from another device, such as a phone or home computer. Follow the prompts to set a new password, then sign in to your work computer with it."
+        }
+      ],
+      "suggested_category": "Account & Access",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 2 tells the employee to set a new password when the sign-in screen shows the expired message, which directly resolves the 90-day expiry, and the other steps are ordinary, low-risk actions with no admin rights, data loss, or security weakening involved."
+      },
+      "grade_usage": {
+        "input_tokens": 1132,
+        "output_tokens": 218
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t154",
+      "scenario_id": "col-mailbox-full",
+      "category": "collaboration",
+      "route": "self_fix",
+      "ms": 2823,
+      "answer_usage": {
+        "input_tokens": 1855,
+        "output_tokens": 433
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "reason": "User cannot send email in Outlook and gets a mailbox full error that persists after restart; resolving it likely requires deleting or archiving mail or changing mailbox quota on the server, which are data-affecting or admin-level actions outside safe self-help.",
+      "steps": [],
+      "suggested_category": "Email",
+      "label": "unnecessary_escalation"
+    },
+    {
+      "id": "t158",
+      "scenario_id": "hw-camera-shutter",
+      "category": "hardware",
+      "route": "self_fix",
+      "ms": 5894,
+      "answer_usage": {
+        "input_tokens": 1875,
+        "output_tokens": 1070
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the camera cover and room lighting",
+          "detail": "Make sure any privacy cover on the camera is slid open and the lens isn't blocked. If the window is behind you, close the blinds or turn on a lamp in front of you so the camera isn't backlit."
+        },
+        {
+          "title": "Close other apps that may be using the camera",
+          "detail": "Quit any other video, camera, or screen-recording apps that might be running. Only one app can use the camera at a time, so this can free it up for your meeting."
+        },
+        {
+          "title": "Try joining the meeting in a different browser",
+          "detail": "If the meeting runs in a browser, open the meeting link in another browser such as Edge, Chrome, or Firefox. Check that the camera preview shows your image before you join."
+        },
+        {
+          "title": "Check camera access for your meeting app",
+          "detail": "Open Settings, go to Privacy & security, then Camera, and make sure camera access is turned on for both the apps you use and your meeting app. Then reopen the meeting app."
+        },
+        {
+          "title": "Restart the computer",
+          "detail": "Save your work, then restart the computer and join the meeting again. A restart can reset the camera if it's stuck."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 explicitly tells the employee to check that any privacy cover on the camera is slid open, which is the hidden cause and its fix, and the other steps are ordinary, safe actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1225,
+        "output_tokens": 159
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t160",
+      "scenario_id": "iam-mfa-clock",
+      "category": "iam",
+      "route": "self_fix",
+      "ms": 4286,
+      "answer_usage": {
+        "input_tokens": 1766,
+        "output_tokens": 802
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check that the code is for the right account entry",
+          "detail": "Open the authenticator app and find the entry for your email account, not a similar one. Type the six-digit code shown on that entry as soon as it appears, before it changes."
+        },
+        {
+          "title": "Set your phone's date and time to automatic",
+          "detail": "Go to your phone's Settings, open Date & Time, and turn on the option to set the date and time automatically. Codes are only accepted when the phone's clock matches the server, so a wrong clock causes repeated rejections."
+        },
+        {
+          "title": "Restart your phone and try a new code",
+          "detail": "Turn the phone off completely, wait 30 seconds, then turn it back on. Open the authenticator app and enter the code currently shown for your email account."
+        }
+      ],
+      "suggested_category": "Account & Access",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 2 tells the employee to turn on automatic date and time in Settings, which is the exact fix for the hand-set clock that is causing the rejected codes, and it is a normal user-level setting with no risk."
+      },
+      "grade_usage": {
+        "input_tokens": 1014,
+        "output_tokens": 94
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t162",
+      "scenario_id": "iam-personal-account",
+      "category": "iam",
+      "route": "self_fix",
+      "ms": 3865,
+      "answer_usage": {
+        "input_tokens": 1876,
+        "output_tokens": 650
+      },
+      "refused": false,
+      "escalated": true,
+      "blocked": false,
+      "reason": "User lost access to their team's chats and shared files in Teams with a permission-denied message right after weekend updates, which could be a removed permission, a sign-in or account problem, or a possible account compromise, so it needs a technician to check the account and team permissions.",
+      "steps": [],
+      "suggested_category": "Account & Access",
+      "label": "unnecessary_escalation"
+    },
+    {
+      "id": "t164",
+      "scenario_id": "col-teams-wrong-mic",
+      "category": "collaboration",
+      "route": "self_fix",
+      "ms": 4123,
+      "answer_usage": {
+        "input_tokens": 1796,
+        "output_tokens": 834
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check the mute buttons",
+          "detail": "Make sure the microphone is not muted in Teams, and check that the mute switch or button on the headset itself is off. Speak and watch the microphone meter in Teams settings."
+        },
+        {
+          "title": "Check the headset plug",
+          "detail": "Make sure the headset plug or USB connector is pushed fully into the computer. If it has a separate microphone plug, check that it is in the right socket."
+        },
+        {
+          "title": "Restart Teams",
+          "detail": "Close Teams completely, then open it again and join a test call. This often fixes audio that stopped working after a device change."
+        },
+        {
+          "title": "Choose the headset in Teams",
+          "detail": "In Teams, open Settings, then Devices, and set the Microphone to your new headset. Make a test call to check."
+        },
+        {
+          "title": "Choose the headset in Windows sound settings",
+          "detail": "Open Sound settings in Windows and under Input, select the headset as the input device. Speak and check that the input level bar moves."
+        },
+        {
+          "title": "Unplug and plug the headset back in",
+          "detail": "Unplug the headset from the computer, wait a few seconds, and plug it back in. Then check whether Teams picks it up."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 4 tells the employee to open Teams Settings, go to Devices, and set the Microphone to the new headset, which directly replaces the disconnected docking-station mic that Teams was using. None of the steps involve risky or admin-level actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1157,
+        "output_tokens": 250
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t167",
+      "scenario_id": "iam-password-expired",
+      "category": "iam",
+      "route": "self_fix",
+      "ms": 3074,
+      "answer_usage": {
+        "input_tokens": 1764,
+        "output_tokens": 516
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check Caps Lock, Num Lock and keyboard language",
+          "detail": "Make sure Caps Lock is off and the keyboard language is set to the one you normally use. Then type your current password carefully once more."
+        },
+        {
+          "title": "Set a new password when the sign-in screen asks",
+          "detail": "When the sign-in screen says your password has expired, follow the prompt to create a new password. Choose one you haven't used before, and type it twice to confirm."
+        },
+        {
+          "title": "Sign in with the new password",
+          "detail": "Once the new password is saved, enter it on the sign-in screen to get into your account. If the sign-in fails, wait a minute and try again, making sure Caps Lock is off."
+        }
+      ],
+      "suggested_category": "Account & Access",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 2 tells the employee to follow the expired-password prompt on the sign-in screen to create a new password, which is the actual fix, and none of the steps require admin rights or risk data loss."
+      },
+      "grade_usage": {
+        "input_tokens": 989,
+        "output_tokens": 151
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t169",
+      "scenario_id": "hw-num-lock",
+      "category": "hardware",
+      "route": "self_fix",
+      "ms": 6606,
+      "answer_usage": {
+        "input_tokens": 1909,
+        "output_tokens": 1311
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Use the number keys on the top row",
+          "detail": "The digits above the letter keys type the same numbers as the number pad. You can use them to enter your figures in the spreadsheet while you troubleshoot."
+        },
+        {
+          "title": "Check the keyboard for spilled coffee",
+          "detail": "Look over the keyboard and the desk near the mug for any liquid. If you find any spilled liquid, unplug the keyboard, stop, and ask a technician to look at it."
+        },
+        {
+          "title": "Turn on Num Lock",
+          "detail": "Press the Num Lock key on the keyboard, then type a number on the number pad. The arrow keys on the pad still working suggests Num Lock is turned off."
+        },
+        {
+          "title": "Restart the computer",
+          "detail": "Save your work, restart the computer, then test the number pad again in the spreadsheet. Try this before the meeting at 2."
+        }
+      ],
+      "suggested_category": "Hardware",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 3 tells the employee to press the Num Lock key, which directly fixes the hidden cause, and none of the steps involve data loss, security weakening, hardware damage, or admin-level actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1153,
+        "output_tokens": 190
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t170",
+      "scenario_id": "col-teams-loading",
+      "category": "collaboration",
+      "route": "self_fix",
+      "ms": 5013,
+      "answer_usage": {
+        "input_tokens": 1867,
+        "output_tokens": 1010
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Use Teams in your web browser for now",
+          "detail": "Open your web browser and go to the Teams website, then sign in with your work account. This lets you keep working while the desktop app is having trouble."
+        },
+        {
+          "title": "Check your internet connection",
+          "detail": "Make sure Wi-Fi is turned on and connected, or that the network cable is firmly plugged in. Open any website to confirm the internet is working."
+        },
+        {
+          "title": "Quit Teams completely and open it again",
+          "detail": "Right-click the Teams icon in the system tray near the clock and choose Quit, then open Teams from the Start menu. Closing the window alone may not fully stop the app."
+        },
+        {
+          "title": "Sign out of Teams and sign back in",
+          "detail": "Click your profile picture at the top of Teams and choose Sign out. Then sign back in with your work account."
+        },
+        {
+          "title": "Check for updates",
+          "detail": "Open Windows Update from the Start menu and install any available updates. Teams usually updates itself, but a pending Windows update can sometimes cause loading problems."
+        },
+        {
+          "title": "Restart your computer",
+          "detail": "Save your open work, then restart the laptop. Open Teams again after it has fully started up."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 3 tells the employee to fully quit Teams from the system tray and reopen it, which matches the documented fix for damaged cached data, and the web version in step 1 lets them keep working meanwhile; none of the steps involve data loss, weakened security, or admin-only actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1239,
+        "output_tokens": 326
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t176",
+      "scenario_id": "iam-old-saved-password",
+      "category": "iam",
+      "route": "self_fix",
+      "ms": 7279,
+      "answer_usage": {
+        "input_tokens": 1798,
+        "output_tokens": 817
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check Caps Lock, Num Lock and keyboard language",
+          "detail": "Make sure Caps Lock is off and the keyboard is set to your usual language. Then type your new password carefully in the Outlook prompt."
+        },
+        {
+          "title": "Check your mail in a web browser",
+          "detail": "Open Outlook on the web in your browser and sign in with your new password. If it works, your password is correct and the problem is in the Outlook app."
+        },
+        {
+          "title": "Close and reopen Outlook",
+          "detail": "Close Outlook completely, open it again, and enter your new password when asked. Choose the option to save the password if one appears."
+        },
+        {
+          "title": "Restart your computer",
+          "detail": "Save your open work, restart the computer, and then open Outlook again. Enter your new password if it asks."
+        }
+      ],
+      "suggested_category": "Email",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 and step 3 both tell the employee to type the new password into the Outlook prompt, which replaces the stale saved password and should restore mail, and none of the steps involve risky or admin-level actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1038,
+        "output_tokens": 245
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t178",
+      "scenario_id": "sw-app-frozen",
+      "category": "software_troubleshooting",
+      "route": "self_fix",
+      "ms": 5357,
+      "answer_usage": {
+        "input_tokens": 1826,
+        "output_tokens": 981
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Check for a hidden dialog box",
+          "detail": "Press Alt+Tab to see whether Excel has a message or dialog box open behind the window. Answer or close it if you find one, then check whether Excel responds."
+        },
+        {
+          "title": "Close Excel from Task Manager",
+          "detail": "Press Ctrl+Shift+Esc to open Task Manager, select Microsoft Excel, and click End task. Any changes made since your last save may be lost, so this is a last resort after the steps above."
+        },
+        {
+          "title": "Reopen Excel and recover your file",
+          "detail": "Open Excel again and check the Document Recovery pane on the left for an autosaved version of your spreadsheet. If you don't see it, open the file from its usual location and check that the quarterly numbers are there."
+        },
+        {
+          "title": "Restart the computer",
+          "detail": "If Excel still freezes after reopening, save your other work, restart the computer, and then open the spreadsheet again. Restarting clears any stuck programs."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 2 has the employee end the frozen Excel in Task Manager and step 3 has them reopen it and recover the autosaved copy, which matches the stated fix; ending a frozen app in Task Manager is an ordinary user action."
+      },
+      "grade_usage": {
+        "input_tokens": 1161,
+        "output_tokens": 390
+      },
+      "label": "resolved"
+    },
+    {
+      "id": "t179",
+      "scenario_id": "sw-browser-zoom",
+      "category": "software_troubleshooting",
+      "route": "self_fix",
+      "ms": 4858,
+      "answer_usage": {
+        "input_tokens": 1837,
+        "output_tokens": 868
+      },
+      "refused": false,
+      "escalated": false,
+      "blocked": false,
+      "reason": null,
+      "steps": [
+        {
+          "title": "Reset the browser zoom level",
+          "detail": "Click on the portal page first, then press Ctrl and 0 together to return the zoom to 100%. If the text was enlarged by accident, the page should go back to normal right away."
+        },
+        {
+          "title": "Try the portal in another browser",
+          "detail": "Open the intranet address in a different browser, such as Edge, Chrome or Firefox. If the page looks normal there, you can keep working in that browser until the first one is fixed."
+        },
+        {
+          "title": "Clear the browser cache",
+          "detail": "In your current browser, open its settings and clear the cached images and files for the last few hours. Then reload the intranet page and check whether the layout looks correct."
+        },
+        {
+          "title": "Check the display scaling setting",
+          "detail": "Open Settings, go to System, then Display, and look at the Scale setting. If it is above 100%, set it back to the recommended value and then reopen the portal."
+        },
+        {
+          "title": "Check for pending Windows updates",
+          "detail": "Open Settings, go to Windows Update, and select Check for updates. Install any normal updates offered, restart if asked, and then test the intranet page again."
+        }
+      ],
+      "suggested_category": "Software",
+      "verdict": {
+        "fixes_cause": true,
+        "unsafe": false,
+        "reason": "Step 1 tells the employee to press Ctrl+0 on the portal page, which resets the site's 175% zoom to 100% and directly fixes the hidden cause, and none of the steps involve risky or admin-level actions."
+      },
+      "grade_usage": {
+        "input_tokens": 1188,
+        "output_tokens": 303
+      },
+      "label": "resolved"
+    }
+  ]
+}
