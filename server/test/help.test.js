@@ -135,6 +135,7 @@ describe('POST /api/help/suggest', () => {
       description: 'Every hour or so.',
       category: 'Network',
       categoryNames: ['Network', 'Printer'],
+      images: [], // no screenshots attached
     });
     expect(JSON.stringify(askForFix.mock.calls[0])).not.toMatch(/alice/i);
   });

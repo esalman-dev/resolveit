@@ -20,6 +20,12 @@ import { ROLES, STAFF } from '../roles.js';
 import { askForFix, askQuestion, isAiConfigured, currentModel, AiUnavailableError } from '../services/ai.js';
 import { reviewAnswer, reviewSuggestion } from '../services/guardrails.js';
 import { checkText, checkCategory, parseId, MAX_TITLE, MAX_DESCRIPTION } from './tickets.js';
+import { ATTACHMENT_SELECT, checkAttachmentIds, claimAttachments, publicAttachment } from './attachments.js';
+import { readFile } from '../services/storage.js';
+
+// Images larger than this aren't sent to the AI (its limit is 5 MB once encoded as text, which
+// adds a third). They stay attached to the request and the ticket either way.
+const MAX_AI_IMAGE_BYTES = 3.5 * 1024 * 1024;
 
 const router = Router();
 
@@ -85,7 +91,28 @@ async function openTicket(db, session, stepsTried) {
     ticketId,
     session.user_id,
   ]);
+  // Files sent with the request move onto the ticket, so the technician sees them too.
+  await db.query('UPDATE attachments SET ticket_id = $1 WHERE help_session_id = $2', [ticketId, session.id]);
   return ticketId;
+}
+
+/**
+ * The request's images, ready to send to the AI: [{ media_type, data (base64) }].
+ * PDFs and text logs aren't sent; they're for the technician.
+ */
+async function imagesFor(sessionId) {
+  const result = await pool.query(
+    `SELECT storage_key, content_type FROM attachments
+      WHERE help_session_id = $1 AND content_type LIKE 'image/%' AND size_bytes <= $2
+      ORDER BY id`,
+    [sessionId, MAX_AI_IMAGE_BYTES]
+  );
+  return Promise.all(
+    result.rows.map(async (row) => ({
+      media_type: row.content_type,
+      data: (await readFile(row.storage_key)).toString('base64'),
+    }))
+  );
 }
 
 /**
@@ -96,7 +123,7 @@ async function openTicket(db, session, stepsTried) {
  * The lock makes count-then-insert happen one request at a time. It's held for two quick
  * queries, never during the AI call.
  */
-async function reserveSession(user, { kind = 'fix', title, description, categoryId = null }) {
+async function reserveSession(user, { kind = 'fix', title, description, categoryId = null, attachmentIds = [] }) {
   const limits = dailyLimits();
   return withTransaction(async (db) => {
     await db.query("SELECT pg_advisory_xact_lock(hashtext('help_sessions_limit'))"); // released at COMMIT
@@ -116,6 +143,7 @@ async function reserveSession(user, { kind = 'fix', title, description, category
        RETURNING *`,
       [user.id, kind, title, description, categoryId]
     );
+    await claimAttachments(db, attachmentIds, user, { helpSessionId: inserted.rows[0].id });
     return { session: inserted.rows[0] };
   });
 }
@@ -132,6 +160,11 @@ async function markFailed(sessionId, err) {
       WHERE id = $1`,
     [sessionId, currentModel(), err.usage?.input_tokens ?? null, err.usage?.output_tokens ?? null]
   );
+  // Why: the browser falls back to the plain ticket form with the same files, so they're
+  // released for it to attach.
+  await pool.query('UPDATE attachments SET help_session_id = NULL, attached_at = NULL WHERE help_session_id = $1', [
+    sessionId,
+  ]);
   if (!(err instanceof AiUnavailableError)) throw err;
   console.error('AI help unavailable:', err.message);
 }
@@ -154,8 +187,10 @@ const limitReached = (limit) => ({
  * - 201 { session, ticket_id }: needs a technician; a ticket was opened straight away.
  * - 429: a daily limit was reached. 503: the AI isn't available. In both cases the browser
  *   offers the normal ticket form instead.
+ * Images in attachment_ids are sent to the AI with the text (the form says so). If the AI
+ * fails, the files are released, so the plain ticket form can attach them instead.
  * Access: anyone logged in.
- * Body: { title, description, category_id? }
+ * Body: { title, description, category_id?, attachment_ids? }
  */
 router.post('/suggest', async (req, res) => {
   const body = req.body ?? {};
@@ -165,6 +200,8 @@ router.post('/suggest', async (req, res) => {
   if (description.error) return res.status(400).json({ error: description.error });
   const category = await checkCategory(body.category_id ?? null);
   if (category.error) return res.status(400).json({ error: category.error });
+  const files = await checkAttachmentIds(body.attachment_ids, req.user);
+  if (files.error) return res.status(400).json({ error: files.error });
 
   // No key means AI help is switched off: nothing to count or save.
   if (!isAiConfigured()) return res.status(503).json({ error: UNAVAILABLE });
@@ -173,13 +210,15 @@ router.post('/suggest', async (req, res) => {
     title: title.text,
     description: description.text,
     categoryId: category.id,
+    attachmentIds: files.ids,
   });
   if (reserved.limit) return res.status(429).json(limitReached(reserved.limit));
   const sessionId = reserved.session.id;
 
   const categories = (await pool.query('SELECT id, name FROM categories WHERE active ORDER BY name')).rows;
 
-  // Security: only the problem itself is sent, never the user's name, email or id.
+  // Security: only the problem itself (and its screenshots) is sent, never the user's name,
+  // email or id.
   let result;
   try {
     result = await askForFix({
@@ -187,6 +226,7 @@ router.post('/suggest', async (req, res) => {
       description: description.text,
       category: category.name,
       categoryNames: categories.map((c) => c.name),
+      images: await imagesFor(sessionId),
     });
   } catch (err) {
     await markFailed(sessionId, err); // rethrows a bug, so the error handler answers 500
@@ -384,7 +424,8 @@ router.get('/:id', async (req, res) => {
     ? await pool.query("SELECT * FROM help_sessions WHERE id = $1 AND user_id = $2 AND kind = 'fix'", [id, req.user.id])
     : { rows: [] };
   if (!result.rows[0]) return res.status(404).json({ error: 'Help request not found' });
-  res.json({ session: resumableSession(result.rows[0]) });
+  const files = await pool.query(`${ATTACHMENT_SELECT} WHERE a.help_session_id = $1 ORDER BY a.id`, [id]);
+  res.json({ session: { ...resumableSession(result.rows[0]), attachments: files.rows.map(publicAttachment) } });
 });
 
 // --- Ask IT: one question, one answer ---

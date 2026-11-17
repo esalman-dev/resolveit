@@ -16,6 +16,7 @@ import { Router } from 'express';
 import pool, { withTransaction } from '../db/index.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ROLES, STAFF } from '../roles.js';
+import { ATTACHMENT_SELECT, checkAttachmentIds, claimAttachments, publicAttachment } from './attachments.js';
 
 const router = Router();
 
@@ -159,7 +160,7 @@ async function ticketWithHistory(id) {
  * POST /api/tickets
  * Opens a ticket. It always starts open and unassigned, and records a "created" history entry.
  * Access: anyone logged in.
- * Body: { title, description, category_id?, priority? (staff only) }
+ * Body: { title, description, category_id?, priority? (staff only), attachment_ids? }
  */
 router.post('/', async (req, res) => {
   const body = req.body ?? {}; // Express 5 leaves req.body undefined if no JSON was sent
@@ -177,8 +178,10 @@ router.post('/', async (req, res) => {
   }
   const category = await checkCategory(body.category_id ?? null); // optional
   if (category.error) return res.status(400).json({ error: category.error });
+  const files = await checkAttachmentIds(body.attachment_ids, req.user);
+  if (files.error) return res.status(400).json({ error: files.error });
 
-  // The ticket and its "created" history entry are saved together, or not at all.
+  // The ticket, its "created" history entry and its files are saved together, or not at all.
   // Security: created_by comes from the login token, never the body, so nobody can open a
   // ticket as someone else. status and assigned_to aren't accepted here either.
   const id = await withTransaction(async (db) => {
@@ -193,6 +196,7 @@ router.post('/', async (req, res) => {
       `INSERT INTO ticket_events (ticket_id, actor_id, action) VALUES ($1, $2, 'created')`,
       [ticketId, req.user.id]
     );
+    await claimAttachments(db, files.ids, req.user, { ticketId });
     return ticketId;
   });
 
@@ -393,9 +397,10 @@ router.get('/:id/comments', async (req, res) => {
 
 /**
  * POST /api/tickets/:id/comments
- * Adds a comment. Only staff can mark it internal.
+ * Adds a comment. Only staff can mark it internal; files sent with an internal note are
+ * staff-only too.
  * Access: the ticket's creator, or staff.
- * Body: { body, is_internal? }
+ * Body: { body, is_internal?, attachment_ids? }
  */
 router.post('/:id/comments', async (req, res) => {
   const id = parseId(req.params.id);
@@ -409,18 +414,47 @@ router.post('/:id/comments', async (req, res) => {
   if (isInternal && !isStaff(req.user)) {
     return res.status(403).json({ error: 'Only technicians, admins and owners can write internal notes' });
   }
+  const files = await checkAttachmentIds(body.attachment_ids, req.user);
+  if (files.error) return res.status(400).json({ error: files.error });
 
   // Security: the author comes from the login token, never the body.
-  const inserted = await pool.query(
-    `INSERT INTO ticket_comments (ticket_id, author_id, body, is_internal)
-     VALUES ($1, $2, $3, $4)
-     RETURNING id`,
-    [id, req.user.id, text.text, isInternal]
-  );
-  await pool.query('UPDATE tickets SET updated_at = NOW() WHERE id = $1', [id]); // a comment counts as activity
+  // The comment and its files are saved together, or not at all.
+  const commentId = await withTransaction(async (db) => {
+    const inserted = await db.query(
+      `INSERT INTO ticket_comments (ticket_id, author_id, body, is_internal)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [id, req.user.id, text.text, isInternal]
+    );
+    await db.query('UPDATE tickets SET updated_at = NOW() WHERE id = $1', [id]); // a comment counts as activity
+    await claimAttachments(db, files.ids, req.user, { ticketId: id, commentId: inserted.rows[0].id });
+    return inserted.rows[0].id;
+  });
 
-  const comment = await pool.query(`${COMMENT_SELECT} WHERE c.id = $1`, [inserted.rows[0].id]);
+  const comment = await pool.query(`${COMMENT_SELECT} WHERE c.id = $1`, [commentId]);
   res.status(201).json({ comment: comment.rows[0] });
+});
+
+/**
+ * GET /api/tickets/:id/attachments
+ * Every file on a ticket, oldest first: those sent with the ticket (comment_id empty) and those
+ * sent with comments. Files on internal notes are left out for users.
+ * Access: the ticket's creator, or staff.
+ */
+router.get('/:id/attachments', async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid ticket id' });
+  if (!(await findVisibleTicket(id, req.user))) return res.status(404).json({ error: 'Ticket not found' });
+
+  // Security: filtered in SQL, the same way as internal notes in GET /:id/comments.
+  const result = await pool.query(
+    `${ATTACHMENT_SELECT}
+       LEFT JOIN ticket_comments c ON c.id = a.comment_id
+      WHERE a.ticket_id = $1 AND (c.is_internal IS NOT TRUE OR $2)
+      ORDER BY a.created_at, a.id`,
+    [id, isStaff(req.user)]
+  );
+  res.json({ attachments: result.rows.map(publicAttachment) });
 });
 
 /**

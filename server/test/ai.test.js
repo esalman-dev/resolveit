@@ -89,6 +89,19 @@ describe('askForFix', () => {
     expect(request.max_tokens).toBeLessThanOrEqual(4000);
   });
 
+  it('sends screenshots as image blocks before the text', async () => {
+    await askForFix({ ...problem, images: [{ media_type: 'image/png', data: 'aGVsbG8=' }] });
+    const content = fake.create.mock.calls[0][0].messages[0].content;
+    expect(content[0]).toEqual({ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'aGVsbG8=' } });
+    expect(content[1].type).toBe('text');
+    expect(content[1].text).toContain('<problem>');
+  });
+
+  it('sends plain text when there are no screenshots', async () => {
+    await askForFix(problem);
+    expect(typeof fake.create.mock.calls[0][0].messages[0].content).toBe('string');
+  });
+
   it('uses AI_MODEL when it is set', async () => {
     process.env.AI_MODEL = 'claude-haiku-5-5';
     await askForFix(problem);

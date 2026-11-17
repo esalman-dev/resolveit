@@ -1,2 +1,5 @@
 node_modules/
 .env
+
+# Uploaded attachments (local development storage)
+uploads/

@@ -304,3 +304,40 @@ ALTER TABLE help_sessions ADD CONSTRAINT help_sessions_ticket_matches_outcome
 ALTER TABLE help_sessions ADD COLUMN IF NOT EXISTS blocked_steps JSONB NOT NULL DEFAULT '[]';
 ALTER TABLE help_sessions DROP CONSTRAINT IF EXISTS help_sessions_blocked_steps_is_list;
 ALTER TABLE help_sessions ADD CONSTRAINT help_sessions_blocked_steps_is_list CHECK (jsonb_typeof(blocked_steps) = 'array');
+
+-- --- Attachments ---
+-- Screenshots and files on tickets, comments and Get help requests. The file itself lives in
+-- storage (services/storage.js); this row says who may see it.
+--
+-- A file is uploaded first and attached second: a new row has no ticket, comment or request,
+-- and only its uploader can see it. Sending a comment, ticket or Get help request then claims it.
+-- Unclaimed rows older than a day are removed, with their files.
+--   ticket_id        the ticket it belongs to (set for files on the description and on comments)
+--   comment_id       the comment it was sent with (empty = sent with the ticket itself)
+--   help_session_id  the Get help request it was sent with (the ticket is filled in if one opens)
+CREATE TABLE IF NOT EXISTS attachments (
+    id              INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    uploaded_by     INTEGER NOT NULL REFERENCES users(id),
+    ticket_id       INTEGER REFERENCES tickets(id) ON DELETE CASCADE,
+    comment_id      INTEGER REFERENCES ticket_comments(id) ON DELETE CASCADE,
+    help_session_id INTEGER REFERENCES help_sessions(id) ON DELETE CASCADE,
+    -- Security: shown to people as text only, never used as a file path.
+    original_name   TEXT NOT NULL CHECK (char_length(original_name) BETWEEN 1 AND 200),
+    -- Decided by the server from the file's first bytes, not from what the browser claimed.
+    content_type    TEXT NOT NULL
+                    CHECK (content_type IN ('image/png', 'image/jpeg', 'image/gif', 'image/webp',
+                                            'application/pdf', 'text/plain')),
+    size_bytes      INTEGER NOT NULL CHECK (size_bytes > 0),
+    storage_key     TEXT NOT NULL UNIQUE,                       -- a random name made by the server
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    attached_at     TIMESTAMPTZ,                                -- when it was claimed (empty = not yet)
+    -- A file on a comment always knows its ticket, so one "can you see this ticket?" check covers it.
+    CONSTRAINT attachments_comment_has_ticket CHECK (comment_id IS NULL OR ticket_id IS NOT NULL),
+    CONSTRAINT attachments_attached_matches
+        CHECK ((attached_at IS NULL) = (ticket_id IS NULL AND help_session_id IS NULL))
+);
+
+CREATE INDEX IF NOT EXISTS idx_attachments_ticket_id       ON attachments(ticket_id);
+CREATE INDEX IF NOT EXISTS idx_attachments_help_session_id ON attachments(help_session_id);
+-- The daily upload limit counts one person's uploads over the last 24 hours.
+CREATE INDEX IF NOT EXISTS idx_attachments_uploader_created ON attachments(uploaded_by, created_at);

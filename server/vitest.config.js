@@ -3,6 +3,8 @@
 // Points the app at the test database, sets test-only secrets, and runs one test file at a
 // time because they share one database.
 
+import os from 'node:os';
+import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 import { getTestDbUrl } from './test/testDb.js';
 
@@ -20,6 +22,8 @@ export default defineConfig({
       // need one set a fake key and replace the AI library with a mock.
       ANTHROPIC_API_KEY: '',
       AI_MODEL: '',
+      // Uploaded test files go to a temporary folder, never the real uploads folder.
+      UPLOAD_DIR: path.join(os.tmpdir(), 'resolveit-test-uploads'),
     },
     globalSetup: './test/globalSetup.js', // once: create the test database and apply schema.sql
     setupFiles: './test/setup.js',        // every file: empty the tables before each test
