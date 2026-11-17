@@ -1,10 +1,15 @@
-<h1 align="center"><img src="client/src/assets/resolveit-logo.svg" alt="ResolveIT" width="260"></h1>
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="client/src/assets/resolveit-logo-dark.svg">
+    <img src="client/src/assets/resolveit-logo.svg" alt="ResolveIT" width="260">
+  </picture>
+</h1>
 
 [![CI](https://github.com/esalman-dev/resolveit/actions/workflows/ci.yml/badge.svg)](https://github.com/esalman-dev/resolveit/actions/workflows/ci.yml)
 
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
-> 🚧 **Status: in development.** Phase 1, the core ticket tracker, is complete: accounts and login (password or Google), roles, the Get help form, the ticket list with search and filters, the ticket page with staff controls, comments, and history, and the admin Users and Categories screens. The server is covered by automated tests. Next: AI self-service fixes. See [Progress](#progress).
+> 🚧 **Status: in development.** Phase 1, the core ticket tracker, is complete. Phase 2, **AI self-service fixes**, is built: Get help suggests safe steps first, **Ask IT** answers quick questions, risky problems go straight to a technician, and staff see every AI request and its result. Next: a 500-ticket simulated study of how many tickets the AI removes, then deployment. See [Progress](#progress).
 
 ## The idea
 
@@ -36,10 +41,22 @@ Most help desk tickets are for common problems with simple fixes: Wi-Fi that won
 - **Categories** managed by admins: add, rename, archive (never deleted, so old tickets keep theirs), and restore
 - **Search** on the Users screen by name, email, or role
 
+**AI self-service (Phase 2)**
+- **Get help** suggests **2 to 7 safe steps, easiest first**: the AI rates each step's effort and the server sorts by it, so a quick workaround (e.g. right-click > Copy) always comes before restarting the computer. Each step has an "I tried this" box.
+- **That fixed it** closes the request with no ticket. **Still broken** opens a ticket with every step marked tried or not, shown to the technician in a **Steps tried** panel.
+- **Risky problems** (registry, BIOS, deleting files, the command line, turning off antivirus, phishing, ransomware, lost data, physical damage…) skip the steps and go **straight to a technician**, with a ticket opened at once.
+- **Ask IT**: one quick IT question, one short answer, then **"Did this answer your question?"** Same safety rules, same daily limit, and a one-click hand-off to Get help.
+- **Never lose your place:** unsent text is kept as a draft, every request has its own address, and unfinished requests are listed with a **Continue** button that reopens them without asking the AI again.
+- If the AI is off, down, or a daily limit is reached, the same form quietly becomes a **plain ticket form**: asking for help never breaks.
+- Staff **AI help** screen: every AI request (Get help and Ask IT), who asked, the result, the steps or answer, and anything the safety check blocked, with **count cards** that double as filters and the **self-solved rate**.
+- **Count cards on the staff ticket list** (Open, In progress, Resolved, Assigned to me, Unassigned) and a **My tickets** list for everyone; the sidebar is grouped into Help, Staff, and Admin.
+- A **64-problem test set** (`npm run eval`) that scores the real AI for help rate, safety (every risky problem escalated), consistency over repeats, and cost.
+
 **Planned**
-- AI self-service troubleshooting with safe-fix guardrails
+- A 500-ticket simulated study of ticket reduction, with a published method and confidence intervals
 - A knowledge base that learns from tickets technicians have solved
 - An analytics dashboard: self-solved rate, escalations, most common problems, average resolution time
+- Attachments (screenshots and files on tickets)
 
 ## Security
 
@@ -63,6 +80,11 @@ Authentication is built by hand rather than with an auth service, so each decisi
 | SQL injection | Every value goes through parameters (`$1`, `$2`). Where column names are built into SQL, they come from fixed lists in the code, never from the request. |
 | Login tokens (JWT) | Verified with the algorithm pinned to HS256, so a token can't choose a different signing method. |
 | Google sign-in | Google's ID token is verified (signature, audience, expiry). An existing account is linked only if Google confirms the email is verified **and** the account isn't already linked to a different Google account. |
+| Risky AI advice | **Two layers.** The AI's instructions list what must go to a technician, and a **server-side check** reads every step (and every Ask IT answer) before anyone sees it. If anything touches a blocked topic, the steps are thrown away and it's escalated: the AI can't talk its way past code. Blocked text is kept for staff so false alarms can be fixed. |
+| Prompt injection | The user's text is fenced as data, with the fence tags stripped from it; the AI is told to escalate any "ignore your rules" request; and the server check runs anyway. |
+| AI answer format | **Structured output:** the AI must answer in a fixed JSON shape enforced by the API, so the server never guesses what it meant. Its text is shown as plain text, never HTML. |
+| AI cost | Per-person and site-wide **daily limits** (20 and 300 by default), checked under a database lock so parallel requests can't slip past; a per-answer token cap; a short timeout; and a prepaid balance on the AI account. |
+| AI privacy | Only the problem's title, category and details (or the question) are sent to the AI, never names, emails or ids. The API key lives only on the server. Unsent drafts are kept per account in the browser and cleared on log out. |
 
 ## Tech stack
 
@@ -73,7 +95,7 @@ Authentication is built by hand rather than with an auth service, so each decisi
 | Database | PostgreSQL |
 | Auth | bcrypt, JSON Web Tokens, Google Identity Services, express-rate-limit |
 | Testing | Vitest + Supertest, against a separate test database |
-| AI | AI model API for fix suggestions (planned) |
+| AI | Anthropic Claude API (Claude Haiku 5.5, chosen for cost), official Node SDK, structured outputs |
 | Hosting | Vercel (frontend), Render (API), Neon (database), on free tiers (planned) |
 
 ## Progress
@@ -88,7 +110,16 @@ Authentication is built by hand rather than with an auth service, so each decisi
 - [x] Ticket status and priority
 - [x] Search and filter
 
-**Phase 2: AI self-service fixes** · **Phase 3: Knowledge base and analytics** · **Phase 4: Deployment, CI, password reset**
+**Phase 2: AI self-service fixes** 🛠️ built, being measured
+- [x] Connect an AI API (Claude Haiku 5.5)
+- [x] "Describe your problem" screen with safe fix steps, easiest first
+- [x] "That fixed it" / "Still broken" buttons
+- [x] Auto-created ticket with the steps already tried
+- [x] Safe-fix guardrails (AI instructions + a server-side check)
+- [x] Ask IT (quick questions) and the staff AI help screen
+- [ ] 500-ticket simulated study of ticket reduction
+
+**Phase 3: Knowledge base and analytics** · **Phase 4: Deployment, password reset**
 
 ## Project structure
 
@@ -101,8 +132,10 @@ resolveit/
 │   │   ├── index.css            App-wide styles, built only from the theme variables
 │   │   ├── pages/               One file per screen (each with its own CSS)
 │   │   │   ├── LoginPage.jsx        Log in / create account
-│   │   │   ├── GetHelpPage.jsx      "Get help": the form that opens a ticket
-│   │   │   ├── TicketsPage.jsx      The ticket list: search and filters
+│   │   │   ├── GetHelpPage.jsx      "Get help": AI steps first, then a ticket if still broken
+│   │   │   ├── AskItPage.jsx        "Ask IT": one quick question, one answer, "did this help?"
+│   │   │   ├── AiHelpPage.jsx       Staff: every AI request and its result
+│   │   │   ├── TicketsPage.jsx      The ticket list (My tickets, or the staff queue with count cards)
 │   │   │   ├── UsersPage.jsx        Admin/owner: manage users and roles
 │   │   │   ├── CategoriesPage.jsx   Admin/owner: add, rename, archive, and restore categories
 │   │   │   └── ticket/              One ticket's page, in three parts
@@ -114,10 +147,12 @@ resolveit/
 │   │   │   ├── ConfirmDialog.jsx    Reusable "Are you sure?" box
 │   │   │   ├── EmptyState.jsx       Reusable "nothing here yet" box
 │   │   │   ├── Badges.jsx           Status and priority labels
+│   │   │   ├── CountCards.jsx       Number cards that double as filters
 │   │   │   ├── RelativeTime.jsx     "2 hours ago", with the exact time on hover
 │   │   │   └── GoogleButton.jsx     Sign in with Google
 │   │   ├── lib/                 Helpers with no screen of their own
 │   │   │   ├── api.js               All API calls: attaches and renews the login token
+│   │   │   ├── drafts.js            Unsent Get help text, kept per account in the browser
 │   │   │   ├── roles.js             Role ranking (mirrors the server, for a tidy UI)
 │   │   │   ├── ticketLabels.js      Status and priority names in words
 │   │   │   └── usePageTitle.js      Lets a page set the header and browser tab title
@@ -135,7 +170,14 @@ resolveit/
     │   ├── auth.js          Register, login, Google, refresh, logout, /me
     │   ├── users.js         Admin user management
     │   ├── tickets.js       Tickets and their comments: create, list, view, assign, update
-    │   └── categories.js    Admin-managed ticket categories
+    │   ├── categories.js    Admin-managed ticket categories
+    │   └── help.js          AI help: suggest steps, outcomes, Ask IT, daily limits, staff list
+    ├── services/
+    │   ├── ai.js            The only code that talks to the AI (instructions, answer shapes)
+    │   └── guardrails.js    The server's own safety check on every AI answer, and step order
+    ├── eval/
+    │   ├── problems.json    64 test problems with known right answers
+    │   └── run.js           `npm run eval`: scores the real AI (costs money; asks first)
     ├── middleware/
     │   ├── auth.js          requireAuth (who are you?) and requireRole (are you allowed?)
     │   └── rateLimit.js     Request limits
@@ -158,6 +200,8 @@ resolveit/
 - **`ticket_events`**: the ticket history: one row per change, with who, which field, and the before/after values as people saw them.
 - **`account_events`**: the account history: role changes, disables, and enables, with who did them (empty = a server command).
 - **`refresh_tokens`**: one row per logged-in browser. Stores a hash of the token, its expiry, when the session started, and when it was revoked.
+- **`help_sessions`**: one row per AI request, whatever happened: Get help (`kind = 'fix'`) or Ask IT (`'question'`), the problem, the steps or answer, the result (`pending`, `fixed`, `still_broken`, `escalated`, `failed`), the ticket it became, anything the safety check blocked, and the model and tokens used. The daily limits count these rows, and the self-solved rate comes from their results.
+- `tickets.steps_tried`: the AI steps a user tried (or didn't) before the ticket opened.
 
 Allowed values for role, status, and priority are enforced by the database itself with `CHECK` constraints. See [`server/db/schema.sql`](server/db/schema.sql).
 
@@ -197,6 +241,8 @@ npm run make-admin -- you@example.com
 npm run make-owner -- you@example.com
 ```
 
+**AI help (optional):** create an API key in the [Anthropic Console](https://console.anthropic.com/) (set a spending limit, or use prepaid credit with auto-reload off) and put it in `server/.env` as `ANTHROPIC_API_KEY`. `AI_MODEL` switches the model (default `claude-haiku-5-5`), and `AI_DAILY_LIMIT_PER_USER` / `AI_DAILY_LIMIT_SITE` change the daily limits (default 20 and 300). Without a key, Get help works as a plain ticket form and Ask IT says it isn't available.
+
 **Sign in with Google (optional):** create an OAuth Client ID (type: Web application) in Google Cloud Console, add `http://localhost:5173` as an authorized JavaScript origin, and put the ID in both `server/.env` (`GOOGLE_CLIENT_ID`) and `client/.env` (`VITE_GOOGLE_CLIENT_ID`). Without it, the Google button is simply hidden.
 
 ### Running the tests
@@ -206,7 +252,15 @@ cd server
 npm test
 ```
 
-The tests create and use a separate database, `resolveit_test`, on the same PostgreSQL server, and empty it before every test. They refuse to run against any database whose name doesn't end in `_test`.
+The tests create and use a separate database, `resolveit_test`, on the same PostgreSQL server, and empty it before every test. They refuse to run against any database whose name doesn't end in `_test`. **They never call the real AI:** the AI library is replaced with a fake, and the test settings blank out any API key in `.env`, so running them costs nothing.
+
+**AI test set** (separate from the tests; it calls the real AI and costs money, so it shows an estimate and waits for `--yes`):
+
+```bash
+npm run eval                                     # estimate only, nothing sent
+npm run eval -- --yes                            # one pass on the default model
+npm run eval -- --repeat=3 --yes                 # a longer run, to check consistency
+```
 
 **GitHub Actions** runs the server tests (against a PostgreSQL 17 container) and lints and builds the client on every push and pull request. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
@@ -238,6 +292,13 @@ The tests create and use a separate database, `resolveit_test`, on the same Post
 | GET | `/api/categories` | Logged in | Active categories (admins can add `?all=true` for archived ones) |
 | POST | `/api/categories` | Admin, owner | Add a category |
 | PATCH | `/api/categories/:id` | Admin, owner | Rename, archive, or restore a category |
+| POST | `/api/help/suggest` | Logged in | Get help: safe steps, or a ticket for a technician (counts toward the daily limit) |
+| POST | `/api/help/:id/outcome` | The person who asked | "That fixed it" / "Still broken" (Get help opens a ticket with the steps tried); "did this help?" for Ask IT |
+| GET | `/api/help/mine` | Logged in | Your unfinished Get help requests (last 7 days) |
+| GET | `/api/help/:id` | The person who asked | Reopen a request where you left off (no new AI call) |
+| POST | `/api/help/ask` | Logged in | Ask IT: one quick question, one answer (counts toward the daily limit) |
+| GET | `/api/help/questions/mine` | Logged in | Your recent Ask IT questions and whether each helped |
+| GET | `/api/help/sessions` | Staff | Every AI request with its result, plus counts per result and source |
 
 Protected endpoints expect `Authorization: Bearer <access token>`. "Staff" means a technician, admin, or owner.
 
