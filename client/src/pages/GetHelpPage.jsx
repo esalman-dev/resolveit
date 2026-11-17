@@ -21,6 +21,8 @@ import { apiFetch } from '../lib/api.js'
 import { clearDraft, loadDraft, saveDraft } from '../lib/drafts.js'
 import { usePageTitle } from '../lib/usePageTitle.js'
 import RelativeTime from '../components/RelativeTime.jsx'
+import { AttachmentList, AttachmentPicker } from '../components/Attachments.jsx'
+import { useAttachmentPicker } from '../lib/attachments.js'
 import './GetHelpPage.css'
 
 // Note: these match MAX_TITLE and MAX_DESCRIPTION in server/routes/tickets.js. The server
@@ -52,6 +54,8 @@ function GetHelpPage({ currentUser }) {
   const [escalation, setEscalation] = useState(null) // { ticketId, reason }
   const [fallback, setFallback] = useState('') // why automatic help is off; the form then sends a plain ticket
   const headingRef = useRef(null) // the heading of whatever just appeared, for keyboard focus
+  const picker = useAttachmentPicker() // files being added to the form
+  const [sentFiles, setSentFiles] = useState([]) // the files of the request on screen, once sent
   const [unfinished, setUnfinished] = useState([]) // the user's requests still waiting for an answer
   const [loadingRequest, setLoadingRequest] = useState(false)
   const shownId = useRef(null) // the request on screen, so the address change it causes doesn't reload it
@@ -82,7 +86,12 @@ function GetHelpPage({ currentUser }) {
     if (phase !== 'form') headingRef.current?.focus()
   }, [phase])
 
-  const problem = () => ({ title, description, category_id: categoryId ? Number(categoryId) : null })
+  const problem = () => ({
+    title,
+    description,
+    category_id: categoryId ? Number(categoryId) : null,
+    attachment_ids: picker.ids,
+  })
 
   /** Puts a request on screen, wherever it got to: steps waiting, fixed, or with a technician. */
   function showRequest(s) {
@@ -91,6 +100,7 @@ function GetHelpPage({ currentUser }) {
     setTitle(s.title)
     setDescription(s.description)
     setCategoryId(s.category_id ? String(s.category_id) : '')
+    setSentFiles(s.attachments ?? [])
     setDraftRestored(false)
     setError('')
     if (s.outcome === 'pending') {
@@ -124,6 +134,8 @@ function GetHelpPage({ currentUser }) {
       const data = await apiFetch('/api/help/suggest', { method: 'POST', body: problem() })
       clearDraft(currentUser.id) // it's saved on the server now
       setDraftRestored(false)
+      setSentFiles(picker.attachments)
+      picker.reset() // the files belong to the request now
       rememberRequest(data.session.id)
       if (data.ticket_id) {
         setEscalation({ ticketId: data.ticket_id, reason: data.session.escalate_reason })
@@ -147,6 +159,7 @@ function GetHelpPage({ currentUser }) {
     try {
       const data = await apiFetch('/api/tickets', { method: 'POST', body: problem() })
       clearDraft(currentUser.id)
+      picker.reset()
       // The ticket page reads `created` to show a "Ticket created" message.
       navigate(`/tickets/${data.ticket.id}`, { state: { created: true } })
     } catch (err) {
@@ -187,6 +200,8 @@ function GetHelpPage({ currentUser }) {
     setSession(null)
     setTried([])
     setEscalation(null)
+    setSentFiles([])
+    picker.reset()
     setError('')
     setPhase('form')
   }
@@ -200,6 +215,7 @@ function GetHelpPage({ currentUser }) {
   /** "Clear" on a restored draft. */
   function discardDraft() {
     clearDraft(currentUser.id)
+    picker.discard() // unsent uploads are deleted, not just forgotten
     resetForm()
   }
 
@@ -307,13 +323,25 @@ function GetHelpPage({ currentUser }) {
               <p id="get-help-privacy" className="hint">Don't include passwords or personal information.</p>
             </fieldset>
 
+            {asking ? (
+              <AttachmentPicker
+                picker={picker}
+                disabled={busy || loadingRequest}
+                // Security: screenshots are sent to the AI service too, so the form says so.
+                hint={fallback ? null : 'Screenshots you add are sent to the AI with your description.'}
+              />
+            ) : (
+              <AttachmentList attachments={sentFiles} />
+            )}
+
             {fallback && asking && <p className="get-help__notice" role="status">{fallback}</p>}
             {asking && error && <p className="error" role="alert">{error}</p>}
 
             {asking && (
               <div className="get-help__actions">
                 {busy && !fallback && <p className="hint">This can take up to 30 seconds.</p>}
-                <button type="submit" className="primary" disabled={busy}>
+                {picker.uploading && <p className="hint">Waiting for files to upload…</p>}
+                <button type="submit" className="primary" disabled={busy || picker.uploading}>
                   {fallback ? (busy ? 'Sending…' : 'Submit ticket') : busy ? 'Finding steps…' : 'Get help'}
                 </button>
               </div>

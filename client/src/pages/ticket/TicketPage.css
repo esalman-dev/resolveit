@@ -213,3 +213,9 @@
     padding-top: 0;
   }
 }
+
+/* Files sent with the ticket: lined up with the description text above them. */
+.ticket-page__files {
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-4);
+}

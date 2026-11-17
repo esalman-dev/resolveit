@@ -13,6 +13,7 @@ import { apiFetch } from '../../lib/api.js'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
 import RelativeTime from '../../components/RelativeTime.jsx'
+import { AttachmentList } from '../../components/Attachments.jsx'
 import TicketActivity from './TicketActivity.jsx'
 import TicketSidePanel from './TicketSidePanel.jsx'
 import { isStaff } from '../../lib/roles.js'
@@ -34,6 +35,7 @@ function TicketPage({ currentUser }) {
   const [ticket, setTicket] = useState(null)
   const [history, setHistory] = useState([])
   const [comments, setComments] = useState([])
+  const [attachments, setAttachments] = useState([]) // every file on the ticket and its comments
   const [categories, setCategories] = useState([]) // staff only
   const [assignees, setAssignees] = useState([]) // staff only
   const [loadError, setLoadError] = useState('')
@@ -56,13 +58,18 @@ function TicketPage({ currentUser }) {
 
   // Everything the page needs, in parallel. Staff also need the dropdown choices.
   useEffect(() => {
-    const requests = [apiFetch(`/api/tickets/${id}`), apiFetch(`/api/tickets/${id}/comments`)]
+    const requests = [
+      apiFetch(`/api/tickets/${id}`),
+      apiFetch(`/api/tickets/${id}/comments`),
+      apiFetch(`/api/tickets/${id}/attachments`),
+    ]
     if (staff) requests.push(apiFetch('/api/categories'), apiFetch('/api/tickets/assignees'))
     Promise.all(requests)
-      .then(([ticketData, commentData, categoryData, assigneeData]) => {
+      .then(([ticketData, commentData, attachmentData, categoryData, assigneeData]) => {
         setTicket(ticketData.ticket)
         setHistory(ticketData.history)
         setComments(commentData.comments)
+        setAttachments(attachmentData.attachments)
         if (staff) {
           setCategories(categoryData.categories)
           setAssignees(assigneeData.assignees)
@@ -160,13 +167,19 @@ function TicketPage({ currentUser }) {
 
   // --- Comments ---
 
-  async function addComment(text, isInternal) {
+  async function addComment(text, isInternal, attachmentIds = []) {
     const data = await apiFetch(`/api/tickets/${ticket.id}/comments`, {
       method: 'POST',
-      body: { body: text, is_internal: isInternal },
+      body: { body: text, is_internal: isInternal, attachment_ids: attachmentIds },
     })
     setComments((list) => [...list, data.comment])
     setTicket((t) => ({ ...t, updated_at: data.comment.created_at })) // a comment counts as activity
+    if (attachmentIds.length) {
+      // The comment's files now belong to it; reload the list so they show under it.
+      apiFetch(`/api/tickets/${ticket.id}/attachments`)
+        .then((files) => setAttachments(files.attachments))
+        .catch(() => {})
+    }
   }
 
   async function editComment(commentId, text) {
@@ -226,6 +239,8 @@ function TicketPage({ currentUser }) {
           ) : (
             <p className="ticket-page__description">{ticket.description}</p>
           )}
+          {/* Files sent with the ticket itself (from Get help, or the plain ticket form). */}
+          <AttachmentList className="ticket-page__files" attachments={attachments.filter((a) => a.comment_id === null)} />
         </article>
 
         <TicketSidePanel
@@ -242,6 +257,7 @@ function TicketPage({ currentUser }) {
         <TicketActivity
           history={history}
           comments={comments}
+          attachments={attachments}
           stepsTried={ticket.steps_tried}
           currentUser={currentUser}
           staff={staff}

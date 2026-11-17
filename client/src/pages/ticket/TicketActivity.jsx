@@ -3,6 +3,8 @@
 
 import { useState } from 'react'
 import RelativeTime from '../../components/RelativeTime.jsx'
+import { AttachmentList, AttachmentPicker } from '../../components/Attachments.jsx'
+import { useAttachmentPicker } from '../../lib/attachments.js'
 import { priorityLabel, statusLabel } from '../../lib/ticketLabels.js'
 import './TicketActivity.css'
 
@@ -12,10 +14,11 @@ const MAX_COMMENT = 5000
 /**
  * The timeline and the comment box.
  *
- * @param onAddComment called with (text, isInternal); returns a promise that rejects on failure
+ * @param attachments every file on the ticket; each comment shows the ones sent with it
+ * @param onAddComment called with (text, isInternal, attachmentIds); returns a promise that rejects on failure
  * @param onEditComment called with (commentId, text); returns a promise that rejects on failure
  */
-function TicketActivity({ history, comments, stepsTried = [], currentUser, staff, onAddComment, onEditComment }) {
+function TicketActivity({ history, comments, attachments = [], stepsTried = [], currentUser, staff, onAddComment, onEditComment }) {
   // One list, sorted by time. History lines are small and gray; comments are full cards.
   const items = [
     ...history.map((event) => ({ kind: 'event', at: event.created_at, key: `e${event.id}`, event })),
@@ -33,7 +36,12 @@ function TicketActivity({ history, comments, stepsTried = [], currentUser, staff
             </li>
           ) : (
             <li key={item.key} className="activity__item">
-              <Comment comment={item.comment} mine={item.comment.author_id === currentUser.id} onEdit={onEditComment} />
+              <Comment
+                comment={item.comment}
+                files={attachments.filter((a) => a.comment_id === item.comment.id)}
+                mine={item.comment.author_id === currentUser.id}
+                onEdit={onEditComment}
+              />
             </li>
           )
         )}
@@ -43,8 +51,8 @@ function TicketActivity({ history, comments, stepsTried = [], currentUser, staff
   )
 }
 
-/** One comment: who wrote it and when, the text, and for its author an Edit link. */
-function Comment({ comment, mine, onEdit }) {
+/** One comment: who wrote it and when, the text, its files, and for its author an Edit link. */
+function Comment({ comment, files, mine, onEdit }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(comment.body)
   const [showVersions, setShowVersions] = useState(false)
@@ -128,6 +136,7 @@ function Comment({ comment, mine, onEdit }) {
       ) : (
         <p className="comment__body">{comment.body}</p>
       )}
+      <AttachmentList className="comment__files" attachments={files} />
 
       {showVersions && (
         <div className="comment__versions">
@@ -146,21 +155,26 @@ function Comment({ comment, mine, onEdit }) {
   )
 }
 
-/** The "Write a comment" box. Staff can tick "Internal note" to hide it from the user. */
+/**
+ * The "Write a comment" box, with files. Staff can tick "Internal note" to hide it, and its
+ * files, from the user.
+ */
 function CommentForm({ staff, onAdd }) {
   const [text, setText] = useState('')
   const [internal, setInternal] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const picker = useAttachmentPicker()
 
   async function send(e) {
     e.preventDefault()
     setBusy(true)
     setError('')
     try {
-      await onAdd(text, internal)
+      await onAdd(text, internal, picker.ids)
       setText('')
       setInternal(false)
+      picker.reset() // the files belong to the comment now
     } catch (err) {
       setError(err.message)
     } finally {
@@ -179,6 +193,7 @@ function CommentForm({ staff, onAdd }) {
         placeholder={internal ? 'Write an internal note (only staff will see it)…' : 'Write a comment…'}
         aria-label="Comment"
       />
+      <AttachmentPicker picker={picker} disabled={busy} />
       {error && <p className="error" role="alert">{error}</p>}
       <div className="comment-form__row">
         {staff ? (
@@ -189,7 +204,9 @@ function CommentForm({ staff, onAdd }) {
         ) : (
           <span />
         )}
-        <button type="submit" className="primary" disabled={busy}>{busy ? 'Sending…' : 'Send'}</button>
+        <button type="submit" className="primary" disabled={busy || picker.uploading}>
+          {busy ? 'Sending…' : picker.uploading ? 'Uploading…' : 'Send'}
+        </button>
       </div>
     </form>
   )

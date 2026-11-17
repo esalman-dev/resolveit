@@ -188,3 +188,9 @@
   height: 16px;
   margin: 0;
 }
+
+/* A comment's files: lined up with the comment text above them. */
+.comment__files {
+  margin: 0;
+  padding: 0 var(--space-4) var(--space-3);
+}

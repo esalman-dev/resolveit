@@ -25,17 +25,24 @@ let onSessionLost = () => {}
 /** Registers what to do when the session ends mid-use. App.jsx uses it to show the login screen. */
 export const setOnSessionLost = (fn) => { onSessionLost = fn }
 
-/** Low-level request: sends and reads JSON, and adds "Authorization: Bearer <token>". */
-async function request(path, { method = 'GET', body } = {}) {
+/**
+ * Low-level request: adds "Authorization: Bearer <token>", sends JSON (or a FormData file
+ * upload as is), and reads JSON back, or a file (Blob) when `as` is 'blob'.
+ */
+async function request(path, { method = 'GET', body, as } = {}) {
+  const isForm = body instanceof FormData
   const headers = {}
-  if (body) headers['Content-Type'] = 'application/json'
+  // Note: a FormData upload must not set Content-Type; the browser adds it, with the boundary
+  // that separates the parts.
+  if (body && !isForm) headers['Content-Type'] = 'application/json'
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`
 
   const res = await fetch(`${API_URL}${path}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    body: body && !isForm ? JSON.stringify(body) : body,
   })
+  if (as === 'blob' && res.ok) return { res, data: await res.blob() }
   const data = await res.json().catch(() => ({})) // some responses (204, some errors) have no JSON
   return { res, data }
 }
@@ -74,6 +81,7 @@ function withRefreshLock(fn) {
 
 /**
  * Calls the API and returns the response data. This is what components use.
+ * Options: { method, body (an object, or FormData for a file), as: 'blob' to get a file back }.
  * Throws an Error with the server's message (and its HTTP status as `err.status`) when a request fails.
  *
  * If the access token has expired (401), it refreshes once and retries, so the user never

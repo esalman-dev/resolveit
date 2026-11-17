@@ -257,3 +257,9 @@
     gap: var(--space-5);
   }
 }
+
+/* The file picker sits between the form fields and the buttons. */
+.get-help .attach-picker,
+.get-help .attach-list {
+  margin-top: var(--space-3);
+}
