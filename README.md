@@ -9,7 +9,7 @@
 
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
-> 🚧 **Status: in development.** Phase 1, the core ticket tracker, is complete. Phase 2, **AI self-service fixes**, is built: Get help suggests safe steps first, **Ask IT** answers quick questions, risky problems go straight to a technician, and staff see every AI request and its result. Next: a 500-ticket simulated study of how many tickets the AI removes, then deployment. See [Progress](#progress).
+> 🚧 **Status: in development.** Phase 1, the core ticket tracker, is complete. Phase 2, **AI self-service fixes**, is built: Get help suggests safe steps first, **Ask IT** answers quick questions, risky problems go straight to a technician, and staff see every AI request and its result. A 500-ticket simulated study measured how many tickets it removes (see [Results](#results-simulated-ticket-reduction-study)). Next: deployment. See [Progress](#progress).
 
 ## The idea
 
@@ -21,6 +21,27 @@ Most help desk tickets are for common problems with simple fixes: Wi-Fi that won
 4. If it's still broken, a ticket is **created automatically**, already filled in with the problem, the steps the user tried, and a suggested category and priority, so the technician doesn't start from zero.
 
 **Safety first:** the AI only suggests low-risk fixes. Anything risky, like registry edits, BIOS changes or deleting files, goes straight to a technician.
+
+## Results: simulated ticket reduction study
+
+In a **simulated test of 500 help desk tickets**, ResolveIT's AI self-service resolved **18.4%** without a technician (95% CI 15.2–22.0%), escalated **100% of security-risk tickets** (37/37), and gave **no unsafe answers** (0/500), at about **$0.0024 per avoided ticket**.
+
+| Measure | Result |
+|---|---|
+| Tickets resolved with no technician | **18.4%** (92/500, 95% CI 15.2–22.0%) |
+| …of the tickets a user *could* fix alone (132) | **69.7%** (92/132, 95% CI 61.4–76.9%) |
+| Security-risk tickets sent straight to a technician | **100%** (37/37) |
+| Unsafe answers | **0%** (0/500, 95% CI 0.0–0.8%) |
+| Self-fixable problems sent to a technician anyway | 23.5% (31/132) |
+| Suggested category matched the right one | 81% (407/500) |
+| AI cost per ticket / per avoided ticket | $0.0004 / $0.0024 |
+| Average answer time | 2.9 seconds |
+
+**How it was measured.** The ticket mix follows Fixify's *2026 IT Help Desk Benchmark Report* (50,000+ tickets from 30+ organizations). A large share of real tickets, like app access requests and new-hire accounts, only IT can handle, so at most **26.4%** of these 500 tickets could ever be fixed by the user. 109 scenarios each have a **hidden cause** the AI never sees. 500 tickets were written from them in varied, realistic styles (typos, wrong guesses, missing details), then frozen. Each ticket went through the app's own AI code and safety check. A separate grader, which knows the hidden cause, judged whether the steps would fix it. A person graded 48 of the grader's decisions blind and agreed **91.7%** of the time; in every disagreement the grader was the stricter one. Error ranges are 95% Wilson intervals.
+
+**Limits.** These are simulated tickets, not real users. The ticket mix comes from a vendor's benchmark, and the split of each category into "user can fix", "needs IT" and "risky" is this project's assumption. The tickets were written by the same model that answers them (Claude Haiku 5.5). Four self-fixable tickets mention a red flag (a spill, a virus worry), so escalating them counts against the result.
+
+Everything needed to check or re-run it is in [`server/eval/`](server/eval/): the scenarios, the frozen tickets, the scripts, every run's full results, and a [log of every paid run](server/eval/RUNS.md) with what changed and what it cost.
 
 ## Features
 
@@ -51,9 +72,9 @@ Most help desk tickets are for common problems with simple fixes: Wi-Fi that won
 - Staff **AI help** screen: every AI request (Get help and Ask IT), who asked, the result, the steps or answer, and anything the safety check blocked, with **count cards** that double as filters and the **self-solved rate**.
 - **Count cards on the staff ticket list** (Open, In progress, Resolved, Assigned to me, Unassigned) and a **My tickets** list for everyone; the sidebar is grouped into Help, Staff, and Admin.
 - A **64-problem test set** (`npm run eval`) that scores the real AI for help rate, safety (every risky problem escalated), consistency over repeats, and cost.
+- A **500-ticket simulated study** (`npm run study`) of how many tickets the AI removes, with a written method, confidence intervals and a blind human check of the grader. See [Results](#results-simulated-ticket-reduction-study).
 
 **Planned**
-- A 500-ticket simulated study of ticket reduction, with a published method and confidence intervals
 - A knowledge base that learns from tickets technicians have solved
 - An analytics dashboard: self-solved rate, escalations, most common problems, average resolution time
 - Attachments (screenshots and files on tickets)
@@ -177,7 +198,18 @@ resolveit/
     │   └── guardrails.js    The server's own safety check on every AI answer, and step order
     ├── eval/
     │   ├── problems.json    64 test problems with known right answers
-    │   └── run.js           `npm run eval`: scores the real AI (costs money; asks first)
+    │   ├── run.js           `npm run eval`: scores the real AI (costs money; asks first)
+    │   ├── runLog.js        Adds a row to RUNS.md after every paid run
+    │   ├── RUNS.md          Every paid AI run: what changed, results, cost
+    │   ├── results/         Full results of every `npm run eval`
+    │   └── study/           The 500-ticket study
+    │       ├── scenarios.json        109 scenarios: hidden cause, real fix, correct route
+    │       ├── check-scenarios.js    Checks the scenarios and the ticket mix (free)
+    │       ├── generate-tickets.js   Writes the 500 tickets once (costs money; asks first)
+    │       ├── tickets.json          The frozen 500 tickets
+    │       ├── run.js                `npm run study`: answers, grades, and scores them
+    │       ├── results/              Full results and hand-check sheets of every run
+    │       └── archive/              The first ticket set, used by the first pilot
     ├── middleware/
     │   ├── auth.js          requireAuth (who are you?) and requireRole (are you allowed?)
     │   └── rateLimit.js     Request limits
@@ -260,7 +292,11 @@ The tests create and use a separate database, `resolveit_test`, on the same Post
 npm run eval                                     # estimate only, nothing sent
 npm run eval -- --yes                            # one pass on the default model
 npm run eval -- --repeat=3 --yes                 # a longer run, to check consistency
+npm run study                                    # the 500-ticket study: estimate only
+npm run study -- --route=self_fix --limit=50 --yes   # a small pilot
 ```
+
+Add `--note="what this run is testing"` to any paid run; every run adds a row to [`server/eval/RUNS.md`](server/eval/RUNS.md).
 
 **GitHub Actions** runs the server tests (against a PostgreSQL 17 container) and lints and builds the client on every push and pull request. See [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
