@@ -17,8 +17,6 @@ const MAX_REASON = 500;
  *
  * Why: word lists can't understand meaning, so they are deliberately broad. A false alarm only
  * sends someone to a technician; a miss could tell them to edit the registry.
- * `unless` removes allowed phrases before checking: the password reset page, and the Wi-Fi
- * password, which rejoining a network (an allowed step) always needs.
  */
 const BLOCKED_TOPICS = [
   { topic: 'registry edits', pattern: /\b(regedit|registry)\b/ },
@@ -26,7 +24,8 @@ const BLOCKED_TOPICS = [
   { topic: 'Group Policy', pattern: /\b(group policy|gpedit)\b/ },
   {
     topic: 'command-line tools',
-    pattern: /\b(command prompt|command line|cmd|powershell|terminal|sudo|ipconfig|netsh|sfc|dism|chkdsk|diskpart)\b/,
+    // "Cmd+" is a Mac keyboard shortcut (Cmd+Shift+R), not the command prompt.
+    pattern: /\b(command prompt|command line|cmd(?!\s*\+)|powershell|terminal|sudo|ipconfig|netsh|sfc|dism|chkdsk|diskpart)\b/,
   },
   { topic: 'administrator rights', pattern: /\b(administrator|admin (rights|privileges|account|password)|run as admin)/ },
   {
@@ -37,7 +36,7 @@ const BLOCKED_TOPICS = [
   {
     topic: 'turning off security settings',
     pattern:
-      /\b(disable|disabling|turn off|turning off|switch off|deactivate|pause)\b[^.]{0,40}\b(antivirus|anti-virus|firewall|defender|security|smartscreen|uac)\b/,
+      /\b(disable|disabling|turn off|turning off|switch off|deactivate|pause)\b[^.]{0,40}\b(antivirus|anti-virus|firewall|defender|security|smartscreen|uac|two-factor|two-step|2fa|mfa|multi-factor)\b/,
   },
   {
     topic: 'working inside the computer',
@@ -46,9 +45,21 @@ const BLOCKED_TOPICS = [
       /\b(open (up )?(the )?(computer |pc |laptop |desktop )?(case|chassis)|motherboard|screwdriver|reseat(ing)?\b[^.]{0,30}\b(ram|memory|graphics card|video card|gpu|hard drive|ssd|cpu|expansion card))\b/,
   },
   {
+    // Why: typing your own password at a sign-in prompt is an ordinary step (Caps Lock checks,
+    // an expired password, an app asking for the new one). What's never self-service is handing
+    // a password to someone, writing it down, or using someone else's account.
     topic: 'passwords',
-    pattern: /\bpasswords?\b/,
-    unless: /\b(password reset page|(wi-?fi|wireless|network) password)\b/g,
+    pattern: new RegExp(
+      [
+        /\b(share|sharing|email|e-mail|send|sending|write down|writing down)\b[^.]{0,40}\bpasswords?\b/,
+        /\bpasswords?\b[^.]{0,40}\b(to|with) (a |an |the |your |any )?(coworker|colleague|someone|anyone|technician|support|us|me|friend|manager|boss|team)\b/,
+        /\b(tell|give|giving)\b[^.]{0,30}\b(coworker|colleague|someone|anyone|technician|support|manager|boss|friend|us|me)\b[^.]{0,20}\bpasswords?\b/,
+        /\bwrite\b[^.]{0,20}\bpasswords?\b[^.]{0,10}\bdown\b/,
+        /\b(someone else's|another person's|a coworker's|a colleague's) (account|password|login)\b/,
+      ]
+        .map((part) => part.source)
+        .join('|')
+    ),
   },
 ];
 
@@ -61,10 +72,9 @@ const BLOCKED_TOPICS = [
  */
 export function findBlockedTopic(text, { skip = [] } = {}) {
   const normalized = String(text ?? '').toLowerCase().replace(/\s+/g, ' ');
-  for (const { topic, pattern, unless } of BLOCKED_TOPICS) {
+  for (const { topic, pattern } of BLOCKED_TOPICS) {
     if (skip.includes(topic)) continue;
-    const checked = unless ? normalized.replace(unless, '') : normalized;
-    if (pattern.test(checked)) return topic;
+    if (pattern.test(normalized)) return topic;
   }
   return null;
 }

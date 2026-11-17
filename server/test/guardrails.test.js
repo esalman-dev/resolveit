@@ -38,6 +38,7 @@ describe('findBlockedTopic', () => {
     ['Open Command Prompt and run ipconfig /release', 'command-line tools'],
     ['Run this in PowerShell', 'command-line tools'],
     ['Run sfc /scannow', 'command-line tools'],
+    ['Open cmd and type a command', 'command-line tools'],
     ['Log in with an administrator account', 'administrator rights'],
     ['Delete the temp folder', 'deleting, formatting or resetting'],
     ['Format the USB drive', 'deleting, formatting or resetting'],
@@ -48,7 +49,13 @@ describe('findBlockedTopic', () => {
     ['Open the case and reseat the RAM', 'working inside the computer'],
     ['Reseat the graphics card', 'working inside the computer'],
     ['Try reseating the memory modules', 'working inside the computer'],
-    ['Type your password into the box', 'passwords'],
+    ['Turn off two-factor authentication', 'turning off security settings'],
+    ['Email your password to IT', 'passwords'],
+    ['Share your password with a coworker', 'passwords'],
+    ['Tell the technician your password', 'passwords'],
+    ['Write your password down on a sticky note', 'passwords'],
+    ["Sign in to a coworker's account instead", 'passwords'],
+    ['Send the password to your manager', 'passwords'],
   ])('blocks "%s" (%s)', (text, topic) => {
     expect(findBlockedTopic(text)).toBe(topic);
   });
@@ -66,6 +73,13 @@ describe('findBlockedTopic', () => {
     'Reseat the video cable at both ends',
     'Reseat the HDMI cable in the monitor',
     'Type the wireless password from the sticker on the router',
+    'Type your password into the box',
+    'Check that Caps Lock is off, then type your password again',
+    'Follow the prompt to set a new password',
+    'Enter your new password when Outlook asks for it',
+    'Enter the Wi-Fi password, then your Windows password',
+    'Windows will tell you if your password has expired',
+    'Press Ctrl+Shift+R (or Cmd+Shift+R on a Mac) to reload the page',
   ])('allows "%s"', (text) => {
     expect(findBlockedTopic(text)).toBeNull();
   });
@@ -75,9 +89,8 @@ describe('findBlockedTopic', () => {
     expect(findBlockedTopic('command\n prompt')).toBe('command-line tools');
   });
 
-  it('still blocks a password step that also mentions the reset page', () => {
+  it('still blocks sharing a password in a step that also mentions the reset page', () => {
     expect(findBlockedTopic('Go to the password reset page, then email us your password')).toBe('passwords');
-    expect(findBlockedTopic('Enter the Wi-Fi password, then your Windows password')).toBe('passwords');
   });
 
   it('does not match parts of other words', () => {
