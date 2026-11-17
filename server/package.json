@@ -9,6 +9,7 @@
     "start": "node index.js",
     "make-admin": "node scripts/make-admin.js",
     "make-owner": "node scripts/make-owner.js",
+    "seed-demo": "node scripts/seed-demo.js",
     "eval": "node eval/run.js",
     "study": "node eval/study/run.js",
     "test": "vitest run",
