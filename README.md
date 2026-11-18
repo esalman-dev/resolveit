@@ -97,8 +97,13 @@ Everything needed to check or re-run it is in [`server/eval/`](server/eval/): th
 - Staff show as **Available**, **Busy**, **Away** or **Offline**. Their browser checks in once a minute while the app is open and visible; no check-in for 2 minutes means offline, and no mouse or keyboard for 15 minutes means away. Staff can also set Busy or Away from the header.
 - The status shows on the dashboard's technicians table and in the "Assign to" list ("Sam Rivera (busy)"); everyone sees "2 technicians online" in the sidebar, and users see only the count, not who.
 
+**Knowledge base that writes itself**
+- When staff resolve a ticket, the AI can **draft a how-to article from the fix** (a tick box, on by default). It sees only the ticket, the steps tried and the public replies (never internal notes, with names left out), and **skips one-off fixes** like granting someone access. A technician reviews, edits and publishes it.
+- **Safety:** every step goes through the same server check as Get help; a risky draft is flagged, and **publishing re-checks every step** and refuses until the risky one is gone.
+- **Get help shows matching articles first** (PostgreSQL full-text search, no AI call, no daily limit). "That fixed it" counts as self-solved; "None of these" asks the AI, which gets the best articles as background.
+- A **Knowledge base** page for everyone (search, "Was this helpful?"), with Drafts and Archived for staff.
+
 **Planned**
-- A knowledge base that learns from tickets technicians have solved
 - An analytics dashboard: self-solved rate, escalations, most common problems, average resolution time
 
 ## Security
@@ -171,7 +176,9 @@ Authentication is built by hand rather than with an auth service, so each decisi
 - [x] Reviews: "How did we do?" ratings and a Reviews page (anonymous for technicians)
 - [x] Dashboard: number cards with the change from the period before, team goals, charts, technicians, needs attention
 - [x] Online status for staff (automatic, plus Available / Busy / Away)
-- [ ] Knowledge base and AI auto-categorize
+- [x] Knowledge base that writes itself (AI drafts from resolved tickets, staff publish, Get help shows articles first)
+- [ ] Auto-assignment and an in-app notifications bell
+- [ ] Outage spotting, new-hire checklists, keyboard shortcuts, dark mode
 
 **Phase 4: Deployment, password reset**
 
@@ -230,7 +237,8 @@ resolveit/
     │   ├── slaTargets.js    Target times per priority (staff read, admins change)
     │   ├── reviews.js       The Reviews page: reviews and their summary, anonymous for technicians
     │   ├── dashboard.js     The dashboard numbers and team goals
-    │   └── presence.js      Who's online: check-ins and staff status
+    │   ├── presence.js      Who's online: check-ins and staff status
+    │   └── kb.js            Knowledge base: articles, drafting from tickets, search
     ├── services/
     │   ├── ai.js            The only code that talks to the AI (instructions, answer shapes)
     │   ├── guardrails.js    The server's own safety check on every AI answer, and step order
@@ -317,7 +325,7 @@ npm run make-admin -- you@example.com
 npm run make-owner -- you@example.com
 ```
 
-**Demo data (optional):** to explore the app with two months of realistic history (about 30 accounts, 280 tickets with replies, history and reviews, and the Get help requests behind them), run this in `server/`:
+**Demo data (optional):** to explore the app with two months of realistic history (about 30 accounts, 280 tickets with replies, history and reviews, the Get help requests behind them, and knowledge base articles), run this in `server/`:
 
 ```bash
 npm run seed-demo -- --yes      # re-run any time for a fresh copy; --remove deletes it
@@ -399,6 +407,16 @@ Add `--note="what this run is testing"` to any paid run; every run adds a row to
 | GET | `/api/presence` | Logged in | How many staff are online; staff also get who, and their own status |
 | POST | `/api/presence/heartbeat` | Staff | The once-a-minute check-in (`{ active }`: mouse or keyboard used since the last one) |
 | PUT | `/api/presence/me` | Staff | Set your status: available, busy or away |
+| POST | `/api/help/match` | Logged in | Published articles that match a problem (no AI call) |
+| POST | `/api/help/article-fixed` | Logged in | "That fixed it" on an article: saved as fixed, no daily limit used |
+| GET | `/api/kb` | Logged in | Articles (`?q=` to search); staff also `?status=draft` or `archived`, `?source_ticket=` |
+| GET | `/api/kb/:id` | Logged in | One article (drafts and archived: staff only) |
+| POST | `/api/kb` | Staff | Write an article (starts as a draft) |
+| PATCH | `/api/kb/:id` | Staff | Edit an article (a published one can't gain a risky step) |
+| POST | `/api/kb/:id/publish` | Staff (restore: admin, owner) | Publish after re-checking every step |
+| POST | `/api/kb/:id/archive` | Admin, owner | Hide a published article |
+| DELETE | `/api/kb/:id` | Staff | Discard a draft |
+| POST | `/api/kb/:id/feedback` | Logged in | "Was this helpful?" |
 | GET | `/api/sla-targets` | Staff | The target times per priority |
 | PUT | `/api/sla-targets` | Admin, owner | Change the target times (every priority; fixed can't be shorter than first reply) |
 | GET | `/api/attachments/:id` | Whoever can see what it's attached to | Download a file (404 for anyone else) |
