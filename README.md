@@ -84,6 +84,10 @@ Everything needed to check or re-run it is in [`server/eval/`](server/eval/): th
 - The staff queue shows what's **due next** on every ticket (gray, amber when under a quarter of the time is left, red when overdue), has an **Overdue** card, and can **sort by most urgent**.
 - Each ticket shows its reply and fix deadlines, and once met, how long they took and whether they were on time. The first reply is the first thing staff do that the user can see (a public comment or a status change), recorded as it happens.
 
+**Reviews**
+- When a ticket is resolved, the person who opened it gets **"How did we do?"**: 1 to 5 stars (keyboard and screen-reader friendly) and an optional comment, editable for 7 days. It credits the technician assigned at the time.
+- A **Reviews** page for staff: the average, how many, and a bar per star. Technicians see only their own reviews, **without names or ticket numbers** (removed on the server), so people can be honest; admins and owners see everyone's, with names, ticket links and a technician filter.
+
 **Planned**
 - A knowledge base that learns from tickets technicians have solved
 - An analytics dashboard: self-solved rate, escalations, most common problems, average resolution time
@@ -155,7 +159,7 @@ Authentication is built by hand rather than with an auth service, so each decisi
 - [x] Attachments: screenshots and files on tickets, comments and Get help, read by the AI
 - [x] Demo data: `npm run seed-demo` (two months of realistic history and three demo logins)
 - [x] Target times (SLA): due and overdue on every ticket, sort by most urgent, admin screen
-- [ ] Reviews (ratings after a ticket is resolved)
+- [x] Reviews: "How did we do?" ratings and a Reviews page (anonymous for technicians)
 - [ ] Analytics dashboard
 - [ ] Knowledge base and AI auto-categorize
 
@@ -213,7 +217,8 @@ resolveit/
     │   ├── categories.js    Admin-managed ticket categories
     │   ├── help.js          AI help: suggest steps, outcomes, Ask IT, daily limits, staff list
     │   ├── attachments.js   Upload, download and remove files; attaching them to tickets and requests
-    │   └── slaTargets.js    Target times per priority (staff read, admins change)
+    │   ├── slaTargets.js    Target times per priority (staff read, admins change)
+    │   └── reviews.js       The Reviews page: reviews and their summary, anonymous for technicians
     ├── services/
     │   ├── ai.js            The only code that talks to the AI (instructions, answer shapes)
     │   ├── guardrails.js    The server's own safety check on every AI answer, and step order
@@ -300,7 +305,7 @@ npm run make-admin -- you@example.com
 npm run make-owner -- you@example.com
 ```
 
-**Demo data (optional):** to explore the app with two months of realistic history (about 30 accounts, 280 tickets with replies and history, and the Get help requests behind them), run this in `server/`:
+**Demo data (optional):** to explore the app with two months of realistic history (about 30 accounts, 280 tickets with replies, history and reviews, and the Get help requests behind them), run this in `server/`:
 
 ```bash
 npm run seed-demo -- --yes      # re-run any time for a fresh copy; --remove deletes it
@@ -374,6 +379,9 @@ Add `--note="what this run is testing"` to any paid run; every run adds a row to
 | GET | `/api/help/questions/mine` | Logged in | Your recent Ask IT questions and whether each helped |
 | GET | `/api/help/sessions` | Staff | Every AI request with its result, plus counts per result and source |
 | POST | `/api/attachments` | Logged in | Upload one file (form field `file`); it's attached when sent with a ticket, comment or Get help request |
+| GET | `/api/tickets/:id/rating` | Creator, admin, owner | The ticket's review (technicians get 403: the ticket page shows who opened it) |
+| PUT | `/api/tickets/:id/rating` | Creator, once resolved | Give or change the review (1-5 stars, optional comment; 7 days to change it) |
+| GET | `/api/reviews` | Staff | Reviews with a summary; technicians get only their own, without names or ticket numbers; admins can filter with `?technician_id=` |
 | GET | `/api/sla-targets` | Staff | The target times per priority |
 | PUT | `/api/sla-targets` | Admin, owner | Change the target times (every priority; fixed can't be shorter than first reply) |
 | GET | `/api/attachments/:id` | Whoever can see what it's attached to | Download a file (404 for anyone else) |
