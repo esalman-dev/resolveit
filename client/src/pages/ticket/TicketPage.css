@@ -235,3 +235,11 @@
 .ticket-page__target--late {
   color: var(--error-text);
 }
+
+/* The review in the facts panel (admins and owners). */
+.ticket-page__review-comment {
+  display: block;
+  margin-top: var(--space-1);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}

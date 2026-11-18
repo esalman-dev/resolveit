@@ -64,6 +64,10 @@
   --internal-note-bg: #fefce8;
   --internal-note-border: #facc15;
 
+  /* Review stars: amber 600 is 3.2 : 1 on white, enough for a large symbol. */
+  --star-on: #d97706;
+  --star-hover: #b45309;
+
   /* Messages. */
   --success-bg: #f0fdf4;            --success-text: #166534;
   --error-bg: #fef2f2;              --error-text: #991b1b;

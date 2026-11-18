@@ -17,8 +17,9 @@ const MAX_COMMENT = 5000
  * @param attachments every file on the ticket; each comment shows the ones sent with it
  * @param onAddComment called with (text, isInternal, attachmentIds); returns a promise that rejects on failure
  * @param onEditComment called with (commentId, text); returns a promise that rejects on failure
+ * @param beforeCommentBox shown just above the comment box (the review card)
  */
-function TicketActivity({ history, comments, attachments = [], stepsTried = [], currentUser, staff, onAddComment, onEditComment }) {
+function TicketActivity({ history, comments, attachments = [], stepsTried = [], currentUser, staff, onAddComment, onEditComment, beforeCommentBox = null }) {
   // One list, sorted by time. History lines are small and gray; comments are full cards.
   const items = [
     ...history.map((event) => ({ kind: 'event', at: event.created_at, key: `e${event.id}`, event })),
@@ -46,6 +47,7 @@ function TicketActivity({ history, comments, attachments = [], stepsTried = [], 
           )
         )}
       </ol>
+      {beforeCommentBox}
       <CommentForm staff={staff} onAdd={onAddComment} />
     </section>
   )

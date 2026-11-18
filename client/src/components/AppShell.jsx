@@ -57,6 +57,7 @@ function AppShell({ user, serverStatus, onLogout }) {
               <p className="app-shell__heading">Staff</p>
               <NavLink className="app-shell__link" to="/tickets">Tickets</NavLink>
               <NavLink className="app-shell__link" to="/ai-help">AI help</NavLink>
+              <NavLink className="app-shell__link" to="/reviews">Reviews</NavLink>
             </>
           )}
           {admin && (

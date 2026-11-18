@@ -4,6 +4,7 @@
 import { PriorityBadge, StatusBadge } from '../../components/Badges.jsx'
 import RelativeTime from '../../components/RelativeTime.jsx'
 import DueBadge from '../../components/DueBadge.jsx'
+import { Stars } from '../../components/Stars.jsx'
 import { nextTarget, stepResult } from '../../lib/sla.js'
 import { PRIORITIES, STATUSES, priorityLabel, statusLabel } from '../../lib/ticketLabels.js'
 
@@ -17,8 +18,9 @@ import { PRIORITIES, STATUSES, priorityLabel, statusLabel } from '../../lib/tick
  * @param categories active categories (staff only)
  * @param assignees staff who can be assigned (staff only)
  * @param busy disables the controls while a change is saving
+ * @param rating the review, shown to admins and owners (null for everyone else)
  */
-function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, busy, onChange, onClose }) {
+function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, busy, onChange, onClose, rating = null }) {
   const isCreator = ticket.created_by === currentUser.id
 
   // An archived category or a disabled staff member can still be the current value, but isn't
@@ -114,6 +116,12 @@ function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, bu
         <Fact label="Last updated"><RelativeTime date={ticket.updated_at} /></Fact>
         <TargetFact ticket={ticket} step="reply" label="First reply" />
         <TargetFact ticket={ticket} step="fix" label="Fixed" />
+        {rating && (
+          <Fact label="Review">
+            <Stars stars={rating.stars} />
+            {rating.comment && <span className="ticket-page__review-comment">“{rating.comment}”</span>}
+          </Fact>
+        )}
       </dl>
 
       <StepsTried steps={ticket.steps_tried ?? []} />

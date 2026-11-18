@@ -16,7 +16,8 @@ import RelativeTime from '../../components/RelativeTime.jsx'
 import { AttachmentList } from '../../components/Attachments.jsx'
 import TicketActivity from './TicketActivity.jsx'
 import TicketSidePanel from './TicketSidePanel.jsx'
-import { isStaff } from '../../lib/roles.js'
+import { isAdminOrOwner, isStaff } from '../../lib/roles.js'
+import ReviewCard from './ReviewCard.jsx'
 import { statusLabel } from '../../lib/ticketLabels.js'
 import { usePageTitle } from '../../lib/usePageTitle.js'
 import './TicketPage.css'
@@ -36,6 +37,7 @@ function TicketPage({ currentUser }) {
   const [history, setHistory] = useState([])
   const [comments, setComments] = useState([])
   const [attachments, setAttachments] = useState([]) // every file on the ticket and its comments
+  const [rating, setRating] = useState(null) // the review, for the person who opened it and admins
   const [categories, setCategories] = useState([]) // staff only
   const [assignees, setAssignees] = useState([]) // staff only
   const [loadError, setLoadError] = useState('')
@@ -77,6 +79,17 @@ function TicketPage({ currentUser }) {
       })
       .catch((err) => setLoadError(err.message))
   }, [id, staff])
+
+  // The review, once resolved. Only the person who opened the ticket and admins may see it: the
+  // server refuses technicians, who see their reviews without names on the Reviews page.
+  const seesReview = ticket && (ticket.created_by === currentUser.id || isAdminOrOwner(currentUser.role))
+  const resolved = ticket?.status === 'resolved'
+  useEffect(() => {
+    if (!seesReview || !resolved) return
+    apiFetch(`/api/tickets/${id}/rating`)
+      .then((data) => setRating(data.rating))
+      .catch(() => {}) // the page works without it
+  }, [id, seesReview, resolved])
 
   // Security: someone else's ticket answers 404, the same as one that doesn't exist, so
   // nobody can find out which ticket numbers are in use.
@@ -252,6 +265,8 @@ function TicketPage({ currentUser }) {
           busy={busy}
           onChange={handleChange}
           onClose={askToClose}
+          // Admins and owners see the review here; the person who opened it has the review card.
+          rating={!isCreator ? rating : null}
         />
 
         <TicketActivity
@@ -259,6 +274,9 @@ function TicketPage({ currentUser }) {
           comments={comments}
           attachments={attachments}
           stepsTried={ticket.steps_tried}
+          beforeCommentBox={
+            isCreator ? <ReviewCard key={rating ? 'saved' : 'new'} ticket={ticket} rating={rating} onSaved={setRating} /> : null
+          }
           currentUser={currentUser}
           staff={staff}
           onAddComment={addComment}
