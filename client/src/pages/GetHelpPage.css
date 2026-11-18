@@ -296,3 +296,50 @@
   margin-left: auto;
   font-size: var(--font-size-small);
 }
+
+/* --- Knowledge base articles shown before the AI --- */
+
+.get-help__articles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.get-help__article {
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+
+.get-help__article[open] {
+  border-color: var(--color-primary);
+}
+
+.get-help__article summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.get-help__article-title {
+  font-weight: 600;
+}
+
+.get-help__article ol {
+  margin: var(--space-2) 0 var(--space-3);
+  padding-left: var(--space-5);
+}
+
+.get-help__article ol li {
+  margin-bottom: var(--space-2);
+}
+
+.get-help__article-detail {
+  display: block;
+  color: var(--text-muted);
+}

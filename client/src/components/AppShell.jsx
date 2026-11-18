@@ -56,6 +56,7 @@ function AppShell({ user, serverStatus, onLogout }) {
           <p className="app-shell__heading">Help</p>
           <NavLink className="app-shell__link" to="/get-help">Get help</NavLink>
           <NavLink className="app-shell__link" to="/ask">Ask IT</NavLink>
+          <NavLink className="app-shell__link" to="/kb">Knowledge base</NavLink>
           <NavLink className="app-shell__link" to="/my-tickets">My tickets</NavLink>
           {staff && (
             <>

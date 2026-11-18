@@ -7,7 +7,7 @@
 // Staff change the ticket from the side panel. The person who opened it can edit the text while
 // it's still open, close it, and comment.
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { apiFetch } from '../../lib/api.js'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
@@ -43,8 +43,11 @@ function TicketPage({ currentUser }) {
   const [loadError, setLoadError] = useState('')
   const [actionError, setActionError] = useState('')
   const [busy, setBusy] = useState(false) // a ticket change is saving
-  // A change waiting for "Are you sure?": { fields, title, message, confirmLabel, danger }.
+  // A change waiting for "Are you sure?": { fields, title, message, confirmLabel, danger, offerDraft }.
   const [pending, setPending] = useState(null)
+  const [draftChoice, setDraftChoice] = useState(true) // "Draft a knowledge base article" when resolving
+  const [notice, setNotice] = useState('') // e.g. "Drafting a knowledge base article…"
+  const [kbArticle, setKbArticle] = useState(null) // the article drafted from this ticket (staff)
   const [editing, setEditing] = useState(false) // the title/description edit form is open
   const [draft, setDraft] = useState({ title: '', description: '' })
   // Read once: the Get help form sends { created: true } along with the address.
@@ -91,6 +94,19 @@ function TicketPage({ currentUser }) {
       .catch(() => {}) // the page works without it
   }, [id, seesReview, resolved])
 
+  /** Staff: the knowledge base article drafted from this ticket, if there is one. */
+  const loadArticle = useCallback(() => {
+    if (!staff) return
+    apiFetch(`/api/kb?source_ticket=${id}`)
+      .then((data) => setKbArticle(data.articles[0] ?? null))
+      .catch(() => {}) // the page works without it
+  }, [id, staff])
+
+  useEffect(() => {
+    const first = setTimeout(loadArticle, 0)
+    return () => clearTimeout(first)
+  }, [loadArticle])
+
   // Security: someone else's ticket answers 404, the same as one that doesn't exist, so
   // nobody can find out which ticket numbers are in use.
   if (loadError) return <EmptyState message={loadError} actionLabel="Back to tickets" actionTo="/tickets" />
@@ -110,6 +126,10 @@ function TicketPage({ currentUser }) {
       const data = await apiFetch(`/api/tickets/${ticket.id}`, { method: 'PATCH', body: fields })
       setTicket(data.ticket)
       setHistory(data.history)
+      if (data.article_drafting) {
+        setNotice('Drafting a knowledge base article from this fix. It will be under Knowledge base → Drafts in a moment.')
+        setTimeout(loadArticle, 8000) // the AI usually takes a few seconds
+      }
       return true
     } catch (err) {
       setActionError(err.message)
@@ -137,6 +157,7 @@ function TicketPage({ currentUser }) {
         title: `Mark #${ticket.id} resolved?`,
         message: `${ticket.created_by_name} will see the ticket as resolved.`,
         confirmLabel: 'Mark resolved',
+        offerDraft: staff && !kbArticle, // staff can have the AI draft a how-to from the fix
       }
     }
     if ('status' in fields && ticket.status === 'resolved') {
@@ -211,6 +232,7 @@ function TicketPage({ currentUser }) {
         </p>
       )}
       {actionError && <p className="ticket-page__error" role="alert">{actionError}</p>}
+      {notice && <p className="ticket-page__notice" role="status">{notice}</p>}
 
       <div className="ticket-page__layout">
         <article className="ticket-page__post">
@@ -267,6 +289,7 @@ function TicketPage({ currentUser }) {
           onClose={askToClose}
           // Admins and owners see the review here; the person who opened it has the review card.
           rating={!isCreator ? rating : null}
+          article={kbArticle}
         />
 
         <TicketActivity
@@ -291,9 +314,17 @@ function TicketPage({ currentUser }) {
         confirmLabel={pending?.confirmLabel}
         danger={pending?.danger}
         busy={busy}
-        onConfirm={() => save(pending.fields)}
+        onConfirm={() => save(pending.offerDraft && draftChoice ? { ...pending.fields, draft_article: true } : pending.fields)}
         onCancel={() => setPending(null)}
-      />
+      >
+        {pending?.offerDraft && (
+          // Knowledge base: on by default; untick it for a one-off fix nobody else will need.
+          <label className="ticket-page__draft-choice">
+            <input type="checkbox" checked={draftChoice} onChange={(e) => setDraftChoice(e.target.checked)} />
+            Draft a knowledge base article from this fix
+          </label>
+        )}
+      </ConfirmDialog>
     </div>
   )
 }

@@ -231,3 +231,9 @@
     gap: var(--space-5);
   }
 }
+
+/* Solved by a knowledge base article (no AI call). */
+.ai-help__source--kb {
+  border-color: var(--status-resolved-text);
+  color: var(--status-resolved-text);
+}

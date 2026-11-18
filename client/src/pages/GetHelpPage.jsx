@@ -51,10 +51,11 @@ function GetHelpPage({ currentUser }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false) // stops a double click sending twice
 
-  const [phase, setPhase] = useState('form') // 'form' | 'steps' | 'fixed' | 'escalated'
+  const [phase, setPhase] = useState('form') // 'form' | 'articles' | 'steps' | 'fixed' | 'escalated'
   const [session, setSession] = useState(null) // { id, steps } while steps are shown
   const [tried, setTried] = useState([]) // numbers of the steps ticked "I tried this"
   const [escalation, setEscalation] = useState(null) // { ticketId, reason }
+  const [matches, setMatches] = useState([]) // knowledge base articles that matched, shown before the AI
   const [fallback, setFallback] = useState('') // why automatic help is off; the form then sends a plain ticket
   const headingRef = useRef(null) // the heading of whatever just appeared, for keyboard focus
   const picker = useAttachmentPicker() // files being added to the form
@@ -133,8 +134,34 @@ function GetHelpPage({ currentUser }) {
     setBusy(true)
     if (fallback) return submitTicket()
 
+    // Knowledge base first: matching how-to articles cost nothing and don't use the daily limit.
+    // If none match (or the search fails), it goes straight to the AI as before.
     try {
-      const data = await apiFetch('/api/help/suggest', { method: 'POST', body: problem() })
+      const found = await apiFetch('/api/help/match', { method: 'POST', body: { title, description } })
+      if (found.articles.length > 0) {
+        setMatches(found.articles)
+        setPhase('articles')
+        setBusy(false)
+        return
+      }
+    } catch {
+      // No articles this time; the AI still answers.
+    }
+    return askAi([])
+  }
+
+  /**
+   * Asks the AI for steps. `skippedArticleIds` are articles the person saw and passed on: the
+   * server counts them as not helpful and gives the AI the best matches as background.
+   */
+  async function askAi(skippedArticleIds) {
+    setError('')
+    setBusy(true)
+    try {
+      const data = await apiFetch('/api/help/suggest', {
+        method: 'POST',
+        body: { ...problem(), skipped_article_ids: skippedArticleIds },
+      })
       clearDraft(currentUser.id) // it's saved on the server now
       setDraftRestored(false)
       setSentFiles(picker.attachments)
@@ -153,6 +180,23 @@ function GetHelpPage({ currentUser }) {
       // plain ticket form; anything else (e.g. a too-long title) is a normal form error.
       if (err.status === 429 || err.status === 503) setFallback(err.message)
       else setError(err.message)
+    }
+    setBusy(false)
+  }
+
+  /** "That fixed it" on a knowledge base article: saved as fixed, with no AI call. */
+  async function articleFixed(article) {
+    setError('')
+    setBusy(true)
+    try {
+      await apiFetch('/api/help/article-fixed', { method: 'POST', body: { ...problem(), article_id: article.id } })
+      clearDraft(currentUser.id)
+      setDraftRestored(false)
+      setSentFiles(picker.attachments)
+      picker.reset()
+      setPhase('fixed')
+    } catch (err) {
+      setError(err.message)
     }
     setBusy(false)
   }
@@ -203,6 +247,7 @@ function GetHelpPage({ currentUser }) {
     setSession(null)
     setTried([])
     setEscalation(null)
+    setMatches([])
     setSentFiles([])
     picker.reset()
     setError('')
@@ -351,6 +396,48 @@ function GetHelpPage({ currentUser }) {
             )}
           </form>
         </section>
+
+        {phase === 'articles' && (
+          // Knowledge base articles that match, before asking the AI (no AI call yet).
+          <section className="get-help__card" aria-labelledby="get-help-articles">
+            <h2 id="get-help-articles" className="get-help__heading">These articles might help</h2>
+            <p className="hint">From our knowledge base. Open one to see its steps.</p>
+            <ul className="get-help__articles">
+              {matches.map((article, i) => (
+                <li key={article.id}>
+                  {/* The first one starts open: it's the best match. */}
+                  <details className="get-help__article" open={i === 0}>
+                    <summary>
+                      <span className="get-help__article-title">{article.title}</span>
+                      {article.category_name && <span className="hint">{article.category_name}</span>}
+                    </summary>
+                    <p className="hint">{article.problem}</p>
+                    <ol>
+                      {article.steps.map((step, j) => (
+                        <li key={j}>
+                          <strong>{step.title}</strong>
+                          {step.detail && <span className="get-help__article-detail">{step.detail}</span>}
+                        </li>
+                      ))}
+                    </ol>
+                    <button type="button" className="primary" onClick={() => articleFixed(article)} disabled={busy}>
+                      That fixed it
+                    </button>
+                  </details>
+                </li>
+              ))}
+            </ul>
+            {error && <p className="error" role="alert">{error}</p>}
+            <div className="get-help__actions">
+              <button type="button" className="link" onClick={() => setPhase('form')} disabled={busy}>
+                Change my description
+              </button>
+              <button type="button" onClick={() => askAi(matches.map((a) => a.id))} disabled={busy}>
+                {busy ? 'Finding steps…' : 'None of these, get AI steps'}
+              </button>
+            </div>
+          </section>
+        )}
 
         {phase === 'steps' && (
           <section className="get-help__card" aria-labelledby="get-help-steps">

@@ -1,6 +1,7 @@
 // Ticket side panel: the facts beside a ticket. Staff get dropdowns to change them; the person
 // who opened the ticket sees plain text and a "Close ticket" button.
 
+import { Link } from 'react-router'
 import { PriorityBadge, StatusBadge } from '../../components/Badges.jsx'
 import RelativeTime from '../../components/RelativeTime.jsx'
 import DueBadge from '../../components/DueBadge.jsx'
@@ -19,8 +20,9 @@ import { PRIORITIES, STATUSES, priorityLabel, statusLabel } from '../../lib/tick
  * @param assignees staff who can be assigned (staff only)
  * @param busy disables the controls while a change is saving
  * @param rating the review, shown to admins and owners (null for everyone else)
+ * @param article the knowledge base article drafted from this ticket (staff), or null
  */
-function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, busy, onChange, onClose, rating = null }) {
+function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, busy, onChange, onClose, rating = null, article = null }) {
   const isCreator = ticket.created_by === currentUser.id
 
   // An archived category or a disabled staff member can still be the current value, but isn't
@@ -121,6 +123,13 @@ function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, bu
         <Fact label="Last updated"><RelativeTime date={ticket.updated_at} /></Fact>
         <TargetFact ticket={ticket} step="reply" label="First reply" />
         <TargetFact ticket={ticket} step="fix" label="Fixed" />
+        {article && (
+          <Fact label="Knowledge base">
+            <Link className="button-link" to={`/kb/${article.id}`}>
+              {article.status === 'draft' ? 'Review the draft' : article.status === 'published' ? 'View the article' : 'Archived article'}
+            </Link>
+          </Fact>
+        )}
         {rating && (
           <Fact label="Review">
             <Stars stars={rating.stars} />

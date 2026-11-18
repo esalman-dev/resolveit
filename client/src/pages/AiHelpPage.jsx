@@ -213,6 +213,8 @@ function SessionItem({ session: s }) {
           <span className={`ai-help__result ai-help__result--${s.outcome}`}>{resultLabel(s.outcome)}</span>
           {/* Where it came from: its own label, separate from the result. */}
           <span className={`ai-help__source ai-help__source--${s.kind}`}>{sourceLabel(s.kind)}</span>
+          {/* Solved by a knowledge base article instead of the AI's steps. */}
+          {s.article_id && <span className="ai-help__source ai-help__source--kb">Knowledge base</span>}
           <span className="ai-help__title">{s.title}</span>
           {s.ticket_id && <span className="ai-help__ticket">Ticket #{s.ticket_id}</span>}
           <span className="ai-help__meta">

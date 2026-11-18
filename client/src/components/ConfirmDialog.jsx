@@ -11,6 +11,7 @@ import { useEffect, useRef } from 'react'
  *
  * @param danger shows a red confirm button, for actions that take something away
  * @param busy disables both buttons and shows "Saving…" while the action runs
+ * @param children optional extra content under the message (e.g. a tick box)
  *
  * @example
  * <ConfirmDialog
@@ -22,7 +23,7 @@ import { useEffect, useRef } from 'react'
  *   onCancel={() => setPending(null)}
  * />
  */
-function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', danger = false, busy = false, onConfirm, onCancel }) {
+function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', danger = false, busy = false, onConfirm, onCancel, children = null }) {
   const dialogRef = useRef(null)
 
   // React decides whether it's open (the `open` prop); this effect tells the browser.
@@ -46,6 +47,7 @@ function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', danger 
     >
       <h3 id="confirm-title">{title}</h3>
       <p>{message}</p>
+      {children}
       <div className="confirm-buttons">
         {/* Cancel comes first and gets focus, so pressing Enter by accident does nothing harmful. */}
         <button type="button" onClick={onCancel} disabled={busy} autoFocus>

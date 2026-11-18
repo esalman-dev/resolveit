@@ -15,6 +15,8 @@ import CategoriesPage from './pages/CategoriesPage.jsx'
 import SlaTargetsPage from './pages/SlaTargetsPage.jsx'
 import ReviewsPage from './pages/ReviewsPage.jsx'
 import DashboardPage from './pages/dashboard/DashboardPage.jsx'
+import KnowledgeBasePage from './pages/kb/KnowledgeBasePage.jsx'
+import ArticlePage from './pages/kb/ArticlePage.jsx'
 import EmptyState from './components/EmptyState.jsx'
 import GetHelpPage from './pages/GetHelpPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -95,6 +97,8 @@ function App() {
         <Route path="ai-help" element={isStaff(user.role) ? <AiHelpPage /> : <Navigate to="/" replace />} />
         <Route path="reviews" element={isStaff(user.role) ? <ReviewsPage currentUser={user} /> : <Navigate to="/" replace />} />
         <Route path="dashboard" element={isStaff(user.role) ? <DashboardPage currentUser={user} /> : <Navigate to="/" replace />} />
+        <Route path="kb" element={<KnowledgeBasePage currentUser={user} />} />
+        <Route path="kb/:id" element={<ArticlePage currentUser={user} />} />
         <Route path="admin/users" element={admin ? <UsersPage currentUser={user} /> : <Navigate to="/" replace />} />
         <Route path="admin/categories" element={admin ? <CategoriesPage /> : <Navigate to="/" replace />} />
         <Route path="admin/targets" element={admin ? <SlaTargetsPage /> : <Navigate to="/" replace />} />
