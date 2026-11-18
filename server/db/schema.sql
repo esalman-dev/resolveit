@@ -401,3 +401,31 @@ CREATE TABLE IF NOT EXISTS ticket_ratings (
 
 -- The Reviews page and the dashboard group by technician and sort by date.
 CREATE INDEX IF NOT EXISTS idx_ticket_ratings_technician ON ticket_ratings(technician_id, created_at);
+
+-- --- Team goals ---
+-- The targets the dashboard measures the team against, set by admins and owners.
+--   self_solved_rate    % of answered Get help requests the AI's steps fixed
+--   average_rating      average review stars (1-5)
+--   fixed_on_time_rate  % of resolved tickets fixed within their target time
+CREATE TABLE IF NOT EXISTS team_goals (
+    metric     TEXT PRIMARY KEY CHECK (metric IN ('self_solved_rate', 'average_rating', 'fixed_on_time_rate')),
+    target     NUMERIC(5, 2) NOT NULL CHECK (target > 0),
+    updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- The defaults, added only where missing, so a re-run never undoes an admin's change.
+INSERT INTO team_goals (metric, target)
+VALUES ('self_solved_rate', 25), ('average_rating', 4.5), ('fixed_on_time_rate', 90)
+ON CONFLICT (metric) DO NOTHING;
+
+-- --- Online status ---
+-- last_seen_at: the last check-in from an open app (once a minute while the tab is visible).
+-- last_active_at: the last check-in with mouse or keyboard use since the one before.
+-- availability: the staff member's own choice. What others see is worked out from all three
+-- (routes/presence.js): not seen for 2 minutes = offline; idle for 15 = away.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS availability TEXT NOT NULL DEFAULT 'available';
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_availability_check;
+ALTER TABLE users ADD CONSTRAINT users_availability_check CHECK (availability IN ('available', 'busy', 'away'));

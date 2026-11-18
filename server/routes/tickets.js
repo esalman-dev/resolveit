@@ -17,6 +17,7 @@ import pool, { withTransaction } from '../db/index.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ADMINS, ROLES, STAFF } from '../roles.js';
 import { ATTACHMENT_SELECT, checkAttachmentIds, claimAttachments, publicAttachment } from './attachments.js';
+import { STATUS_SQL } from './presence.js';
 
 const router = Router();
 
@@ -227,14 +228,16 @@ router.get('/', async (req, res) => {
 
 /**
  * GET /api/tickets/assignees
- * Active staff a ticket can be assigned to, for the "Assign to" dropdown (no emails).
+ * Active staff a ticket can be assigned to, for the "Assign to" dropdown (no emails), each
+ * with their online status (see routes/presence.js).
  * Access: staff.
  *
  * Note: defined before /:id, otherwise Express would treat "assignees" as a ticket id.
  */
 router.get('/assignees', requireRole(...STAFF), async (req, res) => {
   const result = await pool.query(
-    `SELECT id, name, role FROM users WHERE role = ANY($1) AND disabled_at IS NULL ORDER BY name`,
+    `SELECT u.id, u.name, u.role, ${STATUS_SQL('u')} AS status
+       FROM users u WHERE u.role = ANY($1) AND u.disabled_at IS NULL ORDER BY u.name`,
     [STAFF]
   );
   res.json({ assignees: result.rows });
