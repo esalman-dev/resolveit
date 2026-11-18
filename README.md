@@ -88,6 +88,15 @@ Everything needed to check or re-run it is in [`server/eval/`](server/eval/): th
 - When a ticket is resolved, the person who opened it gets **"How did we do?"**: 1 to 5 stars (keyboard and screen-reader friendly) and an optional comment, editable for 7 days. It credits the technician assigned at the time.
 - A **Reviews** page for staff: the average, how many, and a bar per star. Technicians see only their own reviews, **without names or ticket numbers** (removed on the server), so people can be honest; admins and owners see everyone's, with names, ticket links and a technician filter.
 
+**Dashboard**
+- A staff **dashboard** for the last 24 hours, 7, 30 or 90 days, each number compared with the period before ("▲ Up 13% vs previous 7 days", green or red by whether that's good): open and overdue now, new and resolved, average and median time to first reply and to fix, the AI's self-solved rate, and the average rating.
+- **Team goals** with progress meters (AI self-solved rate, average rating, fixed on time), set by admins; tickets per day (opened vs resolved) with a hover and keyboard crosshair; tickets by category and priority; how Get help requests ended; a technicians table; and the tickets that need attention next.
+- Charts are hand-built in SVG and HTML (no chart library), every one also readable as a table, with colors checked for color blindness. Technicians see the team numbers and only their own row; admins compare everyone.
+
+**Online status**
+- Staff show as **Available**, **Busy**, **Away** or **Offline**. Their browser checks in once a minute while the app is open and visible; no check-in for 2 minutes means offline, and no mouse or keyboard for 15 minutes means away. Staff can also set Busy or Away from the header.
+- The status shows on the dashboard's technicians table and in the "Assign to" list ("Sam Rivera (busy)"); everyone sees "2 technicians online" in the sidebar, and users see only the count, not who.
+
 **Planned**
 - A knowledge base that learns from tickets technicians have solved
 - An analytics dashboard: self-solved rate, escalations, most common problems, average resolution time
@@ -160,7 +169,8 @@ Authentication is built by hand rather than with an auth service, so each decisi
 - [x] Demo data: `npm run seed-demo` (two months of realistic history and three demo logins)
 - [x] Target times (SLA): due and overdue on every ticket, sort by most urgent, admin screen
 - [x] Reviews: "How did we do?" ratings and a Reviews page (anonymous for technicians)
-- [ ] Analytics dashboard
+- [x] Dashboard: number cards with the change from the period before, team goals, charts, technicians, needs attention
+- [x] Online status for staff (automatic, plus Available / Busy / Away)
 - [ ] Knowledge base and AI auto-categorize
 
 **Phase 4: Deployment, password reset**
@@ -218,7 +228,9 @@ resolveit/
     │   ├── help.js          AI help: suggest steps, outcomes, Ask IT, daily limits, staff list
     │   ├── attachments.js   Upload, download and remove files; attaching them to tickets and requests
     │   ├── slaTargets.js    Target times per priority (staff read, admins change)
-    │   └── reviews.js       The Reviews page: reviews and their summary, anonymous for technicians
+    │   ├── reviews.js       The Reviews page: reviews and their summary, anonymous for technicians
+    │   ├── dashboard.js     The dashboard numbers and team goals
+    │   └── presence.js      Who's online: check-ins and staff status
     ├── services/
     │   ├── ai.js            The only code that talks to the AI (instructions, answer shapes)
     │   ├── guardrails.js    The server's own safety check on every AI answer, and step order
@@ -382,6 +394,11 @@ Add `--note="what this run is testing"` to any paid run; every run adds a row to
 | GET | `/api/tickets/:id/rating` | Creator, admin, owner | The ticket's review (technicians get 403: the ticket page shows who opened it) |
 | PUT | `/api/tickets/:id/rating` | Creator, once resolved | Give or change the review (1-5 stars, optional comment; 7 days to change it) |
 | GET | `/api/reviews` | Staff | Reviews with a summary; technicians get only their own, without names or ticket numbers; admins can filter with `?technician_id=` |
+| GET | `/api/dashboard` | Staff | Every dashboard number for `?days=1`, `7`, `30` or `90`, with the period before (technicians get only their own technician row) |
+| PUT | `/api/dashboard/goals` | Admin, owner | Change the team goals |
+| GET | `/api/presence` | Logged in | How many staff are online; staff also get who, and their own status |
+| POST | `/api/presence/heartbeat` | Staff | The once-a-minute check-in (`{ active }`: mouse or keyboard used since the last one) |
+| PUT | `/api/presence/me` | Staff | Set your status: available, busy or away |
 | GET | `/api/sla-targets` | Staff | The target times per priority |
 | PUT | `/api/sla-targets` | Admin, owner | Change the target times (every priority; fixed can't be shorter than first reply) |
 | GET | `/api/attachments/:id` | Whoever can see what it's attached to | Download a file (404 for anyone else) |
