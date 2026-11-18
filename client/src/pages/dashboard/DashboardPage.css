@@ -1,0 +1,545 @@
+/*
+  Dashboard page (DashboardPage.jsx and charts.jsx).
+
+  The period buttons, a row of number cards, then rows of cards. Rows wrap into one column on
+  narrow screens. Chart rules: thin marks, hairline gridlines, text in text colors.
+*/
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  transition: opacity 0.15s;
+}
+
+/* A new period is loading: the old numbers stay, dimmed, so nothing jumps around. */
+.dashboard--loading {
+  opacity: 0.55;
+}
+
+/* --- Period buttons: one segmented row, above everything they scope --- */
+
+.dashboard__periods {
+  display: inline-flex;
+  align-self: flex-start;
+  overflow: hidden;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius);
+}
+
+.dashboard__periods button {
+  padding: var(--space-1) var(--space-3);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface);
+  border: none;
+  border-radius: 0;
+}
+
+.dashboard__periods button + button {
+  border-left: 1px solid var(--border-input);
+}
+
+.dashboard__periods button[aria-pressed='true'] {
+  font-weight: 600;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
+}
+
+/* --- Number cards --- */
+
+/* Eight cards: two even rows of four, or two per row on phones. */
+.dashboard__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (min-width: 900px) {
+  .dashboard__tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.tile__label {
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+}
+
+.tile__value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.tile__value .stars {
+  font-size: 14px;
+}
+
+.tile__sub,
+.tile__vs {
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+}
+
+.tile__vs {
+  font-weight: 400;
+}
+
+.tile__change {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+}
+
+.tile__change--good { color: var(--success-text); }
+.tile__change--bad { color: var(--error-text); }
+.tile__change--neutral { color: var(--text-muted); }
+
+/* Overdue tickets right now: the card says so in words, and its edge turns red. */
+.tile--alert {
+  border-left: 4px solid var(--color-danger);
+}
+
+.tile--alert .tile__value {
+  color: var(--error-text);
+}
+
+/* --- Rows of cards --- */
+
+.dashboard__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/* A wide card gets two thirds of the row where there's room, on whichever side it sits. */
+@media (min-width: 1000px) {
+  .dashboard__row:has(> .dashboard__card--wide:last-child) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+
+  .dashboard__row:has(> .dashboard__card--wide:first-child) {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+}
+
+.dashboard__card {
+  min-width: 0;
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* --- Chart parts (charts.jsx) --- */
+
+.chart {
+  margin: 0;
+}
+
+.chart__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.chart__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.chart__toggle {
+  font-size: var(--font-size-small);
+}
+
+.chart__plot {
+  position: relative;
+}
+
+.chart__plot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: pan-y; /* the crosshair follows a finger sideways; the page still scrolls */
+}
+
+.chart__plot svg:focus-visible {
+  outline: none;
+  border-radius: var(--radius);
+  box-shadow: var(--focus-ring);
+}
+
+.chart__grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.chart__tick {
+  font-size: 11px;
+  fill: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart__line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart__crosshair {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+
+/* A 2px ring in the surface color keeps the dot clear where it crosses a line. */
+.chart__dot {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.chart__tooltip {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-small);
+  white-space: nowrap;
+  pointer-events: none;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.chart__tooltip-title {
+  margin-bottom: 2px;
+  color: var(--text-muted);
+}
+
+.chart__tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The color key beside a name: a box for bars and parts, a short line for lines. */
+.chart__key {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.chart__key--line {
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+  list-style: none;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.chart__table table {
+  font-size: var(--font-size-small);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Bar list: one hue, 12px bars, rounded at the value end only --- */
+
+.bar-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bar-list__row {
+  display: grid;
+  grid-template-columns: minmax(80px, 38%) 1fr 32px;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-small);
+}
+
+.bar-list__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar-list__track {
+  height: 12px;
+}
+
+.bar-list__bar {
+  display: block;
+  min-width: 2px;
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 0 4px 4px 0;
+}
+
+.bar-list__row:hover .bar-list__bar {
+  background: var(--color-primary-hover);
+}
+
+.bar-list__value {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* --- Split bar: one whole in parts, 8px, a 2px gap between parts, rounded ends --- */
+
+.split-bar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.split-bar__part {
+  flex-basis: 0;
+  min-width: 2px;
+}
+
+.split-list {
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-small);
+}
+
+.split-list li {
+  display: grid;
+  grid-template-columns: 10px 1fr auto 40px;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-1);
+}
+
+.split-list__value,
+.split-list__share {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.split-list__share {
+  color: var(--text-muted);
+}
+
+/* --- Meters (team goals): a fill on a lighter track of the same color, a mark at the goal --- */
+
+.meter {
+  margin-bottom: var(--space-4);
+}
+
+.meter__top {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+  font-size: 14px;
+}
+
+.meter__figure {
+  color: var(--text-muted);
+}
+
+.meter__figure strong {
+  color: var(--text);
+}
+
+.meter__track {
+  position: relative;
+  height: 8px;
+  background: var(--color-primary-soft);
+  border-radius: 999px;
+}
+
+.meter__fill {
+  display: block;
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 999px;
+}
+
+.meter__goal {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 14px;
+  margin-left: -1px;
+  background: var(--text);
+}
+
+.meter__status {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+}
+
+.meter__status--met {
+  color: var(--success-text);
+  font-weight: 600;
+}
+
+.goals-form {
+  gap: var(--space-3);
+}
+
+.goals-form__buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* --- Technicians table --- */
+
+.dashboard__table {
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard__table th[scope='row'] {
+  font-weight: 500;
+  text-align: left;
+}
+
+/* Your own row stands out, for technicians and admins alike. */
+.dashboard__me {
+  background: var(--color-primary-soft);
+}
+
+.dashboard__table tfoot th,
+.dashboard__table tfoot td {
+  font-weight: 600;
+  border-top: 2px solid var(--border-strong);
+}
+
+/* --- Needs attention: each ticket is one card-shaped button --- */
+
+.attention {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.attention__item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-6) var(--space-2) var(--space-3);
+  color: var(--text);
+  text-decoration: none;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.attention__item:hover {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+
+.attention__item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Overdue: a red edge on the left, as well as the red words. */
+.attention__item--late {
+  border-left: 4px solid var(--color-danger);
+}
+
+.attention__title {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attention__id {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.attention__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-small);
+}
+
+.attention__who {
+  color: var(--text-muted);
+}
+
+.attention__due--late {
+  font-weight: 600;
+  color: var(--error-text);
+}
+
+/* A chevron on the right says "this opens something". */
+.attention__arrow {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  font-size: 22px;
+  line-height: 1;
+  color: var(--text-muted);
+  transform: translateY(-50%);
+}
+
+.attention__item:hover .attention__arrow {
+  color: var(--color-primary);
+}
+
+/* A technician's name with their online status dot (the status word is read out too). */
+.dashboard__name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}

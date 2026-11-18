@@ -93,7 +93,12 @@ function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, bu
                 onChange={(e) => onChange({ assigned_to: e.target.value ? Number(e.target.value) : null })}
               >
                 <option value="">Nobody</option>
-                {assigneeOptions.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                {/* A dropdown can't show a colored dot, so the status is in words: "Sam Rivera (busy)". */}
+                {assigneeOptions.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}{a.status ? ` (${a.status})` : ''}
+                  </option>
+                ))}
               </select>
               {/* The most common staff action, one click away. */}
               {!ticket.assigned_to && (

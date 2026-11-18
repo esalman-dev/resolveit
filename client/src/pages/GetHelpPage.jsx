@@ -16,11 +16,13 @@
 // There's no priority field: users can't set one; staff and the AI's suggestion do.
 
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { Link, useNavigate, useOutletContext, useSearchParams } from 'react-router'
 import { apiFetch } from '../lib/api.js'
 import { clearDraft, loadDraft, saveDraft } from '../lib/drafts.js'
 import { usePageTitle } from '../lib/usePageTitle.js'
 import RelativeTime from '../components/RelativeTime.jsx'
+import '../components/StatusDot.css' // the status dot colors
+import { STATUS_LABELS } from '../lib/presence.js'
 import { AttachmentList, AttachmentPicker } from '../components/Attachments.jsx'
 import { useAttachmentPicker } from '../lib/attachments.js'
 import './GetHelpPage.css'
@@ -33,6 +35,7 @@ const MAX_DESCRIPTION = 5000
 /** The Get help form, the AI's steps, and what happens after them. */
 function GetHelpPage({ currentUser }) {
   usePageTitle('Get help')
+  const { presence } = useOutletContext() // who's online, from the app shell
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const requestId = params.get('request') // the request being shown, if any
@@ -425,6 +428,27 @@ function GetHelpPage({ currentUser }) {
           We suggest a few safe steps first. If they don't fix it, a ticket is opened with what you tried, and
           a technician takes over. You'll see every update on the ticket's page and under My tickets.
         </p>
+
+        {/* Who's around to help: first names and status only. */}
+        {presence?.online !== null && presence?.online !== undefined && (
+          <>
+            <h2 className="get-help__tips-heading get-help__team-heading">IT team online</h2>
+            {presence.staff.length === 0 ? (
+              <p>Nobody is online right now. Your ticket will be picked up when someone is back.</p>
+            ) : (
+              <ul className="get-help__team">
+                {presence.staff.map((person, i) => (
+                  <li key={`${person.name}-${i}`}>
+                    {/* Decoration only: the status word is shown beside the name. */}
+                    <span className={`status-dot status-dot--${person.status}`} aria-hidden="true" />
+                    <span className="get-help__team-name">{person.name}</span>
+                    <span className="get-help__team-status">{STATUS_LABELS[person.status]}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
       </aside>
     </div>
   )

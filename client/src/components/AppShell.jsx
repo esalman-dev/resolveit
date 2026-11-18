@@ -2,10 +2,14 @@
 // header (page title, who is logged in, Log out) on top.
 //
 // On screens narrower than 768px the sidebar's links fold away behind a ☰ menu button.
+// The sidebar's foot shows how many staff are online; staff also set their own status in the
+// header (see lib/presence.js).
 
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
 import { isAdminOrOwner, isStaff } from '../lib/roles.js'
+import { STATUS_LABELS, usePresence } from '../lib/presence.js'
+import StatusDot from './StatusDot.jsx'
 import logo from '../assets/resolveit-logo-horizontal.png' // Vite turns this into the file's URL
 import './AppShell.css'
 
@@ -22,6 +26,7 @@ function AppShell({ user, serverStatus, onLogout }) {
 
   const staff = isStaff(user.role)
   const admin = isAdminOrOwner(user.role) // owners get everything admins get
+  const presence = usePresence(staff)
 
   return (
     <div className="app-shell">
@@ -55,6 +60,7 @@ function AppShell({ user, serverStatus, onLogout }) {
           {staff && (
             <>
               <p className="app-shell__heading">Staff</p>
+              <NavLink className="app-shell__link" to="/dashboard">Dashboard</NavLink>
               <NavLink className="app-shell__link" to="/tickets">Tickets</NavLink>
               <NavLink className="app-shell__link" to="/ai-help">AI help</NavLink>
               <NavLink className="app-shell__link" to="/reviews">Reviews</NavLink>
@@ -69,6 +75,16 @@ function AppShell({ user, serverStatus, onLogout }) {
             </>
           )}
         </nav>
+
+        {presence.online !== null && (
+          <p className="app-shell__online" aria-live="polite">
+            {/* Decoration only: the sentence beside it already says it. */}
+            <span className={`status-dot status-dot--${presence.online > 0 ? 'available' : 'offline'}`} aria-hidden="true" />
+            {presence.online === 0
+              ? 'No technicians online right now'
+              : `${presence.online} ${presence.online === 1 ? 'technician' : 'technicians'} online`}
+          </p>
+        )}
       </aside>
 
       <div className="app-shell__content">
@@ -78,6 +94,23 @@ function AppShell({ user, serverStatus, onLogout }) {
           <div className="app-shell__column app-shell__header-row">
             <h1 className="app-shell__title">{title}</h1>
             <div className="app-shell__account">
+              {staff && presence.me && (
+                // Your status: the dot shows what others see (e.g. Away after 15 idle minutes);
+                // the menu is your own choice.
+                <label className="app-shell__status">
+                  <StatusDot status={presence.me.status} />
+                  <span className="visually-hidden">Your status</span>
+                  <select
+                    value={presence.me.availability}
+                    onChange={(e) => presence.setAvailability(e.target.value).catch(() => {})}
+                    title={`Others see you as ${STATUS_LABELS[presence.me.status]}`}
+                  >
+                    <option value="available">Available</option>
+                    <option value="busy">Busy</option>
+                    <option value="away">Away</option>
+                  </select>
+                </label>
+              )}
               <span>
                 {user.name} <span className="app-shell__role">({user.role})</span>
               </span>
@@ -87,7 +120,8 @@ function AppShell({ user, serverStatus, onLogout }) {
         </header>
 
         <main className="app-shell__column app-shell__main">
-          <Outlet context={{ setTitle }} />
+          {/* Pages get the title setter and who's online (Get help shows the team). */}
+          <Outlet context={{ setTitle, presence }} />
         </main>
 
         <footer className="app-shell__column app-shell__footer">API: {serverStatus}</footer>

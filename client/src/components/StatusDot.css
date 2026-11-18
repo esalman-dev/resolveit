@@ -1,0 +1,26 @@
+/* Status dot: green available, amber busy, a hollow gray ring for away, light gray offline.
+   The shapes differ too (filled vs hollow), so away and offline aren't told apart by color alone. */
+
+.status-dot-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.status-dot {
+  display: inline-block;
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.status-dot--available { background: var(--status-resolved-text); }
+.status-dot--busy { background: var(--star-on); }
+.status-dot--away { border: 2px solid var(--text-muted); }
+.status-dot--offline { background: var(--border-strong); }
+
+.status-dot__label {
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+}

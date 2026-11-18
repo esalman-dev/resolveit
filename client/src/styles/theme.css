@@ -28,6 +28,7 @@
   --sidebar-item-hover: #273449;
   --sidebar-item-active: #334155;
   --sidebar-heading: #94a3b8;      /* small "ADMIN" section label */
+  --sidebar-online: #4ade80;       /* the "online" dot on the dark sidebar (the normal green is too dark there) */
 
   /* Page and surfaces. */
   --page-bg: #f8fafc;              /* behind everything in the main area */

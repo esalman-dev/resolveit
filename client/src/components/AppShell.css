@@ -196,3 +196,52 @@
     padding-block: var(--space-4);
   }
 }
+
+/* --- Online status --- */
+
+/* The sidebar is a column, so the "online" line can sit at the bottom. */
+.app-shell__sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell__online {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: auto 0 0;
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--font-size-small);
+  color: var(--sidebar-heading);
+}
+
+/* Your status in the header: the dot and a compact menu. */
+.app-shell__status {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.app-shell__status select {
+  width: auto;
+  padding: 2px var(--space-2);
+  font-size: 13px;
+}
+
+/* Phones: the line shows with the menu's links, not on its own. */
+@media (max-width: 768px) {
+  .app-shell__online {
+    display: none;
+  }
+
+  .app-shell__sidebar--open .app-shell__online {
+    display: flex;
+  }
+}
+
+/* On the dark sidebar the usual green is too dark to see. */
+.app-shell__online .status-dot--available {
+  background: var(--sidebar-online);
+}

@@ -233,3 +233,13 @@ button.danger-outline:hover:not(:disabled) {
 tr.muted td {
   color: var(--text-muted);
 }
+
+/* Hidden on screen but still read by screen readers (e.g. a chart table's caption). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
