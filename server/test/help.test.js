@@ -136,6 +136,7 @@ describe('POST /api/help/suggest', () => {
       category: 'Network',
       categoryNames: ['Network', 'Printer'],
       images: [], // no screenshots attached
+      articles: [], // no knowledge base articles matched
     });
     expect(JSON.stringify(askForFix.mock.calls[0])).not.toMatch(/alice/i);
   });

@@ -22,6 +22,7 @@ import { reviewAnswer, reviewSuggestion } from '../services/guardrails.js';
 import { checkText, checkCategory, parseId, MAX_TITLE, MAX_DESCRIPTION } from './tickets.js';
 import { ATTACHMENT_SELECT, checkAttachmentIds, claimAttachments, publicAttachment } from './attachments.js';
 import { readFile } from '../services/storage.js';
+import { searchArticles } from './kb.js';
 
 // Images larger than this aren't sent to the AI (its limit is 5 MB once encoded as text, which
 // adds a third). They stay attached to the request and the ticket either way.
@@ -130,7 +131,8 @@ async function reserveSession(user, { kind = 'fix', title, description, category
     const counts = await db.query(
       `SELECT COUNT(*) FILTER (WHERE user_id = $1)::int AS mine, COUNT(*)::int AS everyone
          FROM help_sessions
-        WHERE created_at > NOW() - INTERVAL '24 hours'`,
+        WHERE created_at > NOW() - INTERVAL '24 hours'
+          AND article_id IS NULL -- solved by a knowledge base article: no AI was used, so it's free`,
       [user.id]
     );
     const { mine, everyone } = counts.rows[0];
@@ -181,6 +183,61 @@ const limitReached = (limit) => ({
 // --- Routes ---
 
 /**
+ * POST /api/help/match
+ * Published knowledge base articles that match a problem, best first (at most 3). Get help
+ * shows these before asking the AI. No AI call, so it doesn't count toward the daily limit.
+ * Access: anyone logged in.
+ * Body: { title, description }
+ */
+router.post('/match', async (req, res) => {
+  const body = req.body ?? {};
+  const title = checkText(body.title, 'Title', MAX_TITLE);
+  if (title.error) return res.status(400).json({ error: title.error });
+  const description = checkText(body.description, 'Description', MAX_DESCRIPTION);
+  if (description.error) return res.status(400).json({ error: description.error });
+  const articles = await searchArticles(`${title.text} ${description.text}`);
+  res.json({ articles: articles.map(({ id, title: t, problem, steps, category_name }) => ({ id, title: t, problem, steps, category_name })) });
+});
+
+/**
+ * POST /api/help/article-fixed
+ * "That fixed it" on a knowledge base article in Get help. Saved as a Get help request that was
+ * fixed (so the dashboard's self-solved rate counts it), with the article it used. No AI was
+ * used, so it doesn't count toward the daily limit. Any files added are kept with it.
+ * Access: anyone logged in.
+ * Body: { article_id, title, description, category_id?, attachment_ids? }
+ */
+router.post('/article-fixed', async (req, res) => {
+  const body = req.body ?? {};
+  const articleId = parseId(body.article_id);
+  const title = checkText(body.title, 'Title', MAX_TITLE);
+  if (title.error) return res.status(400).json({ error: title.error });
+  const description = checkText(body.description, 'Description', MAX_DESCRIPTION);
+  if (description.error) return res.status(400).json({ error: description.error });
+  const category = await checkCategory(body.category_id ?? null);
+  if (category.error) return res.status(400).json({ error: category.error });
+  const files = await checkAttachmentIds(body.attachment_ids, req.user);
+  if (files.error) return res.status(400).json({ error: files.error });
+  const article = articleId
+    ? (await pool.query("SELECT id, steps FROM kb_articles WHERE id = $1 AND status = 'published'", [articleId])).rows[0]
+    : null;
+  if (!article) return res.status(404).json({ error: 'Article not found' });
+
+  const session = await withTransaction(async (db) => {
+    const inserted = await db.query(
+      `INSERT INTO help_sessions (user_id, kind, title, description, category_id, steps, outcome, finished_at, article_id)
+       VALUES ($1, 'fix', $2, $3, $4, $5, 'fixed', NOW(), $6)
+       RETURNING *`,
+      [req.user.id, title.text, description.text, category.id, JSON.stringify(article.steps), article.id]
+    );
+    await db.query('UPDATE kb_articles SET helpful_count = helpful_count + 1 WHERE id = $1', [article.id]);
+    await claimAttachments(db, files.ids, req.user, { helpSessionId: inserted.rows[0].id });
+    return inserted.rows[0];
+  });
+  res.status(201).json({ session: publicSession(session) });
+});
+
+/**
  * POST /api/help/suggest
  * Asks the AI for safe steps for a problem.
  * - 200 { session }: steps to try (outcome "pending"); answer with POST /:id/outcome.
@@ -189,8 +246,9 @@ const limitReached = (limit) => ({
  *   offers the normal ticket form instead.
  * Images in attachment_ids are sent to the AI with the text (the form says so). If the AI
  * fails, the files are released, so the plain ticket form can attach them instead.
+ * Articles in skipped_article_ids were shown and passed on: they count as not helpful.
  * Access: anyone logged in.
- * Body: { title, description, category_id?, attachment_ids? }
+ * Body: { title, description, category_id?, attachment_ids?, skipped_article_ids? }
  */
 router.post('/suggest', async (req, res) => {
   const body = req.body ?? {};
@@ -217,6 +275,14 @@ router.post('/suggest', async (req, res) => {
 
   const categories = (await pool.query('SELECT id, name FROM categories WHERE active ORDER BY name')).rows;
 
+  // Articles the user was shown and passed on ("None of these") count as not helpful, and the
+  // best matches go to the AI as background, so its steps follow how this help desk does things.
+  const skipped = Array.isArray(body.skipped_article_ids) ? body.skipped_article_ids.filter(Number.isInteger).slice(0, 5) : [];
+  if (skipped.length) {
+    await pool.query("UPDATE kb_articles SET not_helpful_count = not_helpful_count + 1 WHERE id = ANY($1) AND status = 'published'", [skipped]);
+  }
+  const background = await searchArticles(`${title.text} ${description.text}`, { limit: 2 });
+
   // Security: only the problem itself (and its screenshots) is sent, never the user's name,
   // email or id.
   let result;
@@ -227,6 +293,7 @@ router.post('/suggest', async (req, res) => {
       category: category.name,
       categoryNames: categories.map((c) => c.name),
       images: await imagesFor(sessionId),
+      articles: background.map((a) => ({ title: a.title, steps: a.steps })),
     });
   } catch (err) {
     await markFailed(sessionId, err); // rethrows a bug, so the error handler answers 500
@@ -359,6 +426,7 @@ router.get('/sessions', requireRole(...STAFF), async (req, res) => {
   // steps_tried comes from the ticket, when the session went on to one.
   const sessions = await pool.query(
     `SELECT s.id, s.kind, s.title, s.description, s.outcome, s.steps, s.answer, s.blocked_steps, s.escalate_reason, s.ticket_id,
+            s.article_id, article.title AS article_title,
             s.created_at, s.finished_at, s.suggested_priority,
             s.user_id, asker.name AS user_name,
             category.name AS category_name, suggested.name AS suggested_category_name,
@@ -368,6 +436,7 @@ router.get('/sessions', requireRole(...STAFF), async (req, res) => {
        LEFT JOIN categories category  ON category.id = s.category_id
        LEFT JOIN categories suggested ON suggested.id = s.suggested_category_id
        LEFT JOIN tickets t            ON t.id = s.ticket_id
+       LEFT JOIN kb_articles article  ON article.id = s.article_id
       ORDER BY s.created_at DESC, s.id DESC
       LIMIT 500`
   );

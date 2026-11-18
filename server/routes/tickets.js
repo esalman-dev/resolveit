@@ -18,6 +18,8 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ADMINS, ROLES, STAFF } from '../roles.js';
 import { ATTACHMENT_SELECT, checkAttachmentIds, claimAttachments, publicAttachment } from './attachments.js';
 import { STATUS_SQL } from './presence.js';
+import { draftFromTicket } from './kb.js';
+import { isAiConfigured } from '../services/ai.js';
 
 const router = Router();
 
@@ -265,7 +267,8 @@ router.get('/:id', async (req, res) => {
  *   Staff: any field.
  *   The creator: title and description while the ticket is still open, and status 'resolved'
  *   (closing it themselves).
- * Body (any of): { title, description, status, priority, category_id, assigned_to }
+ * Body (any of): { title, description, status, priority, category_id, assigned_to },
+ *   plus draft_article: true (staff, when resolving) to have the AI draft a knowledge base article.
  */
 router.patch('/:id', async (req, res) => {
   const id = parseId(req.params.id);
@@ -379,11 +382,18 @@ router.patch('/:id', async (req, res) => {
         [id, req.user.id, field, before[field].text, wanted[field].text]
       );
     }
-    return {};
+    return { resolvedNow: changed.includes('status') && wanted.status.value === 'resolved' };
   });
 
   if (outcome.error) return res.status(outcome.status).json({ error: outcome.error });
-  res.json(await ticketWithHistory(id));
+
+  // Knowledge base: staff resolving a ticket can have the AI draft a how-to from the fix. It
+  // runs after the reply, so nobody waits for the AI; a failure only means no draft.
+  const drafting = staff && outcome.resolvedNow && body.draft_article === true && isAiConfigured();
+  if (drafting) {
+    draftFromTicket(id, req.user.id).catch((err) => console.error('Drafting an article failed:', err.message));
+  }
+  res.json({ ...(await ticketWithHistory(id)), article_drafting: drafting });
 });
 
 // --- Comment routes ---

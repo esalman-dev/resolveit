@@ -429,3 +429,41 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS availability TEXT NOT NULL DEFAULT 'available';
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_availability_check;
 ALTER TABLE users ADD CONSTRAINT users_availability_check CHECK (availability IN ('available', 'busy', 'away'));
+
+-- --- Knowledge base ---
+-- How-to articles, usually drafted by the AI from a resolved ticket and published by staff.
+--   status: draft (only staff see it), published (everyone, and Get help searches it), archived
+--   steps: [{ "title": ..., "detail": ... }], like the AI's Get help steps
+--   flagged: the server's safety check blocked a step in the draft; publishing re-checks anyway
+-- search_text is kept up to date by PostgreSQL itself (a generated column), for full-text search:
+-- the title counts most (A), then the problem (B), then the steps (C).
+CREATE TABLE IF NOT EXISTS kb_articles (
+    id                INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    title             TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 200),
+    problem           TEXT NOT NULL CHECK (char_length(problem) <= 2000),
+    steps             JSONB NOT NULL DEFAULT '[]' CHECK (jsonb_typeof(steps) = 'array'),
+    category_id       INTEGER REFERENCES categories(id),
+    status            TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
+    flagged           BOOLEAN NOT NULL DEFAULT FALSE,
+    source_ticket_id  INTEGER REFERENCES tickets(id) ON DELETE SET NULL, -- the ticket it was drafted from
+    created_by        INTEGER REFERENCES users(id) ON DELETE SET NULL,   -- who resolved it (or wrote it)
+    published_by      INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    helpful_count     INTEGER NOT NULL DEFAULT 0 CHECK (helpful_count >= 0),
+    not_helpful_count INTEGER NOT NULL DEFAULT 0 CHECK (not_helpful_count >= 0),
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    published_at      TIMESTAMPTZ,
+    search_text       TSVECTOR GENERATED ALWAYS AS (
+                        setweight(to_tsvector('english', title), 'A') ||
+                        setweight(to_tsvector('english', problem), 'B') ||
+                        setweight(to_tsvector('english', steps::text), 'C')
+                      ) STORED
+);
+
+CREATE INDEX IF NOT EXISTS idx_kb_articles_search ON kb_articles USING GIN (search_text);
+CREATE INDEX IF NOT EXISTS idx_kb_articles_status ON kb_articles(status);
+-- One article per ticket at most, so resolving twice doesn't draft twice.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_kb_articles_source_ticket ON kb_articles(source_ticket_id) WHERE source_ticket_id IS NOT NULL;
+
+-- A Get help request solved by a knowledge base article (no AI call): which article did it.
+ALTER TABLE help_sessions ADD COLUMN IF NOT EXISTS article_id INTEGER REFERENCES kb_articles(id) ON DELETE SET NULL;

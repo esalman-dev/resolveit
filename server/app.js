@@ -19,6 +19,7 @@ import slaTargetRoutes from './routes/slaTargets.js';
 import reviewRoutes from './routes/reviews.js';
 import dashboardRoutes from './routes/dashboard.js';
 import presenceRoutes from './routes/presence.js';
+import kbRoutes from './routes/kb.js';
 
 // Security: without a secret, login tokens can't be signed or checked, so refuse to start.
 if (!process.env.JWT_SECRET) {
@@ -69,6 +70,7 @@ app.use('/api/sla-targets', slaTargetRoutes); // target times per priority (staf
 app.use('/api/reviews', reviewRoutes); // "How did we do?" reviews for the Reviews page
 app.use('/api/dashboard', dashboardRoutes); // numbers and charts for the staff dashboard
 app.use('/api/presence', presenceRoutes); // who's online, and staff check-ins
+app.use('/api/kb', kbRoutes); // knowledge base articles
 
 // --- Error handling ---
 

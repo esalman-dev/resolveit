@@ -34,7 +34,7 @@ try {
         password,
       })
     );
-    console.log(`Demo data ready: ${stats.users} accounts, ${stats.tickets} tickets, ${stats.helpSessions} Get help requests, ${stats.comments} comments, ${stats.reviews} reviews.\n`);
+    console.log(`Demo data ready: ${stats.users} accounts, ${stats.tickets} tickets, ${stats.helpSessions} Get help requests, ${stats.comments} comments, ${stats.reviews} reviews, ${stats.articles} knowledge base articles.\n`);
     console.log('Log in as:');
     for (const login of Object.values(DEMO_LOGINS)) console.log(`  ${login.name.padEnd(16)} ${login.email}`);
     console.log(`Password: ${process.env.DEMO_PASSWORD ? '(DEMO_PASSWORD from .env)' : password}`);
