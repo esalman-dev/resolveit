@@ -15,7 +15,7 @@
 import { Router } from 'express';
 import pool, { withTransaction } from '../db/index.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { ROLES, STAFF } from '../roles.js';
+import { ADMINS, ROLES, STAFF } from '../roles.js';
 import { ATTACHMENT_SELECT, checkAttachmentIds, claimAttachments, publicAttachment } from './attachments.js';
 
 const router = Router();
@@ -28,6 +28,8 @@ const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 export const MAX_TITLE = 200;
 export const MAX_DESCRIPTION = 5000;
 const MAX_COMMENT = 5000;
+const MAX_REVIEW = 1000;
+export const REVIEW_EDIT_DAYS = 7; // a review can be changed for this long after it was first given
 
 // Every route needs a login. Listing every role blocks no one, but requireRole refreshes
 // req.user.role from the database and refuses disabled accounts.
@@ -515,6 +517,91 @@ router.patch('/:id/comments/:commentId', async (req, res) => {
   if (outcome.error) return res.status(outcome.status).json({ error: outcome.error });
   const comment = await pool.query(`${COMMENT_SELECT} WHERE c.id = $1`, [commentId]);
   res.json({ comment: comment.rows[0] });
+});
+
+// --- Review routes ---
+
+/**
+ * The columns sent back for a review, with the names of who wrote it and who it credits.
+ * Shared with routes/reviews.js.
+ */
+export const RATING_SELECT = `
+  SELECT r.ticket_id, r.stars, r.comment, r.created_at, r.updated_at,
+         r.rated_by, rater.name AS rated_by_name,
+         r.technician_id, tech.name AS technician_name,
+         r.created_at + make_interval(days => ${REVIEW_EDIT_DAYS}) AS editable_until
+    FROM ticket_ratings r
+    JOIN users rater     ON rater.id = r.rated_by
+    LEFT JOIN users tech ON tech.id = r.technician_id`;
+
+/**
+ * GET /api/tickets/:id/rating
+ * The ticket's review, or null if there isn't one yet.
+ * Access: the person who opened the ticket, and admins and owners.
+ *   Security: technicians get 403. The ticket page shows who opened it, so seeing the review
+ *   there would show who wrote it; technicians see their reviews without names on /reviews.
+ */
+router.get('/:id/rating', async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid ticket id' });
+  const ticket = await findVisibleTicket(id, req.user);
+  if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+  if (ticket.created_by !== req.user.id && !ADMINS.includes(req.user.role)) {
+    return res.status(403).json({ error: 'Reviews are shown on the Reviews page, without names' });
+  }
+  const result = await pool.query(`${RATING_SELECT} WHERE r.ticket_id = $1`, [id]);
+  res.json({ rating: result.rows[0] ?? null });
+});
+
+/**
+ * PUT /api/tickets/:id/rating
+ * Gives or changes the ticket's review. It credits whoever is assigned when it's first given
+ * (never the reviewer themselves), and can be changed for 7 days.
+ * Access: the person who opened the ticket, once it's resolved.
+ * Body: { stars: 1-5, comment? }
+ */
+router.put('/:id/rating', async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) return res.status(400).json({ error: 'Invalid ticket id' });
+  const ticket = await findVisibleTicket(id, req.user);
+  if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+  if (ticket.created_by !== req.user.id) {
+    return res.status(403).json({ error: 'Only the person who opened the ticket can review it' });
+  }
+  if (ticket.status !== 'resolved') return res.status(409).json({ error: 'You can review a ticket once it is resolved' });
+
+  const body = req.body ?? {};
+  if (!Number.isInteger(body.stars) || body.stars < 1 || body.stars > 5) {
+    return res.status(400).json({ error: 'Stars must be a whole number from 1 to 5' });
+  }
+  let comment = null;
+  if (body.comment !== undefined && body.comment !== null) {
+    if (typeof body.comment !== 'string') return res.status(400).json({ error: 'The comment must be text' });
+    comment = body.comment.trim() || null;
+    if (comment && comment.length > MAX_REVIEW) {
+      return res.status(400).json({ error: `The comment must be ${MAX_REVIEW} characters or fewer` });
+    }
+  }
+  // Why: nobody gets credit for reviewing their own work (a technician who opened a ticket and
+  // was assigned to it).
+  const technicianId = ticket.assigned_to === req.user.id ? null : ticket.assigned_to;
+
+  // Why one statement: the WHERE on the update makes the 7-day limit part of the save itself,
+  // so it can't be beaten by two saves at the same moment. No row back = too late to change.
+  const saved = await pool.query(
+    `INSERT INTO ticket_ratings (ticket_id, rated_by, technician_id, stars, comment)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (ticket_id) DO UPDATE
+        SET stars = EXCLUDED.stars, comment = EXCLUDED.comment, updated_at = NOW()
+      WHERE ticket_ratings.created_at > NOW() - make_interval(days => ${REVIEW_EDIT_DAYS})
+     RETURNING ticket_id`,
+    [id, req.user.id, technicianId, body.stars, comment]
+  );
+  if (saved.rowCount === 0) {
+    return res.status(409).json({ error: `Reviews can be changed for ${REVIEW_EDIT_DAYS} days after they're given` });
+  }
+  const result = await pool.query(`${RATING_SELECT} WHERE r.ticket_id = $1`, [id]);
+  res.json({ rating: result.rows[0] });
 });
 
 export default router;

@@ -94,6 +94,15 @@ const USER_FOLLOW_UPS = [
   "Thanks, I'm at my desk all afternoon if you need to come by.",
   'Any update on this?',
 ];
+// Review comments by stars; most people leave none.
+const REVIEW_COMMENTS = {
+  5: ['Quick and friendly, thank you!', 'Fixed in minutes. Great service.', 'Really clear explanation, thanks.', 'Super helpful as always.'],
+  4: ['Sorted, thanks. Took a little while.', 'Good help, would have liked an update sooner.', 'All working now.'],
+  3: ['Fixed in the end, but I had to chase it.', 'OK, took longer than expected.'],
+  2: ['Took days to get a reply.', 'Had to explain the problem twice.'],
+  1: ['Waited too long, I fixed it myself in the end.'],
+};
+
 const INTERNAL_NOTES = [
   'Seen this twice this week. Worth a knowledge base article.',
   'Checked the logs, nothing unusual on our side.',
@@ -103,7 +112,9 @@ const INTERNAL_NOTES = [
 
 /** The technician's closing comment, from the scenario's real fix. */
 const resolution = (scenario) =>
-  scenario.route === 'self_fix' ? `Sorted: ${scenario.fix} Let us know if it happens again.` : `Done. ${scenario.fix.replace(/^IT /, 'I ')}`;
+  scenario.route === 'self_fix'
+    ? `Sorted: ${scenario.fix} Let us know if it happens again.`
+    : `All done on our side. Resolution: ${scenario.fix}`; // the fix reads like a log entry ("IT assigns a license…")
 
 // --- Removing ---
 
@@ -136,7 +147,7 @@ export async function removeDemoData(db) {
  * @param {{ tickets: object[], scenarios: object[], studyResults: object[], password: string,
  *   now?: Date, days?: number, count?: number, seed?: number }} options
  *   tickets, scenarios, studyResults: the study's files; count: how many study tickets to use
- * @returns {Promise<{ users: number, tickets: number, helpSessions: number, comments: number }>}
+ * @returns {Promise<{ users: number, tickets: number, helpSessions: number, comments: number, reviews: number }>}
  */
 export async function seedDemoData(db, { tickets, scenarios, studyResults, password, now = new Date(), days = 60, count = 320, seed = 2026 }) {
   const { random, pick, weighted, duration } = randomTools(seed);
@@ -181,7 +192,7 @@ export async function seedDemoData(db, { tickets, scenarios, studyResults, passw
     }
   }
 
-  const stats = { users: technicians.length + users.length + 1, tickets: 0, helpSessions: 0, comments: 0 };
+  const stats = { users: technicians.length + users.length + 1, tickets: 0, helpSessions: 0, comments: 0, reviews: 0 };
   const chosen = [...tickets].sort(() => random() - 0.5).slice(0, count);
 
   for (const source of chosen) {
@@ -280,6 +291,19 @@ export async function seedDemoData(db, { tickets, scenarios, studyResults, passw
     if (!resolved) continue;
     await comment(tech, resolveAt, resolution(scenario));
     await event(tech, after(resolveAt, 0.5), 'status', 'in_progress', 'resolved');
+
+    // About half of people leave a review, mostly good; a ticket that ran late scores lower.
+    const reviewedAt = new Date(resolveAt.getTime() + (0.2 + random() * 30) * HOUR);
+    if (random() < 0.55 && reviewedAt < now) {
+      const late = resolveAt - openedAt > resolveTarget * HOUR;
+      const stars = Number(late ? weighted({ 5: 2, 4: 3, 3: 3, 2: 2, 1: 1 }) : weighted({ 5: 14, 4: 6, 3: 2, 2: 0.6, 1: 0.3 }));
+      await db.query(
+        `INSERT INTO ticket_ratings (ticket_id, rated_by, technician_id, stars, comment, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $6)`,
+        [ticketId, user.id, tech.id, stars, random() < 0.45 ? pick(REVIEW_COMMENTS[stars]) : null, reviewedAt]
+      );
+      stats.reviews++;
+    }
   }
 
   /** Saves the Get help request behind a ticket (or one the AI fixed). */

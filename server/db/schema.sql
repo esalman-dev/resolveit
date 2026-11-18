@@ -383,3 +383,21 @@ UPDATE tickets t
     GROUP BY ticket_id
   ) first
  WHERE t.id = first.ticket_id AND t.first_response_at IS NULL;
+
+-- --- Reviews ---
+-- "How did we do?": one review per ticket, from the person who opened it, once it's resolved.
+-- technician_id is who it credits: the assignee when the review was first given (empty = no
+-- one assigned). Kept as a snapshot, so reassigning a ticket later doesn't move the review.
+-- Editable for 7 days after it was first given (checked by the API).
+CREATE TABLE IF NOT EXISTS ticket_ratings (
+    ticket_id     INTEGER PRIMARY KEY REFERENCES tickets(id) ON DELETE CASCADE, -- one per ticket
+    rated_by      INTEGER NOT NULL REFERENCES users(id),
+    technician_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    stars         SMALLINT NOT NULL CHECK (stars BETWEEN 1 AND 5),
+    comment       TEXT CHECK (char_length(comment) <= 1000),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- The Reviews page and the dashboard group by technician and sort by date.
+CREATE INDEX IF NOT EXISTS idx_ticket_ratings_technician ON ticket_ratings(technician_id, created_at);

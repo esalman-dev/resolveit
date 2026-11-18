@@ -16,6 +16,7 @@ import categoryRoutes from './routes/categories.js';
 import helpRoutes from './routes/help.js';
 import attachmentRoutes from './routes/attachments.js';
 import slaTargetRoutes from './routes/slaTargets.js';
+import reviewRoutes from './routes/reviews.js';
 
 // Security: without a secret, login tokens can't be signed or checked, so refuse to start.
 if (!process.env.JWT_SECRET) {
@@ -63,6 +64,7 @@ app.use('/api/categories', categoryRoutes); // ticket categories (everyone reads
 app.use('/api/help', helpRoutes); // AI self-service fixes before a ticket
 app.use('/api/attachments', attachmentRoutes); // screenshots and files on tickets and requests
 app.use('/api/sla-targets', slaTargetRoutes); // target times per priority (staff read, admins change)
+app.use('/api/reviews', reviewRoutes); // "How did we do?" reviews for the Reviews page
 
 // --- Error handling ---
 
