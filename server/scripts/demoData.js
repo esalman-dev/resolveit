@@ -14,7 +14,7 @@
 
 import bcrypt from 'bcryptjs';
 
-export const DEMO_DOMAIN = 'demo.example.com';
+const DEMO_DOMAIN = 'demo.example.com';
 
 /** The three accounts anyone can log in with to try the app. */
 export const DEMO_LOGINS = {

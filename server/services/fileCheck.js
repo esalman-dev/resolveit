@@ -4,9 +4,6 @@
 // virus renamed to photo.png would pass a name check. Every allowed format starts with known
 // bytes (its "magic bytes"), so the type is read from the file itself.
 
-/** The types attachments may have. Must match the CHECK on attachments.content_type. */
-export const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'application/pdf', 'text/plain'];
-
 /** True when the buffer has these bytes at this position. */
 const startsWith = (buffer, bytes, offset = 0) => bytes.every((byte, i) => buffer[offset + i] === byte);
 

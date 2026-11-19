@@ -22,7 +22,7 @@ import { parseId } from './tickets.js';
 
 const router = Router();
 
-export const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
 export const MAX_FILES_PER_ITEM = 3; // per comment, ticket or Get help request
 
 /** Uploads allowed per person per rolling 24 hours (ATTACHMENT_DAILY_LIMIT in .env). */

@@ -251,7 +251,7 @@ export function Meter({ label, value, goal, max, format }) {
 }
 
 /** A legend: a small key (a line or a box, like the mark) and the name for each series. */
-export function Legend({ items }) {
+function Legend({ items }) {
   return (
     <ul className="legend">
       {items.map((item) => (

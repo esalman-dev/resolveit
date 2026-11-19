@@ -32,7 +32,7 @@ export const MAX_TITLE = 200;
 export const MAX_DESCRIPTION = 5000;
 const MAX_COMMENT = 5000;
 const MAX_REVIEW = 1000;
-export const REVIEW_EDIT_DAYS = 7; // a review can be changed for this long after it was first given
+const REVIEW_EDIT_DAYS = 7; // a review can be changed for this long after it was first given
 
 // Every route needs a login. Listing every role blocks no one, but requireRole refreshes
 // req.user.role from the database and refuses disabled accounts.

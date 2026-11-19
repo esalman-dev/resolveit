@@ -20,8 +20,8 @@ import { ROLES, STAFF } from '../roles.js';
 
 const router = Router();
 
-export const OFFLINE_AFTER = '2 minutes';
-export const IDLE_AFTER = '15 minutes';
+const OFFLINE_AFTER = '2 minutes';
+const IDLE_AFTER = '15 minutes';
 const AVAILABILITY = ['available', 'busy', 'away'];
 
 /**
