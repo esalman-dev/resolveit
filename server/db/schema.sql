@@ -467,3 +467,47 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_kb_articles_source_ticket ON kb_articles(s
 
 -- A Get help request solved by a knowledge base article (no AI call): which article did it.
 ALTER TABLE help_sessions ADD COLUMN IF NOT EXISTS article_id INTEGER REFERENCES kb_articles(id) ON DELETE SET NULL;
+
+-- --- Auto-assign ---
+-- Settings an admin can change from the app. One row only: "id BOOLEAN PRIMARY KEY CHECK (id)"
+-- lets id be TRUE and nothing else, so a second row can't exist.
+--   auto_assign: new tickets go to the available technician with the fewest open tickets
+CREATE TABLE IF NOT EXISTS app_settings (
+    id          BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (id),
+    auto_assign BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+INSERT INTO app_settings (id) VALUES (TRUE) ON CONFLICT (id) DO NOTHING;
+
+-- When someone was last given a ticket (by hand or automatically). Auto-assign breaks ties with
+-- it: whoever waited longest goes next, so the work takes turns.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_assigned_at TIMESTAMPTZ;
+
+-- An empty actor in a ticket's history means "done automatically" (like account_events, where
+-- it means "done by a server command").
+ALTER TABLE ticket_events ALTER COLUMN actor_id DROP NOT NULL;
+
+-- --- Notifications ---
+-- The bell in the header. One row per person told about something.
+--   kind: assigned (to you) · reply (a comment) · internal_note · resolved · reopened (your
+--         ticket) · overdue_reply / overdue_fix (a ticket assigned to you passed its target)
+--   actor_id: who did it; empty = automatic (auto-assign, overdue)
+--   read_at: when they opened it or chose "Mark all as read"; empty = unread
+-- Rows older than 30 days are deleted (routes/notifications.js).
+CREATE TABLE IF NOT EXISTS notifications (
+    id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    ticket_id  INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL CHECK (kind IN ('assigned', 'reply', 'internal_note', 'resolved', 'reopened',
+                                             'overdue_reply', 'overdue_fix')),
+    actor_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    read_at    TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- The bell reads one person's newest first.
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
+-- Each overdue warning only once per person and ticket, however often the bell checks.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_overdue_once
+    ON notifications(user_id, ticket_id, kind) WHERE kind IN ('overdue_reply', 'overdue_fix');

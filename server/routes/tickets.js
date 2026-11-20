@@ -20,6 +20,8 @@ import { ATTACHMENT_SELECT, checkAttachmentIds, claimAttachments, publicAttachme
 import { STATUS_SQL } from './presence.js';
 import { draftFromTicket } from './kb.js';
 import { isAiConfigured } from '../services/ai.js';
+import { autoAssign } from '../services/autoAssign.js';
+import { notify } from '../services/notifications.js';
 
 const router = Router();
 
@@ -151,7 +153,7 @@ async function loadHistory(ticketId) {
     `SELECT e.id, e.action, e.field, e.old_value, e.new_value, e.created_at,
             e.actor_id, actor.name AS actor_name
        FROM ticket_events e
-       JOIN users actor ON actor.id = e.actor_id
+       LEFT JOIN users actor ON actor.id = e.actor_id -- LEFT: an empty actor means "automatically"
       WHERE e.ticket_id = $1
       ORDER BY e.created_at, e.id`,
     [ticketId]
@@ -169,7 +171,8 @@ async function ticketWithHistory(id) {
 
 /**
  * POST /api/tickets
- * Opens a ticket. It always starts open and unassigned, and records a "created" history entry.
+ * Opens a ticket. It starts open, with a "created" history entry, and goes to an available
+ * technician if auto-assign is on (services/autoAssign.js).
  * Access: anyone logged in.
  * Body: { title, description, category_id?, priority? (staff only), attachment_ids? }
  */
@@ -208,6 +211,7 @@ router.post('/', async (req, res) => {
       [ticketId, req.user.id]
     );
     await claimAttachments(db, files.ids, req.user, { ticketId });
+    await autoAssign(db, ticketId);
     return ticketId;
   });
 
@@ -382,6 +386,16 @@ router.patch('/:id', async (req, res) => {
         [id, req.user.id, field, before[field].text, wanted[field].text]
       );
     }
+
+    // The bell: the new assignee, and the creator when their ticket is resolved or reopened.
+    if (changed.includes('assignee') && wanted.assignee.value) {
+      await db.query('UPDATE users SET last_assigned_at = NOW() WHERE id = $1', [wanted.assignee.value]); // auto-assign's turn order
+      await notify(db, { userIds: [wanted.assignee.value], ticketId: id, kind: 'assigned', actorId: req.user.id });
+    }
+    if (changed.includes('status') && (wanted.status.value === 'resolved' || current.status === 'resolved')) {
+      const kind = wanted.status.value === 'resolved' ? 'resolved' : 'reopened';
+      await notify(db, { userIds: [current.created_by], ticketId: id, kind, actorId: req.user.id });
+    }
     return { resolvedNow: changed.includes('status') && wanted.status.value === 'resolved' };
   });
 
@@ -461,6 +475,14 @@ router.post('/:id/comments', async (req, res) => {
       [id]
     );
     await claimAttachments(db, files.ids, req.user, { ticketId: id, commentId: inserted.rows[0].id });
+
+    // The bell: the assignee hears about every comment, the creator only about public ones
+    // (they can't see internal notes).
+    if (isInternal) {
+      await notify(db, { userIds: [ticket.assigned_to], ticketId: id, kind: 'internal_note', actorId: req.user.id });
+    } else {
+      await notify(db, { userIds: [ticket.created_by, ticket.assigned_to], ticketId: id, kind: 'reply', actorId: req.user.id });
+    }
     return inserted.rows[0].id;
   });
 

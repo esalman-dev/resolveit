@@ -20,6 +20,8 @@ import reviewRoutes from './routes/reviews.js';
 import dashboardRoutes from './routes/dashboard.js';
 import presenceRoutes from './routes/presence.js';
 import kbRoutes from './routes/kb.js';
+import notificationRoutes from './routes/notifications.js';
+import settingsRoutes from './routes/settings.js';
 
 // Security: without a secret, login tokens can't be signed or checked, so refuse to start.
 if (!process.env.JWT_SECRET) {
@@ -71,6 +73,8 @@ app.use('/api/reviews', reviewRoutes); // "How did we do?" reviews for the Revie
 app.use('/api/dashboard', dashboardRoutes); // numbers and charts for the staff dashboard
 app.use('/api/presence', presenceRoutes); // who's online, and staff check-ins
 app.use('/api/kb', kbRoutes); // knowledge base articles
+app.use('/api/notifications', notificationRoutes); // the bell: your notifications
+app.use('/api/settings', settingsRoutes); // help desk settings (auto-assign on or off)
 
 // --- Error handling ---
 

@@ -23,6 +23,7 @@ import { checkText, checkCategory, parseId, MAX_TITLE, MAX_DESCRIPTION } from '.
 import { ATTACHMENT_SELECT, checkAttachmentIds, claimAttachments, publicAttachment } from './attachments.js';
 import { readFile } from '../services/storage.js';
 import { searchArticles } from './kb.js';
+import { autoAssign } from '../services/autoAssign.js';
 
 // Images larger than this aren't sent to the AI (its limit is 5 MB once encoded as text, which
 // adds a third). They stay attached to the request and the ticket either way.
@@ -62,8 +63,9 @@ const publicSession = (row) => ({
 });
 
 /**
- * Opens a ticket from a help session, with a "created" history entry marked 'get_help' (its new_value).
- * Must run inside a transaction (`db`), together with the session update.
+ * Opens a ticket from a help session, with a "created" history entry marked 'get_help' (its new_value),
+ * and auto-assigns it like any new ticket. Must run inside a transaction (`db`), together with
+ * the session update.
  *
  * Why not reuse POST /api/tickets? Here the server sets the priority (from the AI) and the steps
  * tried, which users can't set through the normal ticket form.
@@ -94,6 +96,7 @@ async function openTicket(db, session, stepsTried) {
   ]);
   // Files sent with the request move onto the ticket, so the technician sees them too.
   await db.query('UPDATE attachments SET ticket_id = $1 WHERE help_session_id = $2', [ticketId, session.id]);
+  await autoAssign(db, ticketId);
   return ticketId;
 }
 

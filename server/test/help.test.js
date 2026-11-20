@@ -283,6 +283,14 @@ describe('POST /api/help/:id/outcome', () => {
     expect(await count('tickets')).toBe(0);
   });
 
+  it('"still_broken" auto-assigns the ticket like any new one', async () => {
+    const sam = await signUpAs('technician', 'sam@example.com');
+    await pool.query('UPDATE users SET last_seen_at = NOW(), last_active_at = NOW() WHERE id = $1', [sam.user.id]);
+    const { account, sessionId } = await pendingSession();
+    const res = await sendOutcome(account.token, sessionId, { outcome: 'still_broken' });
+    expect((await ticketRow(res.body.ticket_id)).assigned_to).toBe(sam.user.id);
+  });
+
   it('"still_broken" opens a ticket with the steps, marked tried or not', async () => {
     const network = await addCategory('Network');
     const { account, sessionId } = await pendingSession();

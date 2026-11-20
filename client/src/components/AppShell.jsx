@@ -3,13 +3,14 @@
 //
 // On screens narrower than 768px the sidebar's links fold away behind a ☰ menu button.
 // The sidebar's foot shows how many staff are online; staff also set their own status in the
-// header (see lib/presence.js).
+// header (see lib/presence.js). The header's bell shows notifications (NotificationBell.jsx).
 
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
 import { isAdminOrOwner, isStaff } from '../lib/roles.js'
 import { STATUS_LABELS, usePresence } from '../lib/presence.js'
 import StatusDot from './StatusDot.jsx'
+import NotificationBell from './NotificationBell.jsx'
 import logo from '../assets/resolveit-logo-horizontal.png' // Vite turns this into the file's URL
 import './AppShell.css'
 
@@ -95,6 +96,7 @@ function AppShell({ user, serverStatus, onLogout }) {
           <div className="app-shell__column app-shell__header-row">
             <h1 className="app-shell__title">{title}</h1>
             <div className="app-shell__account">
+              <NotificationBell />
               {staff && presence.me && (
                 // Your status: the dot shows what others see (e.g. Away after 15 idle minutes);
                 // the menu is your own choice.

@@ -16,7 +16,8 @@ import CountCards from '../components/CountCards.jsx'
 import DueBadge from '../components/DueBadge.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import RelativeTime from '../components/RelativeTime.jsx'
-import { isStaff } from '../lib/roles.js'
+import AutoAssignSwitch from '../components/AutoAssignSwitch.jsx'
+import { isAdminOrOwner, isStaff } from '../lib/roles.js'
 import { byUrgency, nextTarget } from '../lib/sla.js'
 import { PRIORITIES, STATUSES, priorityLabel, statusLabel } from '../lib/ticketLabels.js'
 import { usePageTitle } from '../lib/usePageTitle.js'
@@ -148,6 +149,7 @@ function TicketsPage({ currentUser, scope }) {
 
   return (
     <div className="tickets-page">
+      {queue && <AutoAssignSwitch canChange={isAdminOrOwner(currentUser.role)} />}
       {queue && <CountCards label="Filter tickets" cards={cards} selected={selectedCard} onSelect={selectCard} />}
 
       <div className="tickets-page__toolbar" role="search">

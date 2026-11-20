@@ -33,7 +33,13 @@ function TicketActivity({ history, comments, attachments = [], stepsTried = [], 
         {items.map((item) =>
           item.kind === 'event' ? (
             <li key={item.key} className="activity__event">
-              <strong>{item.event.actor_name}</strong> {describeEvent(item.event, stepsTried)} · <RelativeTime date={item.at} />
+              {/* No actor = done automatically (auto-assign): "Assigned automatically to Sam". */}
+              {item.event.actor_id === null ? (
+                <>Assigned automatically to <strong>{item.event.new_value}</strong></>
+              ) : (
+                <><strong>{item.event.actor_name}</strong> {describeEvent(item.event, stepsTried)}</>
+              )}{' '}
+              · <RelativeTime date={item.at} />
             </li>
           ) : (
             <li key={item.key} className="activity__item">
