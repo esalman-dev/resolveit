@@ -88,6 +88,17 @@ router.post('/heartbeat', requireRole(...STAFF), async (req, res) => {
 });
 
 /**
+ * POST /api/presence/leave
+ * Marks you offline at once, when the tab closes or you log out. Without it, you would stay
+ * online until the 2 minutes without a check-in run out, and auto-assign could still pick you.
+ * Access: anyone logged in (for a user it changes nothing anyone sees).
+ */
+router.post('/leave', requireRole(...ROLES), async (req, res) => {
+  await pool.query('UPDATE users SET last_seen_at = NULL WHERE id = $1', [req.user.id]);
+  res.status(204).end();
+});
+
+/**
  * PUT /api/presence/me
  * Sets your own status. It counts as a check-in with activity (you just clicked something).
  * Access: staff.

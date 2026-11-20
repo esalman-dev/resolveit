@@ -6,7 +6,7 @@
 // how many staff are online, for the sidebar.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { apiFetch } from './api.js'
+import { apiFetch, markOffline } from './api.js'
 
 const EVERY = 60 * 1000 // one minute
 
@@ -45,15 +45,20 @@ export function usePresence(isStaff) {
     // Coming back to the tab checks in at once, instead of waiting for the next minute.
     const onVisible = () => document.visibilityState === 'visible' && refresh()
     document.addEventListener('visibilitychange', onVisible)
+    // Closing the tab (or leaving the site) marks staff offline at once. A reload comes
+    // straight back online with the first check-in below.
+    const onLeave = () => isStaff && markOffline()
+    window.addEventListener('pagehide', onLeave)
     const first = setTimeout(refresh, 0) // the first check-in right after the page appears
     const timer = setInterval(refresh, EVERY)
     return () => {
       for (const name of events) window.removeEventListener(name, markActive)
       document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('pagehide', onLeave)
       clearTimeout(first)
       clearInterval(timer)
     }
-  }, [refresh])
+  }, [refresh, isStaff])
 
   /** Sets your own status and shows it straight away. */
   async function setAvailability(availability) {

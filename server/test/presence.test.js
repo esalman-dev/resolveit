@@ -31,6 +31,14 @@ describe('online status', () => {
     expect((await heartbeat(sam.token)).body.me.status).toBe('available');
   });
 
+  it('goes offline at once on leaving (tab closed or logged out)', async () => {
+    const { sam } = await people();
+    await heartbeat(sam.token);
+    expect((await request(app).post('/api/presence/leave').set(bearer(sam.token))).status).toBe(204);
+    expect((await presence(sam.token)).body.me.status).toBe('offline');
+    expect((await heartbeat(sam.token)).body.me.status).toBe('available'); // a reload comes back
+  });
+
   it('goes offline after 2 minutes without a check-in', async () => {
     const { sam } = await people();
     await heartbeat(sam.token);

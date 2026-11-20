@@ -29,7 +29,7 @@ export const setOnSessionLost = (fn) => { onSessionLost = fn }
  * Low-level request: adds "Authorization: Bearer <token>", sends JSON (or a FormData file
  * upload as is), and reads JSON back, or a file (Blob) when `as` is 'blob'.
  */
-async function request(path, { method = 'GET', body, as } = {}) {
+async function request(path, { method = 'GET', body, as, keepalive = false } = {}) {
   const isForm = body instanceof FormData
   const headers = {}
   // Note: a FormData upload must not set Content-Type; the browser adds it, with the boundary
@@ -41,6 +41,7 @@ async function request(path, { method = 'GET', body, as } = {}) {
     method,
     headers,
     body: body && !isForm ? JSON.stringify(body) : body,
+    keepalive, // see markOffline
   })
   if (as === 'blob' && res.ok) return { res, data: await res.blob() }
   const data = await res.json().catch(() => ({})) // some responses (204, some errors) have no JSON
@@ -106,8 +107,21 @@ export async function apiFetch(path, options) {
   return data
 }
 
-/** Logs out: the server revokes the refresh token and deletes the cookie; we forget the access token. */
+/**
+ * Tells the server you've left, so you show as offline at once (see POST /api/presence/leave).
+ * Why keepalive: when a tab closes, the browser normally cancels its requests; keepalive asks
+ * it to finish sending this one after the page is gone.
+ */
+export function markOffline() {
+  return request('/api/presence/leave', { method: 'POST', keepalive: true }).catch(() => {})
+}
+
+/**
+ * Logs out: you show as offline, the server revokes the refresh token and deletes the cookie,
+ * and we forget the access token.
+ */
 export async function logout() {
+  await markOffline()
   await request('/api/auth/logout', { method: 'POST' }).catch(() => {})
   accessToken = null
 }
