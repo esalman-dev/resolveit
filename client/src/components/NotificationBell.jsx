@@ -1,11 +1,12 @@
 // Notification bell: the header button with the unread count, and the panel it opens.
 //
 // The panel lists the newest 30 (see routes/notifications.js on the server). Clicking one marks
-// it read and opens the ticket. Escape or a click outside closes the panel.
+// it read and opens its ticket (or, for an outage, the Tickets page or Get help). Escape or a
+// click outside closes the panel.
 
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
-import { notificationText, useNotifications } from '../lib/notifications.js'
+import { notificationLink, notificationText, useNotifications } from '../lib/notifications.js'
 import RelativeTime from './RelativeTime.jsx'
 import './NotificationBell.css'
 
@@ -75,7 +76,7 @@ function NotificationBell() {
               {items.map((n) => (
                 <li key={n.id}>
                   <Link
-                    to={`/tickets/${n.ticket_id}`}
+                    to={notificationLink(n)}
                     className={n.read_at ? 'bell__item' : 'bell__item bell__item--unread'}
                     onClick={() => {
                       markRead(n.id)
@@ -84,7 +85,7 @@ function NotificationBell() {
                   >
                     {!n.read_at && <span className="visually-hidden">Unread: </span>}
                     <span className="bell__text">{notificationText(n)}</span>
-                    <span className="bell__title">{n.ticket_title}</span>
+                    {n.ticket_title && <span className="bell__title">{n.ticket_title}</span>}
                     <RelativeTime date={n.created_at} />
                   </Link>
                 </li>

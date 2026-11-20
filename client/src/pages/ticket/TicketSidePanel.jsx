@@ -21,8 +21,10 @@ import { PRIORITIES, STATUSES, priorityLabel, statusLabel } from '../../lib/tick
  * @param busy disables the controls while a change is saving
  * @param rating the review, shown to admins and owners (null for everyone else)
  * @param article the knowledge base article drafted from this ticket (staff), or null
+ * @param openOutages the open outages (staff can link the ticket to one)
+ * @param onOutageChange called with an outage id, or null to unlink (saves straight away: it's easy to undo)
  */
-function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, busy, onChange, onClose, rating = null, article = null }) {
+function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, busy, onChange, onClose, rating = null, article = null, openOutages = [], onOutageChange }) {
   const isCreator = ticket.created_by === currentUser.id
 
   // An archived category or a disabled staff member can still be the current value, but isn't
@@ -119,6 +121,24 @@ function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, bu
           )}
         </Fact>
 
+        {/* Staff: link to an open outage by hand. Everyone: a note while it's a confirmed one. */}
+        {staff && (openOutages.length > 0 || ticket.outage_id) && (
+          <Fact label="Outage" id="ticket-outage">
+            <select
+              aria-labelledby="ticket-outage"
+              value={ticket.outage_id ?? ''}
+              disabled={busy}
+              onChange={(e) => onOutageChange(e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">None</option>
+              {outageOptions(ticket, openOutages).map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+          </Fact>
+        )}
+        {!staff && ticket.outage_status === 'confirmed' && (
+          <Fact label="Known issue">{ticket.outage_message}</Fact>
+        )}
+
         <Fact label="Opened"><RelativeTime date={ticket.created_at} /></Fact>
         <Fact label="Last updated"><RelativeTime date={ticket.updated_at} /></Fact>
         <TargetFact ticket={ticket} step="reply" label="First reply" />
@@ -148,6 +168,21 @@ function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, bu
       )}
     </aside>
   )
+}
+
+/**
+ * The Outage dropdown's choices: each open outage ("Network: Wi-Fi down…", or "Network
+ * (possible)" before it's confirmed), plus the ticket's own outage if it has closed since.
+ */
+function outageOptions(ticket, openOutages) {
+  const options = openOutages.map((o) => ({
+    id: o.id,
+    label: o.status === 'confirmed' ? `${o.category_name}: ${o.message}` : `${o.category_name} (possible)`,
+  }))
+  if (ticket.outage_id && !openOutages.some((o) => o.id === ticket.outage_id)) {
+    options.push({ id: ticket.outage_id, label: ticket.outage_message ?? `Closed outage (${ticket.outage_status})` })
+  }
+  return options
 }
 
 /**

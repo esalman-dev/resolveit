@@ -3,7 +3,8 @@
 //
 // On screens narrower than 768px the sidebar's links fold away behind a ☰ menu button.
 // The sidebar's foot shows how many staff are online; staff also set their own status in the
-// header (see lib/presence.js). The header's bell shows notifications (NotificationBell.jsx).
+// header (see lib/presence.js). The header's bell shows notifications (NotificationBell.jsx), and
+// a confirmed outage shows as a banner under the header (OutageBanner.jsx).
 
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router'
@@ -11,6 +12,8 @@ import { isAdminOrOwner, isStaff } from '../lib/roles.js'
 import { STATUS_LABELS, usePresence } from '../lib/presence.js'
 import StatusDot from './StatusDot.jsx'
 import NotificationBell from './NotificationBell.jsx'
+import OutageBanner from './OutageBanner.jsx'
+import { useOutages } from '../lib/outages.js'
 import logo from '../assets/resolveit-logo-horizontal.png' // Vite turns this into the file's URL
 import './AppShell.css'
 
@@ -28,6 +31,7 @@ function AppShell({ user, serverStatus, onLogout }) {
   const staff = isStaff(user.role)
   const admin = isAdminOrOwner(user.role) // owners get everything admins get
   const presence = usePresence(staff)
+  const outages = useOutages()
 
   return (
     <div className="app-shell">
@@ -121,10 +125,12 @@ function AppShell({ user, serverStatus, onLogout }) {
             </div>
           </div>
         </header>
+        <OutageBanner outages={outages.list} />
 
         <main className="app-shell__column app-shell__main">
-          {/* Pages get the title setter and who's online (Get help shows the team). */}
-          <Outlet context={{ setTitle, presence }} />
+          {/* Pages get the title setter, who's online (Get help shows the team) and the open
+              outages (Get help, the staff Tickets page and the ticket page use them). */}
+          <Outlet context={{ setTitle, presence, outages }} />
         </main>
 
         <footer className="app-shell__column app-shell__footer">API: {serverStatus}</footer>

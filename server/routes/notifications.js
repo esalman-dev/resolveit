@@ -50,10 +50,15 @@ router.get('/', async (req, res) => {
   await pool.query(`DELETE FROM notifications WHERE user_id = $1 AND created_at < NOW() - INTERVAL '${KEEP_FOR}'`, [req.user.id]);
   await addOverdue(req.user.id);
 
+  // A notification is about a ticket, an outage, or both, so both joins are LEFT.
   const result = await pool.query(
-    `SELECT n.id, n.kind, n.ticket_id, t.title AS ticket_title, actor.name AS actor_name, n.read_at, n.created_at
+    `SELECT n.id, n.kind, n.ticket_id, t.title AS ticket_title,
+            n.outage_id, o.message AS outage_message, c.name AS outage_category,
+            actor.name AS actor_name, n.read_at, n.created_at
        FROM notifications n
-       JOIN tickets t ON t.id = n.ticket_id
+       LEFT JOIN tickets t ON t.id = n.ticket_id
+       LEFT JOIN outages o ON o.id = n.outage_id
+       LEFT JOIN categories c ON c.id = o.category_id
        LEFT JOIN users actor ON actor.id = n.actor_id -- empty = automatic
       WHERE n.user_id = $1
       ORDER BY n.created_at DESC, n.id DESC

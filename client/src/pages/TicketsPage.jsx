@@ -9,7 +9,7 @@
 // column (target times), and a Sort choice: newest first, or most urgent.
 
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { Link, useNavigate, useOutletContext, useSearchParams } from 'react-router'
 import { apiFetch } from '../lib/api.js'
 import { PriorityBadge, StatusBadge } from '../components/Badges.jsx'
 import CountCards from '../components/CountCards.jsx'
@@ -17,6 +17,7 @@ import DueBadge from '../components/DueBadge.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import RelativeTime from '../components/RelativeTime.jsx'
 import AutoAssignSwitch from '../components/AutoAssignSwitch.jsx'
+import OutageCards from '../components/OutageCards.jsx'
 import { isAdminOrOwner, isStaff } from '../lib/roles.js'
 import { byUrgency, nextTarget } from '../lib/sla.js'
 import { PRIORITIES, STATUSES, priorityLabel, statusLabel } from '../lib/ticketLabels.js'
@@ -39,6 +40,7 @@ function TicketsPage({ currentUser, scope }) {
   const queue = staff && scope === 'all' // the staff work queue: count cards and "Assigned to me"
   usePageTitle(queue ? 'Tickets' : 'My tickets')
   const navigate = useNavigate()
+  const { outages } = useOutletContext() // open outages, from the app shell
   const [params, setParams] = useSearchParams()
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
@@ -150,6 +152,7 @@ function TicketsPage({ currentUser, scope }) {
   return (
     <div className="tickets-page">
       {queue && <AutoAssignSwitch canChange={isAdminOrOwner(currentUser.role)} />}
+      {queue && <OutageCards outages={outages} onChanged={fetchTickets} />}
       {queue && <CountCards label="Filter tickets" cards={cards} selected={selectedCard} onSelect={selectCard} />}
 
       <div className="tickets-page__toolbar" role="search">

@@ -8,7 +8,7 @@
 // it's still open, close it, and comment.
 
 import { useCallback, useEffect, useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router'
+import { useLocation, useNavigate, useOutletContext, useParams } from 'react-router'
 import { apiFetch } from '../../lib/api.js'
 import ConfirmDialog from '../../components/ConfirmDialog.jsx'
 import EmptyState from '../../components/EmptyState.jsx'
@@ -31,6 +31,7 @@ function TicketPage({ currentUser }) {
   const { id } = useParams() // the 12 in /tickets/12
   const location = useLocation()
   const navigate = useNavigate()
+  const { outages } = useOutletContext() // open outages, from the app shell
   const staff = isStaff(currentUser.role)
 
   const [ticket, setTicket] = useState(null)
@@ -137,6 +138,22 @@ function TicketPage({ currentUser }) {
     } finally {
       setBusy(false)
       setPending(null)
+    }
+  }
+
+  /** Staff: links the ticket to an open outage, or unlinks it (null), then shows the result. */
+  async function linkOutage(outageId) {
+    setBusy(true)
+    setActionError('')
+    try {
+      await apiFetch(`/api/outages/tickets/${ticket.id}`, { method: 'PUT', body: { outage_id: outageId } })
+      const data = await apiFetch(`/api/tickets/${ticket.id}`)
+      setTicket(data.ticket)
+      outages.refresh() // the outage cards' ticket counts
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -290,6 +307,8 @@ function TicketPage({ currentUser }) {
           // Admins and owners see the review here; the person who opened it has the review card.
           rating={!isCreator ? rating : null}
           article={kbArticle}
+          openOutages={outages.list}
+          onOutageChange={linkOutage}
         />
 
         <TicketActivity

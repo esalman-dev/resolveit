@@ -291,6 +291,17 @@ describe('POST /api/help/:id/outcome', () => {
     expect((await ticketRow(res.body.ticket_id)).assigned_to).toBe(sam.user.id);
   });
 
+  it('"still_broken" counts toward an outage like any new ticket', async () => {
+    const network = await addCategory('Network'); // the fake AI suggests Network
+    const { account, sessionId } = await pendingSession();
+    for (const title of ['Wi-Fi down', 'No Wi-Fi']) {
+      await request(app).post('/api/tickets').set(bearer(account.token)).send({ title, description: 'Since 9', category_id: network });
+    }
+    const res = await sendOutcome(account.token, sessionId, { outcome: 'still_broken' });
+    expect((await ticketRow(res.body.ticket_id)).outage_id).not.toBeNull();
+    expect(await count('outages')).toBe(1);
+  });
+
   it('"still_broken" opens a ticket with the steps, marked tried or not', async () => {
     const network = await addCategory('Network');
     const { account, sessionId } = await pendingSession();

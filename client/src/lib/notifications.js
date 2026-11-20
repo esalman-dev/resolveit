@@ -62,7 +62,8 @@ export function useNotifications() {
  * The one line a notification shows, without the ticket's title.
  * @example notificationText({ kind: 'reply', ticket_id: 12, actor_name: 'Sam' }) // "Sam replied on #12"
  */
-export function notificationText({ kind, ticket_id: id, actor_name: actor }) {
+export function notificationText(n) {
+  const { kind, ticket_id: id, actor_name: actor } = n
   const who = actor ?? 'Someone' // an account deleted since
   switch (kind) {
     case 'assigned':
@@ -79,7 +80,20 @@ export function notificationText({ kind, ticket_id: id, actor_name: actor }) {
       return `#${id} is overdue (reply)`
     case 'overdue_fix':
       return `#${id} is overdue (fix)`
+    case 'outage_suspected':
+      return `Possible outage: several ${n.outage_category} tickets at once`
+    case 'outage_fixed':
+      return `Fixed: ${n.outage_message}`
     default:
-      return `Something changed on #${id}`
+      return id ? `Something changed on #${id}` : 'Something changed'
   }
+}
+
+/**
+ * Where clicking a notification goes: its ticket, or for an outage, the staff Tickets page
+ * (where it's confirmed) or Get help.
+ */
+export function notificationLink(n) {
+  if (n.ticket_id) return `/tickets/${n.ticket_id}`
+  return n.kind === 'outage_suspected' ? '/tickets' : '/get-help'
 }

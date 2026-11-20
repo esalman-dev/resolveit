@@ -25,6 +25,7 @@ import '../components/StatusDot.css' // the status dot colors
 import { STATUS_LABELS } from '../lib/presence.js'
 import { AttachmentList, AttachmentPicker } from '../components/Attachments.jsx'
 import { useAttachmentPicker } from '../lib/attachments.js'
+import KnownIssues from '../components/KnownIssues.jsx'
 import './GetHelpPage.css'
 
 // Note: these match MAX_TITLE and MAX_DESCRIPTION in server/routes/tickets.js. The server
@@ -35,7 +36,7 @@ const MAX_DESCRIPTION = 5000
 /** The Get help form, the AI's steps, and what happens after them. */
 function GetHelpPage({ currentUser }) {
   usePageTitle('Get help')
-  const { presence } = useOutletContext() // who's online, from the app shell
+  const { presence, outages } = useOutletContext() // who's online and the open outages, from the app shell
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const requestId = params.get('request') // the request being shown, if any
@@ -297,6 +298,8 @@ function GetHelpPage({ currentUser }) {
   return (
     <div className="get-help">
       <div className="get-help__main">
+        {/* A known outage first: "This is my problem" saves opening a ticket for it. */}
+        {asking && !requestId && <KnownIssues outages={outages} />}
         {/* Requests left with steps showing, to pick up without asking the AI again. */}
         {asking && !requestId && unfinished.length > 0 && (
           <section className="get-help__unfinished" aria-labelledby="get-help-unfinished">

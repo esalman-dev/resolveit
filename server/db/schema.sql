@@ -511,3 +511,54 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, crea
 -- Each overdue warning only once per person and ticket, however often the bell checks.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_overdue_once
     ON notifications(user_id, ticket_id, kind) WHERE kind IN ('overdue_reply', 'overdue_fix');
+
+-- --- Outages ---
+-- Several tickets about the same kind of problem at once (3 in one category within 15 minutes,
+-- services/outages.js) are probably one big problem. The app opens a suspected outage; staff
+-- confirm it (with a message everyone sees) or dismiss it; fixing it resolves its tickets.
+--   status: suspected (the app noticed) → confirmed (staff said yes) → fixed,
+--           or suspected → dismissed (staff said no)
+--   message: the banner everyone sees, written by the staff member who confirmed it
+--   fix_message: what fixed it, posted as a public reply on every linked ticket
+CREATE TABLE IF NOT EXISTS outages (
+    id           INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    category_id  INTEGER NOT NULL REFERENCES categories(id),
+    status       TEXT NOT NULL DEFAULT 'suspected' CHECK (status IN ('suspected', 'confirmed', 'fixed', 'dismissed')),
+    message      TEXT CHECK (char_length(message) BETWEEN 1 AND 200),
+    fix_message  TEXT CHECK (char_length(fix_message) BETWEEN 1 AND 2000),
+    detected_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    confirmed_at TIMESTAMPTZ,
+    confirmed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    closed_at    TIMESTAMPTZ,                                       -- fixed or dismissed
+    closed_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    -- Everyone sees a confirmed outage's banner, so it must have one; a fixed one says what fixed it.
+    CONSTRAINT outages_confirmed_has_message CHECK (status NOT IN ('confirmed', 'fixed') OR message IS NOT NULL),
+    CONSTRAINT outages_fixed_has_fix_message CHECK (status <> 'fixed' OR fix_message IS NOT NULL)
+);
+
+-- At most one open (suspected or confirmed) outage per category: new tickets join it instead.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_outages_one_open ON outages(category_id) WHERE status IN ('suspected', 'confirmed');
+
+-- Which outage a ticket belongs to (empty = none). A ticket linked to a dismissed outage keeps
+-- the link, so it never counts toward a new one.
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS outage_id INTEGER REFERENCES outages(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_tickets_outage ON tickets(outage_id) WHERE outage_id IS NOT NULL;
+
+-- "This is my problem" on Get help: people affected by a confirmed outage, without a ticket.
+CREATE TABLE IF NOT EXISTS outage_reports (
+    outage_id  INTEGER NOT NULL REFERENCES outages(id) ON DELETE CASCADE,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (outage_id, user_id)                                -- once per person
+);
+
+-- Notifications about an outage instead of a ticket: "Possible outage" (staff) and "Fixed"
+-- (people who said "This is my problem"). Each one is about a ticket, an outage, or both.
+ALTER TABLE notifications ALTER COLUMN ticket_id DROP NOT NULL;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS outage_id INTEGER REFERENCES outages(id) ON DELETE CASCADE;
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_kind_check;
+ALTER TABLE notifications ADD CONSTRAINT notifications_kind_check
+    CHECK (kind IN ('assigned', 'reply', 'internal_note', 'resolved', 'reopened', 'overdue_reply', 'overdue_fix',
+                    'outage_suspected', 'outage_fixed'));
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_about_something;
+ALTER TABLE notifications ADD CONSTRAINT notifications_about_something CHECK (ticket_id IS NOT NULL OR outage_id IS NOT NULL);

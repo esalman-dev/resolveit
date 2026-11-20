@@ -22,6 +22,7 @@ import { draftFromTicket } from './kb.js';
 import { isAiConfigured } from '../services/ai.js';
 import { autoAssign } from '../services/autoAssign.js';
 import { notify } from '../services/notifications.js';
+import { checkForOutage } from '../services/outages.js';
 
 const router = Router();
 
@@ -52,6 +53,7 @@ const isStaff = (user) => STAFF.includes(user.role);
  *
  * response_due_at and resolve_due_at come from the target times for the ticket's priority
  * (sla_targets), worked out on every read, so changing a priority or a target moves them at once.
+ * outage_* say which outage the ticket is part of, if any (services/outages.js).
  */
 const TICKET_SELECT = `
   SELECT t.id, t.title, t.description, t.status, t.priority,
@@ -60,12 +62,14 @@ const TICKET_SELECT = `
          t.assigned_to, assignee.name AS assigned_to_name,
          t.created_at, t.updated_at, t.resolved_at, t.steps_tried, t.first_response_at,
          t.created_at + make_interval(mins => sla.first_response_minutes) AS response_due_at,
-         t.created_at + make_interval(mins => sla.resolve_minutes)        AS resolve_due_at
+         t.created_at + make_interval(mins => sla.resolve_minutes)        AS resolve_due_at,
+         t.outage_id, outage.status AS outage_status, outage.message AS outage_message
     FROM tickets t
     JOIN users creator            ON creator.id  = t.created_by
     LEFT JOIN users assignee      ON assignee.id = t.assigned_to
     LEFT JOIN categories category ON category.id = t.category_id
-    LEFT JOIN sla_targets sla     ON sla.priority = t.priority`;
+    LEFT JOIN sla_targets sla     ON sla.priority = t.priority
+    LEFT JOIN outages outage      ON outage.id = t.outage_id`;
 
 /**
  * The columns sent back for a comment, including `edits`: every earlier version of its text.
@@ -171,8 +175,9 @@ async function ticketWithHistory(id) {
 
 /**
  * POST /api/tickets
- * Opens a ticket. It starts open, with a "created" history entry, and goes to an available
- * technician if auto-assign is on (services/autoAssign.js).
+ * Opens a ticket. It starts open, with a "created" history entry, goes to an available
+ * technician if auto-assign is on (services/autoAssign.js), and may join or start an outage
+ * (services/outages.js).
  * Access: anyone logged in.
  * Body: { title, description, category_id?, priority? (staff only), attachment_ids? }
  */
@@ -212,6 +217,7 @@ router.post('/', async (req, res) => {
     );
     await claimAttachments(db, files.ids, req.user, { ticketId });
     await autoAssign(db, ticketId);
+    await checkForOutage(db, ticketId);
     return ticketId;
   });
 

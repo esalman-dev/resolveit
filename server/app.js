@@ -22,6 +22,7 @@ import presenceRoutes from './routes/presence.js';
 import kbRoutes from './routes/kb.js';
 import notificationRoutes from './routes/notifications.js';
 import settingsRoutes from './routes/settings.js';
+import outageRoutes from './routes/outages.js';
 
 // Security: without a secret, login tokens can't be signed or checked, so refuse to start.
 if (!process.env.JWT_SECRET) {
@@ -75,6 +76,7 @@ app.use('/api/presence', presenceRoutes); // who's online, and staff check-ins
 app.use('/api/kb', kbRoutes); // knowledge base articles
 app.use('/api/notifications', notificationRoutes); // the bell: your notifications
 app.use('/api/settings', settingsRoutes); // help desk settings (auto-assign on or off)
+app.use('/api/outages', outageRoutes); // outages: confirm, dismiss, fix, "This is my problem"
 
 // --- Error handling ---
 

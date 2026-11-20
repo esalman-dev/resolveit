@@ -72,6 +72,9 @@
   /* Messages. */
   --success-bg: #f0fdf4;            --success-text: #166534;
   --error-bg: #fef2f2;              --error-text: #991b1b;
+  /* Warnings: the outage banner and the staff outage card. The text is 7 : 1 on the background. */
+  --warning-bg: #fffbeb;            --warning-text: #92400e;
+  --warning-border: #f59e0b;
 
   /* Pop-ups, such as the "Are you sure?" box. */
   --overlay: rgba(15, 23, 42, 0.5);                    /* dims the page behind a pop-up */

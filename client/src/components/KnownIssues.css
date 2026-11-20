@@ -1,0 +1,36 @@
+/* Known issues: the confirmed outages above the Get help form (KnownIssues.jsx). */
+
+.known-issues {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  color: var(--warning-text);
+}
+
+.known-issues__heading {
+  margin: 0 0 var(--space-2);
+  font-size: 15px;
+}
+
+.known-issues__list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.known-issues__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.known-issues__done {
+  font-size: var(--font-size-small);
+}
