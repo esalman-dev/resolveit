@@ -21,9 +21,12 @@ export default async function setup() {
   }
   await admin.end();
 
-  // Apply schema.sql (safe to re-run), so the test database always matches the real one.
+  // Rebuild every table from schema.sql, so the test database always matches it exactly.
+  // Why: schema.sql only creates what's missing, so it would never update a table changed since
+  // the last run. Dropping the public schema removes every table in it at once.
   const db = new pg.Client({ connectionString: testUrl.toString() });
   await db.connect();
+  await db.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
   await db.query(fs.readFileSync(new URL('../db/schema.sql', import.meta.url), 'utf8'));
   await db.end();
 }

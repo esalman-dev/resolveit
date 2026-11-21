@@ -149,6 +149,14 @@ npm run seed-demo -- --yes                # optional: two months of demo history
 
 The demo logins are `demo.user`, `demo.tech` and `demo.admin` `@demo.example.com` (password: `DEMO_PASSWORD` in `.env`, or `try-resolveit-demo`). The script only ever touches `demo.example.com` accounts.
 
+**Changing the schema.** `schema.sql` creates only what's missing, so after editing a table, rebuild the database. This deletes all its data:
+
+```bash
+psql -U postgres -d resolveit -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;" -f server/db/schema.sql
+```
+
+The tests rebuild their own database this way on every run.
+
 **Optional settings** (in `server/.env`, see [`.env.example`](server/.env.example)):
 
 | Setting | What it does |
