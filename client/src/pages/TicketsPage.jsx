@@ -8,7 +8,7 @@
 // to me, Unassigned, Overdue) that double as one-click filters, like the AI help screen, a Due
 // column (target times), and a Sort choice: newest first, or most urgent.
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useOutletContext, useSearchParams } from 'react-router'
 import { apiFetch } from '../lib/api.js'
 import { PriorityBadge, StatusBadge } from '../components/Badges.jsx'
@@ -22,7 +22,22 @@ import { isAdminOrOwner, isStaff } from '../lib/roles.js'
 import { byUrgency, nextTarget } from '../lib/sla.js'
 import { PRIORITIES, STATUSES, priorityLabel, statusLabel } from '../lib/ticketLabels.js'
 import { usePageTitle } from '../lib/usePageTitle.js'
+import { Shortcuts } from '../lib/shortcuts.js'
 import './TicketsPage.css'
+
+/**
+ * j / k on the list: moves the keyboard focus to the next (by = 1) or previous (by = -1)
+ * ticket's title link. Focus, not a home-made highlight, so Enter opens it (it's a link),
+ * screen readers read it out, and the browser scrolls it into view.
+ */
+function moveFocus(by) {
+  const links = [...document.querySelectorAll('.tickets-page__title')]
+  if (links.length === 0) return
+  const current = links.indexOf(document.activeElement)
+  // Nothing chosen yet: j starts at the top, k at the bottom.
+  const next = current === -1 ? (by > 0 ? 0 : links.length - 1) : Math.min(Math.max(current + by, 0), links.length - 1)
+  links[next].focus()
+}
 
 /** The filter names used in the address, e.g. ?q=wifi&status=open&mine=1 */
 const FILTERS = ['q', 'status', 'priority', 'category', 'mine', 'unassigned', 'overdue']
@@ -40,6 +55,7 @@ function TicketsPage({ currentUser, scope }) {
   const queue = staff && scope === 'all' // the staff work queue: count cards and "Assigned to me"
   usePageTitle(queue ? 'Tickets' : 'My tickets')
   const navigate = useNavigate()
+  const searchRef = useRef(null) // "/" jumps here
   const { outages } = useOutletContext() // open outages, from the app shell
   const [params, setParams] = useSearchParams()
   const [tickets, setTickets] = useState([])
@@ -154,6 +170,17 @@ function TicketsPage({ currentUser, scope }) {
 
   return (
     <div className="tickets-page">
+      {staff && (
+        <Shortcuts
+          keys={{
+            j: () => moveFocus(1),
+            k: () => moveFocus(-1),
+            '/': () => searchRef.current?.focus(),
+            // New hire belongs to the staff queue, so not on My tickets.
+            ...(queue && { n: () => navigate('/tickets/new-hire') }),
+          }}
+        />
+      )}
       {queue && (
         <div className="tickets-page__top">
           <Link className="button-link" to="/tickets/new-hire">+ New hire</Link>
@@ -167,6 +194,7 @@ function TicketsPage({ currentUser, scope }) {
         <label className="tickets-page__search">
           Search
           <input
+            ref={searchRef}
             type="search"
             value={q}
             onChange={(e) => setFilter('q', e.target.value)}
@@ -235,7 +263,9 @@ function TicketsPage({ currentUser, scope }) {
               {shown.map((t) => (
                 // The whole row opens the ticket for mouse users. Keyboard and screen reader
                 // users get the real link in the Title cell.
-                <tr key={t.id} onClick={() => navigate(`/tickets/${t.id}`)}>
+                // A click on the title link itself is left to the link: opening it twice would
+                // add the ticket to the browser history twice, so Back would need two presses.
+                <tr key={t.id} onClick={(e) => !e.target.closest('a') && navigate(`/tickets/${t.id}`)}>
                   <td className="tickets-page__id">{t.id}</td>
                   <td className="tickets-page__title-cell">
                     <Link className="tickets-page__title" to={`/tickets/${t.id}`}>{t.title}</Link>

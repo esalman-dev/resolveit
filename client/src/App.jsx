@@ -87,6 +87,8 @@ function App() {
     <Routes>
       <Route element={<AppShell user={user} serverStatus={serverStatus} onLogout={handleLogout} />}>
         <Route index element={<Navigate to={home} replace />} />
+        {/* Logging in at /login (a bookmark, or typed in) would otherwise end on "Page not found". */}
+        <Route path="login" element={<Navigate to={home} replace />} />
         <Route path="get-help" element={<GetHelpPage currentUser={user} />} />
         <Route path="ask" element={<AskItPage currentUser={user} />} />
         {/* key: the two lists are separate screens, so switching between them starts fresh. */}

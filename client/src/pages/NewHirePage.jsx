@@ -52,7 +52,9 @@ function NewHirePage() {
           notes: form.notes,
         },
       })
-      navigate(`/tickets/${data.ticket.id}`, { state: { created: true } })
+      // replace: the ticket takes the form's place in the history, so Back (or Esc) goes to
+      // the list, not to an emptied form.
+      navigate(`/tickets/${data.ticket.id}`, { replace: true, state: { created: true } })
     } catch (err) {
       setError(err.message)
       setBusy(false)

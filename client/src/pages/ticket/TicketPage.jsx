@@ -21,6 +21,7 @@ import ReviewCard from './ReviewCard.jsx'
 import NewHireChecklist from './NewHireChecklist.jsx'
 import { statusLabel } from '../../lib/ticketLabels.js'
 import { usePageTitle } from '../../lib/usePageTitle.js'
+import { Shortcuts } from '../../lib/shortcuts.js'
 import './TicketPage.css'
 
 // Note: these match MAX_TITLE and MAX_DESCRIPTION in server/routes/tickets.js.
@@ -223,6 +224,24 @@ function TicketPage({ currentUser }) {
     })
   }
 
+  /**
+   * Esc: back to the list you came from, with its filters. location.key is 'default' when the
+   * ticket was opened straight from a link (nothing to go back to in the app), so go to Tickets.
+   */
+  function backToList() {
+    if (location.key !== 'default') navigate(-1)
+    else navigate('/tickets')
+  }
+
+  // Staff keys (lib/shortcuts.js). They go through handleChange, like the side panel, so
+  // "Are you sure?" and the checklist rule apply exactly as with the mouse.
+  const shortcutKeys = {
+    a: () => ticket.assigned_to !== currentUser.id && !busy && handleChange({ assigned_to: currentUser.id }),
+    c: () => document.querySelector('.comment-form textarea')?.focus(),
+    r: () => ticket.status !== 'resolved' && !busy && handleChange({ status: 'resolved' }),
+    Escape: backToList,
+  }
+
   function startEditing() {
     setDraft({ title: ticket.title, description: ticket.description })
     setEditing(true)
@@ -260,6 +279,7 @@ function TicketPage({ currentUser }) {
 
   return (
     <div className="ticket-page">
+      {staff && <Shortcuts keys={shortcutKeys} />}
       {justCreated && (
         <p className="ticket-page__created" role="status">
           {ticket.kind === 'new_hire'

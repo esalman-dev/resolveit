@@ -7,8 +7,10 @@
 // a confirmed outage shows as a banner under the header (OutageBanner.jsx).
 
 import { useState } from 'react'
-import { Link, NavLink, Outlet } from 'react-router'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { isAdminOrOwner, isStaff } from '../lib/roles.js'
+import { Shortcuts } from '../lib/shortcuts.js'
+import ShortcutsHelp from './ShortcutsHelp.jsx'
 import { STATUS_LABELS, usePresence } from '../lib/presence.js'
 import StatusDot from './StatusDot.jsx'
 import NotificationBell from './NotificationBell.jsx'
@@ -27,6 +29,8 @@ import './AppShell.css'
 function AppShell({ user, serverStatus, onLogout }) {
   const [title, setTitle] = useState('') // set by each page through usePageTitle
   const [menuOpen, setMenuOpen] = useState(false) // phones only: is the link list showing?
+  const [helpOpen, setHelpOpen] = useState(false) // the Keyboard shortcuts panel (staff)
+  const navigate = useNavigate()
 
   const staff = isStaff(user.role)
   const admin = isAdminOrOwner(user.role) // owners get everything admins get
@@ -134,8 +138,30 @@ function AppShell({ user, serverStatus, onLogout }) {
           <Outlet context={{ setTitle, presence, outages }} />
         </main>
 
-        <footer className="app-shell__column app-shell__footer">API: {serverStatus}</footer>
+        <footer className="app-shell__column app-shell__footer">
+          <span>API: {serverStatus}</span>
+          {staff && (
+            <button type="button" className="link app-shell__shortcuts" onClick={() => setHelpOpen(true)}>
+              Keyboard shortcuts (?)
+            </button>
+          )}
+        </footer>
       </div>
+
+      {staff && (
+        <>
+          {/* The app-wide shortcuts; each page adds its own (lib/shortcuts.js). */}
+          <Shortcuts
+            keys={{
+              '?': () => setHelpOpen(true),
+              'g t': () => navigate('/tickets'),
+              'g d': () => navigate('/dashboard'),
+              'g k': () => navigate('/kb'),
+            }}
+          />
+          <ShortcutsHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
+        </>
+      )}
     </div>
   )
 }

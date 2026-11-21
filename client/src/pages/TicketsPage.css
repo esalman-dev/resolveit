@@ -81,7 +81,10 @@
   cursor: pointer;
 }
 
-.tickets-page__table tbody tr:hover {
+/* :focus-within: the row whose title link has the keyboard focus (Tab, or j / k) is
+   highlighted like a hovered one, so you can see which ticket Enter will open. */
+.tickets-page__table tbody tr:hover,
+.tickets-page__table tbody tr:focus-within {
   background: var(--color-primary-soft);
 }
 
