@@ -23,6 +23,7 @@ import { isAiConfigured } from '../services/ai.js';
 import { autoAssign } from '../services/autoAssign.js';
 import { notify } from '../services/notifications.js';
 import { checkForOutage } from '../services/outages.js';
+import { loadChecklist, newHireTitle, stepsLeft } from '../services/newHire.js';
 
 const router = Router();
 
@@ -53,17 +54,22 @@ const isStaff = (user) => STAFF.includes(user.role);
  *
  * response_due_at and resolve_due_at come from the target times for the ticket's priority
  * (sla_targets), worked out on every read, so changing a priority or a target moves them at once.
+ * A ticket with a set due_at (a new hire's start date) uses that as its fix deadline instead.
  * outage_* say which outage the ticket is part of, if any (services/outages.js).
+ * checklist_total and checklist_finished count a new-hire ticket's steps (0 and 0 for other
+ * tickets), for the "New hire · 3/6" label in the list.
  */
 const TICKET_SELECT = `
-  SELECT t.id, t.title, t.description, t.status, t.priority,
+  SELECT t.id, t.kind, t.title, t.description, t.status, t.priority,
          t.category_id, category.name AS category_name,
          t.created_by,  creator.name  AS created_by_name,
          t.assigned_to, assignee.name AS assigned_to_name,
          t.created_at, t.updated_at, t.resolved_at, t.steps_tried, t.first_response_at,
          t.created_at + make_interval(mins => sla.first_response_minutes) AS response_due_at,
-         t.created_at + make_interval(mins => sla.resolve_minutes)        AS resolve_due_at,
-         t.outage_id, outage.status AS outage_status, outage.message AS outage_message
+         COALESCE(t.due_at, t.created_at + make_interval(mins => sla.resolve_minutes)) AS resolve_due_at,
+         t.outage_id, outage.status AS outage_status, outage.message AS outage_message,
+         (SELECT COUNT(*) FROM ticket_checklist_items i WHERE i.ticket_id = t.id)::int AS checklist_total,
+         (SELECT COUNT(*) FROM ticket_checklist_items i WHERE i.ticket_id = t.id AND i.state <> 'todo')::int AS checklist_finished
     FROM tickets t
     JOIN users creator            ON creator.id  = t.created_by
     LEFT JOIN users assignee      ON assignee.id = t.assigned_to
@@ -144,7 +150,7 @@ async function checkAssignee(value) {
  * Security: someone else's ticket returns null too, so the route answers 404, the same as a
  * ticket that doesn't exist. A 403 would confirm "ticket 57 exists" and leak information.
  */
-async function findVisibleTicket(id, user) {
+export async function findVisibleTicket(id, user) {
   const result = await pool.query(`${TICKET_SELECT} WHERE t.id = $1`, [id]);
   const ticket = result.rows[0];
   if (!ticket || (!isStaff(user) && ticket.created_by !== user.id)) return null;
@@ -165,10 +171,13 @@ async function loadHistory(ticketId) {
   return result.rows;
 }
 
-/** The ticket plus its history: the response shape for GET, POST and PATCH. */
-async function ticketWithHistory(id) {
+/**
+ * The ticket plus its history and checklist (empty unless it's a new-hire ticket): the response
+ * shape for GET, POST and PATCH, and for checklist changes (routes/checklist.js).
+ */
+export async function ticketWithHistory(id) {
   const ticket = await pool.query(`${TICKET_SELECT} WHERE t.id = $1`, [id]);
-  return { ticket: ticket.rows[0], history: await loadHistory(id) };
+  return { ticket: ticket.rows[0], history: await loadHistory(id), checklist: await loadChecklist(pool, id) };
 }
 
 // --- Ticket routes ---
@@ -224,6 +233,66 @@ router.post('/', async (req, res) => {
   res.status(201).json(await ticketWithHistory(id));
 });
 
+const MAX_NEW_HIRE_TEXT = 80; // name and job title: "New hire: " + 80 + ", " + 80 fits MAX_TITLE
+const DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * POST /api/tickets/new-hire
+ * Opens a new-hire setup ticket: kind new_hire, a title made from the name and job title, due
+ * at ready_by, and its own copy of the standard checklist (routes/newHireSteps.js). Goes through
+ * auto-assign like any ticket; outage spotting skips it.
+ * Access: staff.
+ * Body: { name, job_title, ready_by, notes? }
+ *   ready_by: when setup must be finished, as an ISO time. The form sends 9:00 AM on the start
+ *   date in the creator's own time zone, which the server can't know, so it doesn't work it out.
+ */
+router.post('/new-hire', requireRole(...STAFF), async (req, res) => {
+  const body = req.body ?? {};
+  const name = checkText(body.name, 'Name', MAX_NEW_HIRE_TEXT);
+  if (name.error) return res.status(400).json({ error: name.error });
+  const jobTitle = checkText(body.job_title, 'Job title', MAX_NEW_HIRE_TEXT);
+  if (jobTitle.error) return res.status(400).json({ error: jobTitle.error });
+
+  // A start date from today (a day's leeway for time zones) up to a year ahead.
+  const readyBy = new Date(typeof body.ready_by === 'string' ? body.ready_by : NaN);
+  if (Number.isNaN(readyBy.getTime()) || readyBy < Date.now() - DAY || readyBy > Date.now() + 366 * DAY) {
+    return res.status(400).json({ error: 'Pick a start date from today to a year from now' });
+  }
+
+  const notes = cleanText(body.notes);
+  const intro = `Setup for ${name.text} (${jobTitle.text}).`;
+  const description = notes ? `${intro}\n\n${notes}` : intro;
+  if (description.length > MAX_DESCRIPTION) {
+    return res.status(400).json({ error: 'Notes are too long' });
+  }
+
+  const id = await withTransaction(async (db) => {
+    // first_response_at is set at once: staff opened it, so nobody is waiting for a reply, and
+    // the reply target (which ignores the creator's own actions) would otherwise go overdue.
+    const inserted = await db.query(
+      `INSERT INTO tickets (kind, title, description, created_by, due_at, first_response_at)
+       VALUES ('new_hire', $1, $2, $3, $4, NOW())
+       RETURNING id`,
+      [newHireTitle({ name: name.text, jobTitle: jobTitle.text }), description, req.user.id, readyBy]
+    );
+    const ticketId = inserted.rows[0].id;
+    await db.query(
+      `INSERT INTO ticket_events (ticket_id, actor_id, action) VALUES ($1, $2, 'created')`,
+      [ticketId, req.user.id]
+    );
+    // The ticket's own copy, so editing the standard list later never changes this ticket.
+    await db.query(
+      `INSERT INTO ticket_checklist_items (ticket_id, position, title)
+       SELECT $1, position, title FROM new_hire_steps`,
+      [ticketId]
+    );
+    await autoAssign(db, ticketId);
+    return ticketId;
+  });
+
+  res.status(201).json(await ticketWithHistory(id));
+});
+
 /**
  * GET /api/tickets
  * The ticket list, newest first. Staff see every ticket; users see only their own.
@@ -264,9 +333,8 @@ router.get('/:id', async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid ticket id' });
 
-  const ticket = await findVisibleTicket(id, req.user);
-  if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
-  res.json({ ticket, history: await loadHistory(id) });
+  if (!(await findVisibleTicket(id, req.user))) return res.status(404).json({ error: 'Ticket not found' });
+  res.json(await ticketWithHistory(id));
 });
 
 /**
@@ -363,6 +431,15 @@ router.patch('/:id', async (req, res) => {
     // Keep only fields that actually change; re-sending the current value isn't a change.
     const changed = Object.keys(wanted).filter((field) => wanted[field].value !== before[field].value);
     if (changed.length === 0) return { unchanged: true };
+
+    // A new-hire ticket is finished only when every step is done or not needed. Checked after
+    // the lock, which checklist changes take too, so a step can't be unticked in between.
+    if (changed.includes('status') && wanted.status.value === 'resolved' && current.kind === 'new_hire') {
+      const left = await stepsLeft(db, id);
+      if (left > 0) {
+        return { status: 409, error: `Finish the checklist first: ${left} ${left === 1 ? 'step' : 'steps'} left` };
+      }
+    }
 
     // Security: builds "title = $1, status = $2". Column names come from the `wanted` table in
     // our own code, never the request, and values go through placeholders, so this is safe

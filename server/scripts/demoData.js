@@ -13,6 +13,7 @@
 // Used by scripts/seed-demo.js (npm run seed-demo) and the tests.
 
 import bcrypt from 'bcryptjs';
+import { newHireTitle } from '../services/newHire.js';
 
 const DEMO_DOMAIN = 'demo.example.com';
 
@@ -148,6 +149,17 @@ const DEMO_ARTICLES = [
   { title: 'Computer is slow to start', category: 'Software', status: 'draft', flagged: true, problem: 'The computer takes a long time to start in the morning.', steps: [
     { title: 'Restart once a week', detail: 'Restarting clears out programs that pile up.' },
     { title: 'Turn off startup apps in the registry', detail: 'Open regedit and remove entries under the Run key.' } ] },
+];
+
+// New-hire setup tickets at different stages. startsInDays below 0 = already started.
+//   progress: the share of steps finished (1 = all, so the ticket is resolved)
+//   tech: which technician (index into the technicians list) does the setup
+//   skip: a step marked not needed instead of done
+const DEMO_NEW_HIRES = [
+  { name: 'Elena Petrova', jobTitle: 'Accountant', openedDaysAgo: 40, startsInDays: -30, progress: 1, tech: 1, skip: 'Building access', notes: 'Works remotely, so no badge.' },
+  { name: 'Marcus Lee', jobTitle: 'Warehouse Supervisor', openedDaysAgo: 25, startsInDays: -14, progress: 1, tech: 2 },
+  { name: 'Aisha Khan', jobTitle: 'Marketing Coordinator', openedDaysAgo: 6, startsInDays: 4, progress: 0.5, tech: 0 },
+  { name: 'Tom Becker', jobTitle: 'Software Developer', openedDaysAgo: 1, startsInDays: 12, progress: 0, tech: 3, notes: 'Needs a second monitor and Visual Studio.' },
 ];
 
 const INTERNAL_NOTES = [
@@ -381,6 +393,63 @@ export async function seedDemoData(db, { tickets, scenarios, studyResults, passw
       ]
     );
     stats.helpSessions++;
+  }
+
+  // --- New-hire setup tickets: opened by the admin, set up by a technician step by step ---
+  const standardSteps = (await db.query('SELECT title FROM new_hire_steps ORDER BY position')).rows.map((r) => r.title);
+  for (const hire of DEMO_NEW_HIRES) {
+    const openedAt = new Date(now.getTime() - hire.openedDaysAgo * 24 * HOUR);
+    const readyBy = new Date(now.getTime() + hire.startsInDays * 24 * HOUR);
+    readyBy.setHours(9, 0, 0, 0);
+    const tech = technicians[hire.tech];
+    const finishedCount = Math.round(standardSteps.length * hire.progress);
+    const resolved = finishedCount === standardSteps.length;
+    // Finished the day before the start date; one still under way is worked on until now.
+    const lastAt = resolved ? new Date(readyBy.getTime() - 24 * HOUR) : new Date(now.getTime() - HOUR);
+    const stepAt = (i) => new Date(openedAt.getTime() + ((i + 1) / (finishedCount + 1)) * (lastAt - openedAt));
+
+    const intro = `Setup for ${hire.name} (${hire.jobTitle}).`;
+    const inserted = await db.query(
+      `INSERT INTO tickets (kind, title, description, status, created_by, assigned_to, due_at,
+                            created_at, updated_at, resolved_at, first_response_at)
+       VALUES ('new_hire', $1, $2, $3, $4, $5, $6, $7, $8, $9, $7)
+       RETURNING id`,
+      [
+        newHireTitle(hire),
+        hire.notes ? `${intro}\n\n${hire.notes}` : intro,
+        resolved ? 'resolved' : finishedCount > 0 ? 'in_progress' : 'open',
+        admin.id,
+        tech.id,
+        readyBy,
+        openedAt,
+        finishedCount > 0 ? lastAt : openedAt,
+        resolved ? lastAt : null,
+      ]
+    );
+    const ticketId = inserted.rows[0].id;
+    stats.tickets++;
+
+    const event = (actor, at, field, oldValue, newValue) =>
+      db.query(
+        `INSERT INTO ticket_events (ticket_id, actor_id, action, field, old_value, new_value, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [ticketId, actor?.id ?? null, field ? 'changed' : 'created', field, oldValue, newValue, at]
+      );
+    await event(admin, openedAt, null, null, null);
+    await event(admin, openedAt, 'assignee', null, tech.name);
+    if (finishedCount > 0) await event(tech, stepAt(0), 'status', 'open', 'in_progress');
+
+    for (const [i, title] of standardSteps.entries()) {
+      const finished = i < finishedCount;
+      const state = !finished ? 'todo' : title === hire.skip ? 'not_needed' : 'done';
+      await db.query(
+        `INSERT INTO ticket_checklist_items (ticket_id, position, title, state, changed_by, changed_at)
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+        [ticketId, i + 1, title, state, finished ? tech.id : null, finished ? stepAt(i) : null]
+      );
+      if (finished) await event(tech, stepAt(i), 'checklist', title, state);
+    }
+    if (resolved) await event(tech, lastAt, 'status', 'in_progress', 'resolved');
   }
 
   // --- Knowledge base: published how-tos, plus two drafts waiting for review ---

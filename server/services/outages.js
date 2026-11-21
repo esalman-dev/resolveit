@@ -2,8 +2,9 @@
 // problem, like the Wi-Fi being down for a whole building.
 //
 // The rule: 3 tickets in the same category, opened within 15 minutes, not resolved and not
-// already part of an outage. Tickets with no category never count. Checked each time a ticket is
-// opened; there's no background job. Staff then confirm or dismiss it (routes/outages.js).
+// already part of an outage. Tickets with no category, and new-hire tickets, never count.
+// Checked each time a ticket is opened; there's no background job. Staff then confirm or
+// dismiss it (routes/outages.js).
 
 import { STAFF } from '../roles.js';
 import { notify } from './notifications.js';
@@ -18,8 +19,9 @@ export const OUTAGE_WINDOW = '15 minutes';
  * when the ticket joined one, or null.
  */
 export async function checkForOutage(db, ticketId) {
-  const ticket = (await db.query('SELECT category_id FROM tickets WHERE id = $1', [ticketId])).rows[0];
-  if (!ticket?.category_id) return null;
+  // New-hire tickets never count: three hires on one day isn't an outage.
+  const ticket = (await db.query('SELECT category_id, kind FROM tickets WHERE id = $1', [ticketId])).rows[0];
+  if (!ticket?.category_id || ticket.kind !== 'issue') return null;
 
   // Already an open outage for this category: the new ticket joins it.
   const open = await db.query(
@@ -34,7 +36,7 @@ export async function checkForOutage(db, ticketId) {
   // NOW() is when this transaction started, so the new ticket itself is inside the window.
   const recent = await db.query(
     `SELECT id FROM tickets
-      WHERE category_id = $1 AND outage_id IS NULL AND status <> 'resolved'
+      WHERE category_id = $1 AND kind = 'issue' AND outage_id IS NULL AND status <> 'resolved'
         AND created_at > NOW() - INTERVAL '${OUTAGE_WINDOW}'`,
     [ticket.category_id]
   );

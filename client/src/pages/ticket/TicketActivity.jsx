@@ -228,6 +228,28 @@ function describeGetHelp(steps) {
 }
 
 /**
+ * A new-hire checklist change in words. The server stores the step's title in old_value and
+ * what happened to it in new_value (a state, or 'added' / 'removed').
+ * @example describeChecklistStep('Prepare laptop', 'done') // 'ticked "Prepare laptop"'
+ */
+function describeChecklistStep(title, what) {
+  switch (what) {
+    case 'done':
+      return `ticked "${title}"`
+    case 'not_needed':
+      return `marked "${title}" not needed`
+    case 'todo':
+      return `unticked "${title}"`
+    case 'added':
+      return `added the step "${title}"`
+    case 'removed':
+      return `removed the step "${title}"`
+    default:
+      return `changed the step "${title}"`
+  }
+}
+
+/**
  * One history entry in words, after the person's name.
  * @example describeEvent({ action: 'changed', field: 'status', old_value: 'open', new_value: 'resolved' })
  * // "changed the status from Open to Resolved"
@@ -251,6 +273,8 @@ function describeEvent({ action, field, old_value: from, new_value: to }, stepsT
       return `changed the title from "${from}" to "${to}"`
     case 'description':
       return 'edited the description' // the full old text would be too long for one line
+    case 'checklist':
+      return describeChecklistStep(from, to)
     default:
       return `changed the ${field}`
   }

@@ -33,7 +33,7 @@ async function addOverdue(userId) {
       CROSS JOIN LATERAL (VALUES
              ('overdue_reply', t.first_response_at IS NULL
                                AND t.created_at + make_interval(mins => sla.first_response_minutes) < NOW()),
-             ('overdue_fix',   t.created_at + make_interval(mins => sla.resolve_minutes) < NOW())
+             ('overdue_fix',   COALESCE(t.due_at, t.created_at + make_interval(mins => sla.resolve_minutes)) < NOW())
            ) AS due(kind, is_due)
       WHERE t.assigned_to = $1 AND t.status <> 'resolved' AND due.is_due
      ON CONFLICT (user_id, ticket_id, kind) WHERE kind IN ('overdue_reply', 'overdue_fix') DO NOTHING`,

@@ -23,6 +23,8 @@ import kbRoutes from './routes/kb.js';
 import notificationRoutes from './routes/notifications.js';
 import settingsRoutes from './routes/settings.js';
 import outageRoutes from './routes/outages.js';
+import newHireStepRoutes from './routes/newHireSteps.js';
+import checklistRoutes from './routes/checklist.js';
 
 // Security: without a secret, login tokens can't be signed or checked, so refuse to start.
 if (!process.env.JWT_SECRET) {
@@ -65,6 +67,7 @@ app.get('/api/health', async (req, res) => {
 
 app.use('/api/auth', authRoutes); // sign up, log in, refresh, log out, /me
 app.use('/api/users', userRoutes); // user management (admins and owners)
+app.use('/api/tickets/:id/checklist', checklistRoutes); // a new-hire ticket's checklist (before the tickets routes, which would run their login check on it first)
 app.use('/api/tickets', ticketRoutes); // tickets, their history and comments
 app.use('/api/categories', categoryRoutes); // ticket categories (everyone reads, admins manage)
 app.use('/api/help', helpRoutes); // AI self-service fixes before a ticket
@@ -77,6 +80,7 @@ app.use('/api/kb', kbRoutes); // knowledge base articles
 app.use('/api/notifications', notificationRoutes); // the bell: your notifications
 app.use('/api/settings', settingsRoutes); // help desk settings (auto-assign on or off)
 app.use('/api/outages', outageRoutes); // outages: confirm, dismiss, fix, "This is my problem"
+app.use('/api/new-hire-steps', newHireStepRoutes); // the standard new-hire checklist (staff read, admins change)
 
 // --- Error handling ---
 

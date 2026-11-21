@@ -207,6 +207,9 @@ router.put('/tickets/:ticketId', requireRole(...STAFF), async (req, res) => {
   if (outageId) {
     const open = await pool.query("SELECT 1 FROM outages WHERE id = $1 AND status IN ('suspected', 'confirmed')", [outageId]);
     if (open.rowCount === 0) return res.status(400).json({ error: 'Pick an open outage' });
+    // Fixing an outage resolves its tickets, which would skip a new hire's checklist.
+    const hire = await pool.query("SELECT 1 FROM tickets WHERE id = $1 AND kind = 'new_hire'", [ticketId]);
+    if (hire.rowCount > 0) return res.status(400).json({ error: "A new-hire ticket can't be part of an outage" });
   }
   const updated = await pool.query('UPDATE tickets SET outage_id = $2, updated_at = NOW() WHERE id = $1', [ticketId, outageId]);
   if (updated.rowCount === 0) return res.status(404).json({ error: 'Ticket not found' });

@@ -1,0 +1,91 @@
+/*
+  New-hire steps page (NewHireStepsPage.jsx).
+
+  The same shape as the Target times page: the list on the left and a short "About" note on the
+  right. Phones: one column, with the note underneath.
+*/
+
+.new-hire-steps {
+  display: grid;
+  grid-template-columns: minmax(0, 560px) 260px;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.new-hire-steps__card {
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.new-hire-steps__list {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+/* Number, name, then the ↑ ↓ ✕ buttons, on one line. */
+.new-hire-steps__step {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.new-hire-steps__number {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Forms stack their contents full width (index.css); this button stays as wide as its words. */
+.new-hire-steps__add {
+  align-self: flex-start;
+}
+
+.new-hire-steps__tools {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.new-hire-steps__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+.new-hire-steps__saved {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  color: var(--success-text);
+  background: var(--success-bg);
+  border-radius: var(--radius);
+}
+
+.new-hire-steps__about {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.new-hire-steps__about-heading {
+  margin: 0 0 var(--space-2);
+  font-size: 15px;
+  color: var(--text);
+}
+
+.new-hire-steps__about p {
+  margin: 0 0 var(--space-3);
+}
+
+@media (max-width: 768px) {
+  .new-hire-steps {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+
+  .new-hire-steps__card {
+    padding: var(--space-3) var(--space-4);
+  }
+}

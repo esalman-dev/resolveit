@@ -50,6 +50,23 @@ describe('seedDemoData', () => {
     expect(await count("SELECT COUNT(*)::int AS n FROM help_sessions WHERE outcome IN ('still_broken', 'escalated') AND ticket_id IS NULL")).toBe(0);
   });
 
+  it('adds new-hire tickets at different stages, finished ones with nothing left to do', async () => {
+    await addCategories();
+    await seed();
+    const hires = (await pool.query(
+      `SELECT t.status, COUNT(i.*) FILTER (WHERE i.state = 'todo')::int AS left, COUNT(i.*)::int AS steps
+         FROM tickets t JOIN ticket_checklist_items i ON i.ticket_id = t.id
+        WHERE t.kind = 'new_hire' GROUP BY t.id, t.status ORDER BY t.id`
+    )).rows;
+    expect(hires.map((h) => h.status)).toEqual(['resolved', 'resolved', 'in_progress', 'open']);
+    expect(hires.filter((h) => h.status === 'resolved').every((h) => h.left === 0)).toBe(true);
+    expect(hires.every((h) => h.steps === 6)).toBe(true);
+    // Every finished step has a history line saying who did it.
+    expect(await count("SELECT COUNT(*)::int AS n FROM ticket_events WHERE field = 'checklist'")).toBe(
+      await count("SELECT COUNT(*)::int AS n FROM ticket_checklist_items WHERE state <> 'todo'")
+    );
+  });
+
   it('keeps every time in order and in the past', async () => {
     await addCategories();
     await seed();

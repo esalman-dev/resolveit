@@ -7,9 +7,10 @@ import pool from '../db/index.js';
 
 beforeEach(async () => {
   // TRUNCATE empties the tables instantly, RESTART IDENTITY resets ids to 1, and CASCADE handles foreign keys.
-  await pool.query('TRUNCATE users, tickets, refresh_tokens, categories, ticket_comments, comment_edits, ticket_events, account_events, help_sessions, attachments, ticket_ratings, kb_articles, outages RESTART IDENTITY CASCADE');
+  await pool.query('TRUNCATE users, tickets, refresh_tokens, categories, ticket_comments, comment_edits, ticket_events, account_events, help_sessions, attachments, ticket_ratings, kb_articles, outages, new_hire_steps RESTART IDENTITY CASCADE');
   // Note: CASCADE also empties sla_targets, team_goals, app_settings and notifications (they
-  // point at users), but the app needs the first three, so the defaults from schema.sql are put back.
+  // point at users), but the app needs the first three, so the defaults from schema.sql are put
+  // back. new_hire_steps is emptied and refilled too, so one test's edits can't leak into the next.
   await pool.query('INSERT INTO app_settings (id) VALUES (TRUE) ON CONFLICT (id) DO UPDATE SET auto_assign = TRUE, updated_by = NULL');
   await pool.query(
     `INSERT INTO team_goals (metric, target)
@@ -22,6 +23,11 @@ beforeEach(async () => {
      ON CONFLICT (priority) DO UPDATE
        SET first_response_minutes = EXCLUDED.first_response_minutes,
            resolve_minutes = EXCLUDED.resolve_minutes, updated_by = NULL`
+  );
+  await pool.query(
+    `INSERT INTO new_hire_steps (position, title)
+     VALUES (1, 'Create account'), (2, 'Set up email'), (3, 'Prepare laptop'),
+            (4, 'Install software'), (5, 'Building access'), (6, 'First-day check-in')`
   );
 });
 

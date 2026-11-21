@@ -13,6 +13,8 @@ import AskItPage from './pages/AskItPage.jsx'
 import AppShell from './components/AppShell.jsx'
 import CategoriesPage from './pages/CategoriesPage.jsx'
 import SlaTargetsPage from './pages/SlaTargetsPage.jsx'
+import NewHireStepsPage from './pages/NewHireStepsPage.jsx'
+import NewHirePage from './pages/NewHirePage.jsx'
 import ReviewsPage from './pages/ReviewsPage.jsx'
 import DashboardPage from './pages/dashboard/DashboardPage.jsx'
 import KnowledgeBasePage from './pages/kb/KnowledgeBasePage.jsx'
@@ -93,6 +95,7 @@ function App() {
           path="tickets"
           element={isStaff(user.role) ? <TicketsPage key="all" scope="all" currentUser={user} /> : <Navigate to="/my-tickets" replace />}
         />
+        <Route path="tickets/new-hire" element={isStaff(user.role) ? <NewHirePage /> : <Navigate to="/" replace />} />
         <Route path="tickets/:id" element={<TicketPage currentUser={user} />} />
         <Route path="ai-help" element={isStaff(user.role) ? <AiHelpPage /> : <Navigate to="/" replace />} />
         <Route path="reviews" element={isStaff(user.role) ? <ReviewsPage currentUser={user} /> : <Navigate to="/" replace />} />
@@ -102,6 +105,7 @@ function App() {
         <Route path="admin/users" element={admin ? <UsersPage currentUser={user} /> : <Navigate to="/" replace />} />
         <Route path="admin/categories" element={admin ? <CategoriesPage /> : <Navigate to="/" replace />} />
         <Route path="admin/targets" element={admin ? <SlaTargetsPage /> : <Navigate to="/" replace />} />
+        <Route path="admin/new-hire-steps" element={admin ? <NewHireStepsPage /> : <Navigate to="/" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

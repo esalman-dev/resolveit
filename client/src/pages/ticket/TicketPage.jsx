@@ -18,6 +18,7 @@ import TicketActivity from './TicketActivity.jsx'
 import TicketSidePanel from './TicketSidePanel.jsx'
 import { isAdminOrOwner, isStaff } from '../../lib/roles.js'
 import ReviewCard from './ReviewCard.jsx'
+import NewHireChecklist from './NewHireChecklist.jsx'
 import { statusLabel } from '../../lib/ticketLabels.js'
 import { usePageTitle } from '../../lib/usePageTitle.js'
 import './TicketPage.css'
@@ -36,6 +37,7 @@ function TicketPage({ currentUser }) {
 
   const [ticket, setTicket] = useState(null)
   const [history, setHistory] = useState([])
+  const [checklist, setChecklist] = useState([]) // new-hire tickets only; empty for others
   const [comments, setComments] = useState([])
   const [attachments, setAttachments] = useState([]) // every file on the ticket and its comments
   const [rating, setRating] = useState(null) // the review, for the person who opened it and admins
@@ -74,6 +76,7 @@ function TicketPage({ currentUser }) {
       .then(([ticketData, commentData, attachmentData, categoryData, assigneeData]) => {
         setTicket(ticketData.ticket)
         setHistory(ticketData.history)
+        setChecklist(ticketData.checklist)
         setComments(commentData.comments)
         setAttachments(attachmentData.attachments)
         if (staff) {
@@ -116,8 +119,17 @@ function TicketPage({ currentUser }) {
   const isCreator = ticket.created_by === currentUser.id
   // The server's rule: staff can always edit; the creator only while nobody has started on it.
   const canEdit = staff || (isCreator && ticket.status === 'open')
+  const newHire = ticket.kind === 'new_hire'
+  const stepsLeft = checklist.filter((s) => s.state === 'todo').length
 
   // --- Changing the ticket ---
+
+  /** Shows the server's answer to a change: the ticket, its history and its checklist. */
+  function show(data) {
+    setTicket(data.ticket)
+    setHistory(data.history)
+    setChecklist(data.checklist)
+  }
 
   /** Saves changed fields. The server answers with the updated ticket and its history. */
   async function save(fields) {
@@ -125,8 +137,7 @@ function TicketPage({ currentUser }) {
     setActionError('')
     try {
       const data = await apiFetch(`/api/tickets/${ticket.id}`, { method: 'PATCH', body: fields })
-      setTicket(data.ticket)
-      setHistory(data.history)
+      show(data)
       if (data.article_drafting) {
         setNotice('Drafting a knowledge base article from this fix. It will be under Knowledge base → Drafts in a moment.')
         setTimeout(loadArticle, 8000) // the AI usually takes a few seconds
@@ -162,6 +173,11 @@ function TicketPage({ currentUser }) {
    * straight away, because every change is in the history and easy to undo.
    */
   function handleChange(fields) {
+    // The server refuses it too; saying so here saves a pointless "Are you sure?".
+    if (newHire && fields.status === 'resolved' && stepsLeft > 0) {
+      setActionError(`Finish the checklist first: ${stepsLeft} ${stepsLeft === 1 ? 'step' : 'steps'} left.`)
+      return
+    }
     const question = confirmationFor(fields)
     if (question) setPending({ fields, ...question })
     else save(fields)
@@ -174,7 +190,8 @@ function TicketPage({ currentUser }) {
         title: `Mark #${ticket.id} resolved?`,
         message: `${ticket.created_by_name} will see the ticket as resolved.`,
         confirmLabel: 'Mark resolved',
-        offerDraft: staff && !kbArticle, // staff can have the AI draft a how-to from the fix
+        // Staff can have the AI draft a how-to from the fix. A new-hire setup isn't a fix.
+        offerDraft: staff && !kbArticle && !newHire,
       }
     }
     if ('status' in fields && ticket.status === 'resolved') {
@@ -245,13 +262,15 @@ function TicketPage({ currentUser }) {
     <div className="ticket-page">
       {justCreated && (
         <p className="ticket-page__created" role="status">
-          Ticket created. A technician will take a look; you'll see updates here.
+          {ticket.kind === 'new_hire'
+            ? 'New-hire ticket created. Work through the checklist below; it can be resolved once every step is done.'
+            : "Ticket created. A technician will take a look; you'll see updates here."}
         </p>
       )}
       {actionError && <p className="ticket-page__error" role="alert">{actionError}</p>}
       {notice && <p className="ticket-page__notice" role="status">{notice}</p>}
 
-      <div className="ticket-page__layout">
+      <div className={`ticket-page__layout${newHire ? ' ticket-page__layout--checklist' : ''}`}>
         <article className="ticket-page__post">
           <header className="ticket-page__post-header">
             <span>
@@ -294,6 +313,16 @@ function TicketPage({ currentUser }) {
           {/* Files sent with the ticket itself (from Get help, or the plain ticket form). */}
           <AttachmentList className="ticket-page__files" attachments={attachments.filter((a) => a.comment_id === null)} />
         </article>
+
+        {newHire && (
+          <NewHireChecklist
+            ticketId={ticket.id}
+            checklist={checklist}
+            canChange={staff && ticket.status !== 'resolved'}
+            resolved={ticket.status === 'resolved'}
+            onSaved={show}
+          />
+        )}
 
         <TicketSidePanel
           ticket={ticket}

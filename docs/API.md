@@ -18,9 +18,13 @@ Every endpoint the React app calls.
 | PATCH | `/api/users/:id/disabled` | Admin, owner | Disable or re-enable an account ranked below you |
 | GET | `/api/users/history` | Admin, owner | Account history, newest first (`?user_id=` for one person) |
 | POST | `/api/tickets` | Logged in | Open a ticket (always starts open and unassigned; only staff can choose a priority, otherwise it starts at medium); `attachment_ids` attaches uploaded files |
+| POST | `/api/tickets/new-hire` | Staff | Open a new-hire setup ticket: `{ name, job_title, ready_by, notes? }`; gets its own copy of the standard checklist and is due at `ready_by` |
+| PATCH | `/api/tickets/:id/checklist/:stepId` | Staff | Set a step to `todo`, `done` or `not_needed` (not on a resolved ticket) |
+| POST | `/api/tickets/:id/checklist` | Staff | Add a step to this ticket's checklist (`{ title }`, at most 30 steps) |
+| DELETE | `/api/tickets/:id/checklist/:stepId` | Staff | Remove a step (never the last one) |
 | GET | `/api/tickets` | Logged in | List tickets: users see their own, technicians, admins and owners see all |
 | GET | `/api/tickets/:id` | Creator, staff | One ticket **with its history** and its due times (404 for other users' tickets, so ids can't be probed) |
-| PATCH | `/api/tickets/:id` | Creator, staff | Staff: change anything. Creator: edit title/description while open, or close it. Every change is logged |
+| PATCH | `/api/tickets/:id` | Creator, staff | Staff: change anything. Creator: edit title/description while open, or close it. Every change is logged. A new-hire ticket can't be resolved while checklist steps are left (409) |
 | GET | `/api/tickets/assignees` | Staff | Active technicians, admins, and owners a ticket can be assigned to |
 | GET | `/api/tickets/:id/comments` | Creator, staff | Comments, oldest first, each with its earlier versions (internal notes only for staff) |
 | POST | `/api/tickets/:id/comments` | Creator, staff | Add a comment, with `attachment_ids`; staff can mark it internal (its files are staff-only too) |
@@ -57,6 +61,8 @@ Every endpoint the React app calls.
 | POST | `/api/kb/:id/feedback` | Logged in | "Was this helpful?" |
 | GET | `/api/sla-targets` | Staff | The target times per priority |
 | PUT | `/api/sla-targets` | Admin, owner | Change the target times (every priority; fixed can't be shorter than first reply) |
+| GET | `/api/new-hire-steps` | Staff | The standard new-hire checklist, in order |
+| PUT | `/api/new-hire-steps` | Admin, owner | Replace it (1 to 30 steps, up to 120 characters each, no repeats) |
 | GET | `/api/attachments/:id` | Whoever can see what it's attached to | Download a file (404 for anyone else) |
 | DELETE | `/api/attachments/:id` | The uploader | Remove a file before it's sent |
 

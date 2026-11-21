@@ -30,6 +30,16 @@
 .ticket-page__side { grid-area: side; }
 .ticket-page__activity { grid-area: activity; }
 
+/* New-hire tickets: the checklist between the ticket and its activity. Only on those tickets,
+   so other tickets don't get an empty row and an extra gap. */
+.ticket-page__layout--checklist {
+  grid-template-areas:
+    'post      side'
+    'checklist side'
+    'activity  side';
+  grid-template-rows: auto auto 1fr;
+}
+
 /* --- Messages --- */
 
 .ticket-page__created {
@@ -200,6 +210,14 @@
       'side'
       'activity';
     grid-template-rows: none;
+  }
+
+  .ticket-page__layout--checklist {
+    grid-template-areas:
+      'post'
+      'side'
+      'checklist'
+      'activity';
   }
 
   /* The facts in two columns, so they don't make the page very long. */

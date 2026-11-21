@@ -121,8 +121,9 @@ function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, bu
           )}
         </Fact>
 
-        {/* Staff: link to an open outage by hand. Everyone: a note while it's a confirmed one. */}
-        {staff && (openOutages.length > 0 || ticket.outage_id) && (
+        {/* Staff: link to an open outage by hand. Everyone: a note while it's a confirmed one.
+            Not on new-hire tickets: fixing an outage resolves its tickets, skipping the checklist. */}
+        {staff && ticket.kind !== 'new_hire' && (openOutages.length > 0 || ticket.outage_id) && (
           <Fact label="Outage" id="ticket-outage">
             <select
               aria-labelledby="ticket-outage"
@@ -141,7 +142,8 @@ function TicketSidePanel({ ticket, currentUser, staff, categories, assignees, bu
 
         <Fact label="Opened"><RelativeTime date={ticket.created_at} /></Fact>
         <Fact label="Last updated"><RelativeTime date={ticket.updated_at} /></Fact>
-        <TargetFact ticket={ticket} step="reply" label="First reply" />
+        {/* A new-hire ticket is opened by staff: there's no reply to wait for. */}
+        {ticket.kind !== 'new_hire' && <TargetFact ticket={ticket} step="reply" label="First reply" />}
         <TargetFact ticket={ticket} step="fix" label="Fixed" />
         {article && (
           <Fact label="Knowledge base">

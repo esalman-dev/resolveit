@@ -78,6 +78,7 @@ function AppShell({ user, serverStatus, onLogout }) {
               <NavLink className="app-shell__link" to="/admin/users">Users</NavLink>
               <NavLink className="app-shell__link" to="/admin/categories">Categories</NavLink>
               <NavLink className="app-shell__link" to="/admin/targets">Target times</NavLink>
+              <NavLink className="app-shell__link" to="/admin/new-hire-steps">New-hire steps</NavLink>
             </>
           )}
         </nav>

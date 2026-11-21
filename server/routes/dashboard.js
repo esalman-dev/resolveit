@@ -30,10 +30,15 @@ router.use(requireAuth, requireRole(...STAFF));
 
 // --- SQL pieces ---
 
-// When each ticket's reply and fix are due, from its priority's target times.
+// When each ticket's reply and fix are due, from its priority's target times (or, for the fix,
+// its own set due_at: a new hire's start date).
 const DUE = `
   t.created_at + make_interval(mins => sla.first_response_minutes) AS response_due_at,
-  t.created_at + make_interval(mins => sla.resolve_minutes)        AS resolve_due_at`;
+  COALESCE(t.due_at, t.created_at + make_interval(mins => sla.resolve_minutes)) AS resolve_due_at`;
+
+// Tickets first replied to inside the window ($1 to $2). New-hire tickets are left out: staff
+// open them, so they count as replied the moment they're created and would pull the average to 0.
+const REPLIED = `kind = 'issue' AND first_response_at >= $1 AND first_response_at < $2`;
 
 // Minutes between two timestamps.
 const minutes = (from, to) => `EXTRACT(EPOCH FROM (${to} - ${from})) / 60`;
@@ -52,14 +57,14 @@ async function windowNumbers(from, to) {
      SELECT
        COUNT(*) FILTER (WHERE created_at >= $1 AND created_at < $2)::int AS new_tickets,
        COUNT(*) FILTER (WHERE resolved_at >= $1 AND resolved_at < $2)::int AS resolved,
-       AVG(${minutes('created_at', 'first_response_at')}) FILTER (WHERE first_response_at >= $1 AND first_response_at < $2) AS reply_avg,
+       AVG(${minutes('created_at', 'first_response_at')}) FILTER (WHERE ${REPLIED}) AS reply_avg,
        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ${minutes('created_at', 'first_response_at')})
-         FILTER (WHERE first_response_at >= $1 AND first_response_at < $2) AS reply_median,
+         FILTER (WHERE ${REPLIED}) AS reply_median,
        AVG(${minutes('created_at', 'resolved_at')}) FILTER (WHERE resolved_at >= $1 AND resolved_at < $2) AS fix_avg,
        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY ${minutes('created_at', 'resolved_at')})
          FILTER (WHERE resolved_at >= $1 AND resolved_at < $2) AS fix_median,
-       COUNT(*) FILTER (WHERE first_response_at >= $1 AND first_response_at < $2 AND first_response_at <= response_due_at)::int AS replied_on_time,
-       COUNT(*) FILTER (WHERE first_response_at >= $1 AND first_response_at < $2)::int AS replied,
+       COUNT(*) FILTER (WHERE ${REPLIED} AND first_response_at <= response_due_at)::int AS replied_on_time,
+       COUNT(*) FILTER (WHERE ${REPLIED})::int AS replied,
        COUNT(*) FILTER (WHERE resolved_at >= $1 AND resolved_at < $2 AND resolved_at <= resolve_due_at)::int AS fixed_on_time
      FROM t`,
     [from, to]

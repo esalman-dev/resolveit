@@ -146,12 +146,20 @@ function TicketsPage({ currentUser, scope }) {
     )
   }
   if (tickets.length === 0) {
-    return <EmptyState message="No tickets yet." actionLabel="Get help" actionTo="/get-help" />
+    // An empty staff queue still offers New hire, the one kind of ticket staff start themselves.
+    return queue
+      ? <EmptyState message="No tickets yet." actionLabel="New hire" actionTo="/tickets/new-hire" />
+      : <EmptyState message="No tickets yet." actionLabel="Get help" actionTo="/get-help" />
   }
 
   return (
     <div className="tickets-page">
-      {queue && <AutoAssignSwitch canChange={isAdminOrOwner(currentUser.role)} />}
+      {queue && (
+        <div className="tickets-page__top">
+          <Link className="button-link" to="/tickets/new-hire">+ New hire</Link>
+          <AutoAssignSwitch canChange={isAdminOrOwner(currentUser.role)} />
+        </div>
+      )}
       {queue && <OutageCards outages={outages} onChanged={fetchTickets} />}
       {queue && <CountCards label="Filter tickets" cards={cards} selected={selectedCard} onSelect={selectCard} />}
 
@@ -232,6 +240,9 @@ function TicketsPage({ currentUser, scope }) {
                   <td className="tickets-page__title-cell">
                     <Link className="tickets-page__title" to={`/tickets/${t.id}`}>{t.title}</Link>
                     {t.category_name && <span className="tickets-page__category">{t.category_name}</span>}
+                    {t.kind === 'new_hire' && (
+                      <span className="tickets-page__new-hire">New hire · {t.checklist_finished}/{t.checklist_total} steps</span>
+                    )}
                   </td>
                   <td><StatusBadge status={t.status} /></td>
                   <td><PriorityBadge priority={t.priority} /></td>
