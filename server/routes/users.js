@@ -9,6 +9,7 @@ import { Router } from 'express';
 import pool, { withTransaction } from '../db/index.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ROLES, ADMINS, canManage, canGrant } from '../roles.js';
+import { clampPage, containsPattern, readPaging } from '../services/paging.js';
 
 const router = Router();
 
@@ -48,18 +49,43 @@ async function checkTarget(req, id) {
 
 /**
  * GET /api/users
- * Every account, oldest first, including whether it's disabled.
+ * One page of accounts, oldest first, including whether each is disabled, with the filters
+ * applied by the database. `total` matches the filters; `total_all` counts every account.
  * Access: admins and owners.
+ * Query (all optional): q (words in the name or email), role, page, per_page
  */
 router.get('/', async (req, res) => {
+  const { role } = req.query;
+  if (role && !ROLES.includes(role)) return res.status(400).json({ error: 'Invalid role' });
+  const values = [];
+  const value = (v) => `$${values.push(v)}`;
+  const where = [];
+  const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 200) : '';
+  if (q) {
+    const pattern = value(containsPattern(q));
+    where.push(`(name ILIKE ${pattern} OR email ILIKE ${pattern})`);
+  }
+  if (role) where.push(`role = ${value(role)}`);
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const counted = await pool.query(
+    `SELECT COUNT(*) FILTER (WHERE ${where.length ? where.join(' AND ') : 'TRUE'})::int AS total, COUNT(*)::int AS total_all FROM users`,
+    values
+  );
+  const { total, total_all: totalAll } = counted.rows[0];
+  const { page: asked, perPage } = readPaging(req.query);
+  const { page, offset } = clampPage(asked, perPage, total);
   const result = await pool.query(
     `SELECT id, name, email, role, created_at, disabled_at,
             password_hash IS NOT NULL AS has_password,  -- true/false only; never send the hash itself
             google_id IS NOT NULL     AS has_google
        FROM users
-      ORDER BY id`
+      ${whereSql}
+      ORDER BY id
+      LIMIT ${perPage} OFFSET ${offset}`,
+    values
   );
-  res.json({ users: result.rows });
+  res.json({ users: result.rows, total, total_all: totalAll, page, per_page: perPage });
 });
 
 /**

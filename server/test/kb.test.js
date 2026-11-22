@@ -387,3 +387,17 @@ describe('Get help with articles', () => {
     expect((await pool.query('SELECT not_helpful_count FROM kb_articles')).rows[0].not_helpful_count).toBe(1);
   });
 });
+
+describe('the knowledge base in pages', () => {
+  it('sends one page of articles at a time, for the list and for a search', async () => {
+    for (const title of ['Outlook one', 'Outlook two', 'Outlook three']) await publishedArticle({ title });
+    const get = (query) => request(app).get(`/api/kb${query}`).set(bearer(user.token));
+    const page2 = await get('?per_page=2&page=2');
+    expect(page2.body).toMatchObject({ total: 3, page: 2, per_page: 2 });
+    expect(page2.body.articles).toHaveLength(1);
+    const search = await get('?q=outlook&per_page=2&page=2');
+    expect(search.body).toMatchObject({ total: 3, page: 2 });
+    expect(search.body.articles).toHaveLength(1);
+    expect((await get('?q=outlook&per_page=2&page=9')).body.page).toBe(2); // past the end: the last page
+  });
+});

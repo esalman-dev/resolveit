@@ -2,12 +2,14 @@
 //
 // Technicians see their own reviews only, without who wrote them or which ticket (the server
 // leaves those out). Admins and owners see everyone's, with names and ticket links, and can
-// pick one technician; the choice is kept in the address (?technician=4, or none).
+// pick one technician; the choice and the page are kept in the address (?technician=4&page=2).
+// The server sends one page of 25 at a time; the summary counts every review.
 
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { apiFetch } from '../lib/api.js'
 import EmptyState from '../components/EmptyState.jsx'
+import Pagination from '../components/Pagination.jsx'
 import RelativeTime from '../components/RelativeTime.jsx'
 import { Stars } from '../components/Stars.jsx'
 import { isAdminOrOwner } from '../lib/roles.js'
@@ -20,15 +22,22 @@ function ReviewsPage({ currentUser }) {
   usePageTitle(admin ? 'Reviews' : 'My reviews')
   const [params, setParams] = useSearchParams()
   const technician = admin ? (params.get('technician') ?? '') : ''
+  const page = params.get('page') ?? ''
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const query = technician ? `?technician_id=${encodeURIComponent(technician)}` : ''
-    apiFetch(`/api/reviews${query}`)
+    const query = new URLSearchParams({ ...(technician && { technician_id: technician }), ...(page && { page }) })
+    apiFetch(`/api/reviews?${query}`)
       .then(setData)
       .catch((err) => setError(err.message))
-  }, [technician])
+  }, [technician, page])
+
+  /** Goes to another page (a Back-button step, like turning a page). */
+  function goToPage(next) {
+    setParams(technician ? { technician, ...(next > 1 && { page: String(next) }) } : next > 1 ? { page: String(next) } : {})
+    window.scrollTo({ top: 0 })
+  }
 
   if (error) return <p className="error" role="alert">{error}</p>
   if (!data) return <p className="hint">Loading reviews…</p>
@@ -75,7 +84,7 @@ function ReviewsPage({ currentUser }) {
             ))}
           </ul>
         )}
-        {summary.count > reviews.length && <p className="hint">Showing the newest {reviews.length} of {summary.count}.</p>}
+        <Pagination page={data.page} perPage={data.per_page} total={summary.count} onPage={goToPage} />
       </div>
 
       <aside className="reviews-page__about" aria-label="About reviews">

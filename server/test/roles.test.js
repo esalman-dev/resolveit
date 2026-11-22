@@ -96,3 +96,22 @@ describe('role changes take effect immediately', () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe('GET /api/users: search, role filter and pages', () => {
+  it('filters by name or email and role, and sends one page at a time', async () => {
+    const { token } = await signUpAdmin();
+    await signUp({ name: 'Ann Lee', email: 'ann@example.com' });
+    await signUp({ name: 'Bo Diaz', email: 'bo@corp.example' });
+    const get = (query) => request(app).get(`/api/users${query}`).set(bearer(token));
+    const names = (res) => res.body.users.map((u) => u.name);
+
+    expect(names(await get('?q=ann'))).toEqual(['Ann Lee']);
+    expect(names(await get('?q=corp'))).toEqual(['Bo Diaz']); // email counts too
+    expect((await get('?role=admin')).body.users).toHaveLength(1);
+    const page2 = await get('?per_page=2&page=2');
+    expect(names(page2)).toEqual(['Bo Diaz']); // oldest first: admin, Ann, then Bo
+    expect(page2.body).toMatchObject({ total: 3, total_all: 3, page: 2, per_page: 2 });
+    expect((await get('?q=ann')).body).toMatchObject({ total: 1, total_all: 3 });
+    expect((await get('?role=boss')).status).toBe(400);
+  });
+});

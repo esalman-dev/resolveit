@@ -138,3 +138,13 @@ describe('seeing reviews', () => {
     expect((await reviews(user.token)).status).toBe(403);
   });
 });
+
+describe('reviews in pages', () => {
+  it('sends one page of reviews at a time, while the summary counts them all', async () => {
+    const { user, sam, admin } = await people();
+    for (const stars of [5, 4, 3]) await review(user.token, (await resolvedTicket(user, sam)).id, { stars });
+    const res = await reviews(admin.token, '?per_page=2&page=2');
+    expect(res.body.reviews.map((r) => r.stars)).toEqual([5]); // newest first: 3, 4, then 5
+    expect(res.body).toMatchObject({ page: 2, per_page: 2, summary: { count: 3 } });
+  });
+});

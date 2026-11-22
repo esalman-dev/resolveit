@@ -11,9 +11,9 @@ import pool from '../db/index.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ADMINS, STAFF } from '../roles.js';
 import { RATING_SELECT } from './tickets.js';
+import { clampPage, readPaging } from '../services/paging.js';
 
 const router = Router();
-const LIST_LIMIT = 200; // newest first; the summary always counts every review
 
 router.use(requireAuth, requireRole(...STAFF));
 
@@ -29,10 +29,11 @@ function whose(technician) {
 
 /**
  * GET /api/reviews
- * Reviews, newest first (at most 200), and a summary of all of them: how many, the average, and
+ * One page of reviews, newest first, and a summary of all of them: how many, the average, and
  * how many of each star.
  * Access: staff. Technicians always get their own, without names or ticket numbers.
  * Query: technician_id (admins and owners only): a technician's id, or 'none'; leave out for all.
+ *   page, per_page (25 by default).
  */
 router.get('/', async (req, res) => {
   const admin = ADMINS.includes(req.user.role);
@@ -59,12 +60,14 @@ router.get('/', async (req, res) => {
       WHERE ${condition}`,
     params
   );
+  const s = summary.rows[0];
+  const { page: asked, perPage } = readPaging(req.query);
+  const { page, offset } = clampPage(asked, perPage, s.count);
   const list = await pool.query(
-    `${RATING_SELECT} WHERE ${condition} ORDER BY r.created_at DESC LIMIT ${LIST_LIMIT}`,
+    `${RATING_SELECT} WHERE ${condition} ORDER BY r.created_at DESC, r.ticket_id DESC LIMIT ${perPage} OFFSET ${offset}`,
     params
   );
 
-  const s = summary.rows[0];
   // Security: for technicians, who wrote it and which ticket are removed on the server, so they
   // never reach the browser at all.
   const reviews = list.rows.map((r) =>
@@ -75,6 +78,8 @@ router.get('/', async (req, res) => {
   res.json({
     summary: { count: s.count, average: s.average, stars: { 5: s.five, 4: s.four, 3: s.three, 2: s.two, 1: s.one } },
     reviews,
+    page,
+    per_page: perPage,
     // Admins also get who can be picked in the filter: every technician who has a review.
     technicians: admin
       ? (

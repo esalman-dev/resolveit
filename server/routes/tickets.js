@@ -24,6 +24,7 @@ import { autoAssign } from '../services/autoAssign.js';
 import { notify } from '../services/notifications.js';
 import { checkForOutage } from '../services/outages.js';
 import { loadChecklist, newHireTitle, stepsLeft } from '../services/newHire.js';
+import { clampPage, containsPattern, readPaging } from '../services/paging.js';
 
 const router = Router();
 
@@ -294,17 +295,103 @@ router.post('/new-hire', requireRole(...STAFF), async (req, res) => {
 });
 
 /**
+ * When a ticket's next target is due: the reply target until someone replies, then the fix
+ * target. NULL once resolved, or with no target. Matches nextTarget in client/src/lib/sla.js.
+ * Used on the list query below, where `t` is TICKET_SELECT's result.
+ */
+const NEXT_DUE = `CASE WHEN t.status = 'resolved' THEN NULL
+                       WHEN t.first_response_at IS NULL THEN t.response_due_at
+                       ELSE t.resolve_due_at END`;
+
+/**
  * GET /api/tickets
- * The ticket list, newest first. Staff see every ticket; users see only their own.
+ * One page of the ticket list, with the filters applied by the database. Staff see every
+ * ticket (or with scope=mine, the ones they opened); users see only their own.
+ * Also sends what the screen shows around the list: `total` (matching the filters), `counts`
+ * (the count cards, for the whole scope, ignoring filters) and `categories` (the names used by
+ * tickets in the scope, for the Category filter).
  * Access: anyone logged in.
+ * Query (all optional): scope=mine, q (title words or a #number), status, priority, category
+ *   (a name, or "none"), mine=1 (assigned to me), unassigned=1, overdue=1, sort=urgent,
+ *   page, per_page (25 by default, at most 100)
  */
 router.get('/', async (req, res) => {
-  const result = isStaff(req.user)
-    ? await pool.query(`${TICKET_SELECT} ORDER BY t.created_at DESC, t.id DESC`)
-    : await pool.query(`${TICKET_SELECT} WHERE t.created_by = $1 ORDER BY t.created_at DESC, t.id DESC`, [
-        req.user.id,
-      ]);
-  res.json({ tickets: result.rows });
+  const query = req.query;
+  if (query.status && !STATUSES.includes(query.status)) return res.status(400).json({ error: 'Invalid status' });
+  if (query.priority && !PRIORITIES.includes(query.priority)) return res.status(400).json({ error: 'Invalid priority' });
+
+  const everyone = isStaff(req.user) && query.scope !== 'mine';
+  const q = typeof query.q === 'string' ? query.q.trim().slice(0, 200) : '';
+
+  /**
+   * The WHERE conditions for one query, adding their values to that query's own list.
+   * Why per query: PostgreSQL refuses a value the query text never uses, and the counts don't
+   * use the filters.
+   */
+  function conditions(values, { withFilters }) {
+    const value = (v) => `$${values.push(v)}`;
+    const where = everyone ? [] : [`t.created_by = ${value(req.user.id)}`]; // the scope: whose tickets
+    if (!withFilters) return where;
+    if (q) {
+      // "12" or "#12" can be a ticket number as well as words in a title.
+      const number = /^#?\d{1,9}$/.test(q) ? Number(q.replace('#', '')) : null;
+      const title = `t.title ILIKE ${value(containsPattern(q))}`;
+      where.push(number ? `(t.id = ${value(number)} OR ${title})` : title);
+    }
+    if (query.status) where.push(`t.status = ${value(query.status)}`);
+    if (query.priority) where.push(`t.priority = ${value(query.priority)}`);
+    if (query.category === 'none') where.push('t.category_id IS NULL');
+    else if (query.category) where.push(`t.category_name = ${value(String(query.category))}`);
+    if (query.mine === '1') where.push(`t.assigned_to = ${value(req.user.id)}`);
+    if (query.unassigned === '1') where.push("t.assigned_to IS NULL AND t.status <> 'resolved'");
+    if (query.overdue === '1') where.push(`${NEXT_DUE} < NOW()`);
+    return where;
+  }
+  const whereSql = (where) => (where.length ? `WHERE ${where.join(' AND ')}` : '');
+
+  // Why a subquery: the list's computed columns (category_name, the due times) can then be
+  // filtered on like ordinary columns. PostgreSQL merges it into one query, so it isn't slower.
+  const from = `FROM (${TICKET_SELECT}) t`;
+  const order = query.sort === 'urgent'
+    ? `ORDER BY ${NEXT_DUE} ASC NULLS LAST, t.created_at DESC, t.id DESC` // overdue first, then soonest due, resolved last
+    : 'ORDER BY t.created_at DESC, t.id DESC';
+
+  const listValues = [];
+  const listWhere = whereSql(conditions(listValues, { withFilters: true }));
+  const countValues = [];
+  const countWhere = whereSql(conditions(countValues, { withFilters: false }));
+  const me = `$${countValues.push(req.user.id)}`; // the "Assigned to me" card
+  const categoryValues = [];
+  const categoryWhere = whereSql([...conditions(categoryValues, { withFilters: false }), 't.category_name IS NOT NULL']);
+
+  const [counted, counts, categories] = await Promise.all([
+    pool.query(`SELECT COUNT(*)::int AS total ${from} ${listWhere}`, listValues),
+    pool.query(
+      `SELECT COUNT(*)::int AS "all",
+              COUNT(*) FILTER (WHERE t.status = 'open')::int AS open,
+              COUNT(*) FILTER (WHERE t.status = 'in_progress')::int AS in_progress,
+              COUNT(*) FILTER (WHERE t.status = 'resolved')::int AS resolved,
+              COUNT(*) FILTER (WHERE t.assigned_to = ${me})::int AS mine,
+              COUNT(*) FILTER (WHERE t.assigned_to IS NULL AND t.status <> 'resolved')::int AS unassigned,
+              COUNT(*) FILTER (WHERE ${NEXT_DUE} < NOW())::int AS overdue
+         ${from} ${countWhere}`,
+      countValues
+    ),
+    pool.query(`SELECT DISTINCT t.category_name AS name ${from} ${categoryWhere} ORDER BY 1`, categoryValues),
+  ]);
+  const total = counted.rows[0].total;
+  const { page: asked, perPage } = readPaging(query);
+  const { page, offset } = clampPage(asked, perPage, total);
+  const rows = await pool.query(`SELECT t.* ${from} ${listWhere} ${order} LIMIT ${perPage} OFFSET ${offset}`, listValues);
+
+  res.json({
+    tickets: rows.rows,
+    total,
+    page,
+    per_page: perPage,
+    counts: counts.rows[0],
+    categories: categories.rows.map((c) => c.name),
+  });
 });
 
 /**

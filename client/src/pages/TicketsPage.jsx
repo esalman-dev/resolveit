@@ -2,8 +2,9 @@
 //   scope 'mine' (/my-tickets, everyone): "My tickets", the tickets you opened.
 //   scope 'all'  (/tickets, staff only):  "Tickets", every ticket, the work queue.
 //
-// Search and filters run in the browser on the full list. They're kept in the address
-// (e.g. /tickets?status=open), so a refresh keeps them and a filtered view can be shared.
+// The server searches, filters, sorts and counts, and sends one page of 25 at a time, so the
+// list stays quick with thousands of tickets. The filters and the page are kept in the address
+// (e.g. /tickets?status=open&page=2), so a refresh keeps them and a filtered view can be shared.
 // The staff queue also gets count cards across the top (Open, In progress, Resolved, Assigned
 // to me, Unassigned, Overdue) that double as one-click filters, like the AI help screen, a Due
 // column (target times), and a Sort choice: newest first, or most urgent.
@@ -15,11 +16,12 @@ import { PriorityBadge, StatusBadge } from '../components/Badges.jsx'
 import CountCards from '../components/CountCards.jsx'
 import DueBadge from '../components/DueBadge.jsx'
 import EmptyState from '../components/EmptyState.jsx'
+import Pagination from '../components/Pagination.jsx'
 import RelativeTime from '../components/RelativeTime.jsx'
 import AutoAssignSwitch from '../components/AutoAssignSwitch.jsx'
 import OutageCards from '../components/OutageCards.jsx'
+import { showingText } from '../lib/paging.js'
 import { isAdminOrOwner, isStaff } from '../lib/roles.js'
-import { byUrgency, nextTarget } from '../lib/sla.js'
 import { PRIORITIES, STATUSES, priorityLabel, statusLabel } from '../lib/ticketLabels.js'
 import { usePageTitle } from '../lib/usePageTitle.js'
 import { Shortcuts } from '../lib/shortcuts.js'
@@ -58,31 +60,52 @@ function TicketsPage({ currentUser, scope }) {
   const searchRef = useRef(null) // "/" jumps here
   const { outages } = useOutletContext() // open outages, from the app shell
   const [params, setParams] = useSearchParams()
-  const [tickets, setTickets] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState(null) // { tickets, total, page, per_page, counts, categories }
   const [error, setError] = useState('')
+  const q = params.get('q') ?? '' // the search in the address
+  const [typed, setTyped] = useState(q) // the search box; the address follows after a pause
+
+  // What to ask the server: the address's filters, sort and page, plus whose tickets.
+  // Note: My tickets for staff asks for scope=mine; for users the server only ever sends their own.
+  const request = new URLSearchParams(params)
+  if (!queue && staff) request.set('scope', 'mine')
+  const requestKey = request.toString()
 
   const fetchTickets = useCallback(() => {
-    apiFetch('/api/tickets')
-      // Staff get every ticket from the server; My tickets keeps only the ones you opened.
-      .then((data) => setTickets(queue ? data.tickets : data.tickets.filter((t) => t.created_by === currentUser.id)))
+    apiFetch(`/api/tickets?${requestKey}`)
+      .then((d) => {
+        setData(d)
+        setError('')
+      })
       .catch(() => setError("Couldn't load tickets."))
-      .finally(() => setLoading(false))
-  }, [queue, currentUser.id])
+  }, [requestKey])
 
   useEffect(() => {
     fetchTickets()
   }, [fetchTickets])
 
-  /** The "Try again" button: back to the loading state, then fetch again. */
+  // Why the pause: searching on every key press would ask the server once per letter.
+  // Note: only when the text differs from the address, or each update would start another.
+  useEffect(() => {
+    if (typed.trim() === q) return
+    const timer = setTimeout(() => setFilter('q', typed.trim()), 300)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typed])
+
+  // The other way round: when the address's search changes by itself (Back, a link), the box
+  // shows it.
+  useEffect(() => {
+    setTyped((current) => (current.trim() === q ? current : q))
+  }, [q])
+
+  /** The "Try again" button: fetch again. */
   function retry() {
-    setLoading(true)
     setError('')
     fetchTickets()
   }
 
   // The current filters, read from the address.
-  const q = params.get('q') ?? ''
   const status = params.get('status') ?? ''
   const priority = params.get('priority') ?? ''
   const category = params.get('category') ?? ''
@@ -94,6 +117,7 @@ function TicketsPage({ currentUser, scope }) {
 
   /**
    * Changes one filter in the address. An empty value removes it, so the address stays short.
+   * Any change goes back to page 1: page 3 of the old results means nothing for the new ones.
    * Why `replace`: typing in the search box would otherwise add a Back-button step per letter.
    */
   function setFilter(name, value) {
@@ -102,41 +126,39 @@ function TicketsPage({ currentUser, scope }) {
         const next = new URLSearchParams(current)
         if (value) next.set(name, value)
         else next.delete(name)
+        next.delete('page')
         return next
       },
       { replace: true }
     )
   }
 
-  // The Category dropdown lists the categories that appear in the tickets, archived ones
-  // included, so old tickets can still be found.
-  const categories = [...new Set(tickets.map((t) => t.category_name).filter(Boolean))].sort()
-
-  const shown = tickets.filter(
-    (t) =>
-      matchesSearch(t, q) &&
-      (!status || t.status === status) &&
-      (!priority || t.priority === priority) &&
-      (!category || (category === 'none' ? !t.category_name : t.category_name === category)) &&
-      (!mine || t.assigned_to === currentUser.id) &&
-      (!unassigned || isUnassigned(t)) &&
-      (!overdue || isOverdue(t))
-  )
-  // The server sends newest first; "Most urgent" puts overdue tickets first, then the soonest due.
-  if (sort === 'urgent') shown.sort((a, b) => byUrgency(a, b))
+  /** Goes to another page. Unlike a filter, this is a Back-button step, like turning a page. */
+  function goToPage(page) {
+    setParams((current) => {
+      const next = new URLSearchParams(current)
+      if (page > 1) next.set('page', String(page))
+      else next.delete('page')
+      return next
+    })
+    window.scrollTo({ top: 0 })
+  }
 
   // --- Staff count cards ---
   // Each card is a one-click filter. Choosing one replaces the other card filters (status,
   // "Assigned to me", "Unassigned"); search, priority and category stay as they are.
-  const statusCount = (value) => tickets.filter((t) => t.status === value).length
-  const cards = [
-    { value: 'open', label: statusLabel('open'), count: statusCount('open'), tone: 'blue' },
-    { value: 'in_progress', label: statusLabel('in_progress'), count: statusCount('in_progress'), tone: 'amber' },
-    { value: 'resolved', label: statusLabel('resolved'), count: statusCount('resolved'), tone: 'green' },
-    { value: 'mine', label: 'Assigned to me', count: tickets.filter((t) => t.assigned_to === currentUser.id).length, tone: 'indigo' },
-    { value: 'unassigned', label: 'Unassigned', count: tickets.filter(isUnassigned).length, tone: 'gray' },
-    { value: 'overdue', label: 'Overdue', count: tickets.filter(isOverdue).length, tone: 'red' },
-  ]
+  // The server counts the whole queue, so the numbers don't change with the filters or page.
+  const counts = data?.counts
+  const cards = counts
+    ? [
+        { value: 'open', label: statusLabel('open'), count: counts.open, tone: 'blue' },
+        { value: 'in_progress', label: statusLabel('in_progress'), count: counts.in_progress, tone: 'amber' },
+        { value: 'resolved', label: statusLabel('resolved'), count: counts.resolved, tone: 'green' },
+        { value: 'mine', label: 'Assigned to me', count: counts.mine, tone: 'indigo' },
+        { value: 'unassigned', label: 'Unassigned', count: counts.unassigned, tone: 'gray' },
+        { value: 'overdue', label: 'Overdue', count: counts.overdue, tone: 'red' },
+      ]
+    : []
   const onlyOne = [status, mine, unassigned, overdue].filter(Boolean).length === 1
   const selectedCard = !onlyOne ? '' : status || (mine ? 'mine' : unassigned ? 'unassigned' : 'overdue')
 
@@ -144,7 +166,7 @@ function TicketsPage({ currentUser, scope }) {
     setParams(
       (current) => {
         const next = new URLSearchParams(current)
-        for (const name of ['status', 'mine', 'unassigned', 'overdue']) next.delete(name)
+        for (const name of ['status', 'mine', 'unassigned', 'overdue', 'page']) next.delete(name)
         if (value === 'mine' || value === 'unassigned' || value === 'overdue') next.set(value, '1')
         else if (value) next.set('status', value)
         return next
@@ -153,7 +175,6 @@ function TicketsPage({ currentUser, scope }) {
     )
   }
 
-  if (loading) return <p className="hint">Loading tickets…</p>
   if (error) {
     return (
       <p className="error" role="alert">
@@ -161,7 +182,12 @@ function TicketsPage({ currentUser, scope }) {
       </p>
     )
   }
-  if (tickets.length === 0) {
+  if (!data) return <p className="hint">Loading tickets…</p>
+  const shown = data.tickets
+  // The Category dropdown lists every category used by a ticket you can see, archived ones
+  // included, so old tickets can still be found. A category chosen from a link is kept too.
+  const categories = category && category !== 'none' && !data.categories.includes(category) ? [...data.categories, category] : data.categories
+  if (counts.all === 0) {
     // An empty staff queue still offers New hire, the one kind of ticket staff start themselves.
     return queue
       ? <EmptyState message="No tickets yet." actionLabel="New hire" actionTo="/tickets/new-hire" />
@@ -196,8 +222,8 @@ function TicketsPage({ currentUser, scope }) {
           <input
             ref={searchRef}
             type="search"
-            value={q}
-            onChange={(e) => setFilter('q', e.target.value)}
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
             placeholder="Title or #number"
           />
         </label>
@@ -230,7 +256,10 @@ function TicketsPage({ currentUser, scope }) {
           <button
             type="button"
             className="link tickets-page__clear"
-            onClick={() => setParams(sort === 'urgent' ? { sort } : {}, { replace: true })}
+            onClick={() => {
+              setTyped('')
+              setParams(sort === 'urgent' ? { sort } : {}, { replace: true })
+            }}
           >
             Clear filters
           </button>
@@ -239,8 +268,8 @@ function TicketsPage({ currentUser, scope }) {
 
       {/* aria-live: screen readers announce the new count as filters change. */}
       <p className="hint tickets-page__count" aria-live="polite">
-        {filtering ? `Showing ${shown.length} of ` : ''}
-        {tickets.length} {tickets.length === 1 ? 'ticket' : 'tickets'}
+        {showingText(data.page, data.per_page, data.total, filtering ? ['matching ticket', 'matching tickets'] : ['ticket', 'tickets'])}
+        {filtering && ` (${counts.all.toLocaleString()} in all)`}
       </p>
 
       {shown.length === 0 ? (
@@ -285,6 +314,7 @@ function TicketsPage({ currentUser, scope }) {
           </table>
         </div>
       )}
+      <Pagination page={data.page} perPage={data.per_page} total={data.total} onPage={goToPage} />
     </div>
   )
 }
@@ -300,20 +330,6 @@ function FilterSelect({ label, value, onChange, children }) {
       </select>
     </label>
   )
-}
-
-/** Nobody assigned, and still needs doing (a resolved ticket with nobody on it isn't work to pick up). */
-const isUnassigned = (ticket) => !ticket.assigned_to && ticket.status !== 'resolved'
-
-/** Past its reply or fix target, and not resolved yet. */
-const isOverdue = (ticket) => nextTarget(ticket)?.state === 'overdue'
-
-/** True if the search text is in the title, or is the ticket's number ("12" or "#12"). */
-function matchesSearch(ticket, q) {
-  const text = q.trim().toLowerCase()
-  if (!text) return true
-  if (text.replace(/^#/, '') === String(ticket.id)) return true
-  return ticket.title.toLowerCase().includes(text)
 }
 
 export default TicketsPage

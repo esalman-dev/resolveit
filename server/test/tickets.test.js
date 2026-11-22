@@ -155,6 +155,79 @@ describe('GET /api/tickets', () => {
   });
 });
 
+describe('GET /api/tickets: pages, filters and counts', () => {
+  const list = (token, query = '') => request(app).get(`/api/tickets${query}`).set(bearer(token));
+  const titles = (res) => res.body.tickets.map((t) => t.title);
+
+  /** Three tickets from Alice, oldest first: A, B, C. */
+  async function threeTickets() {
+    const alice = await signUp({ email: 'alice@example.com' });
+    const staff = await signUpAs('technician', 'tech@example.com');
+    const ids = [];
+    for (const title of ['A printer', 'B wifi', 'C email']) ids.push((await createTicket(alice.token, { title })).id);
+    // Spread the creation times, so "newest first" doesn't depend on the clock.
+    for (const [i, id] of ids.entries()) {
+      await pool.query("UPDATE tickets SET created_at = NOW() - make_interval(mins => $1) WHERE id = $2", [30 - i * 10, id]);
+    }
+    return { alice, staff, ids };
+  }
+
+  it('sends one page at a time, with the total and the page shown', async () => {
+    const { staff } = await threeTickets();
+    const first = await list(staff.token, '?per_page=2');
+    expect(titles(first)).toEqual(['C email', 'B wifi']);
+    expect(first.body).toMatchObject({ total: 3, page: 1, per_page: 2 });
+    expect(titles(await list(staff.token, '?per_page=2&page=2'))).toEqual(['A printer']);
+    // A page past the end shows the last page.
+    expect((await list(staff.token, '?per_page=2&page=9')).body).toMatchObject({ page: 2, total: 3 });
+  });
+
+  it('filters by words or a #number, status, priority, category and assignee', async () => {
+    const { staff, ids } = await threeTickets();
+    const vpn = await addCategory('VPN');
+    await pool.query("UPDATE tickets SET status = 'in_progress', priority = 'high', category_id = $1, assigned_to = $2 WHERE id = $3", [vpn, staff.user.id, ids[1]]);
+    expect(titles(await list(staff.token, '?q=WIFI'))).toEqual(['B wifi']);
+    expect(titles(await list(staff.token, `?q=%23${ids[0]}`))).toEqual(['A printer']);
+    expect(titles(await list(staff.token, '?q=100%25'))).toEqual([]); // % is a character, not "anything"
+    expect(titles(await list(staff.token, '?status=in_progress'))).toEqual(['B wifi']);
+    expect(titles(await list(staff.token, '?priority=high'))).toEqual(['B wifi']);
+    expect(titles(await list(staff.token, '?category=VPN'))).toEqual(['B wifi']);
+    expect(titles(await list(staff.token, '?category=none'))).toEqual(['C email', 'A printer']);
+    expect(titles(await list(staff.token, '?mine=1'))).toEqual(['B wifi']);
+    expect(titles(await list(staff.token, '?unassigned=1'))).toEqual(['C email', 'A printer']);
+    expect(titles(await list(staff.token, '?status=in_progress&priority=low'))).toEqual([]);
+    expect((await list(staff.token, '?status=lost')).status).toBe(400);
+  });
+
+  it('finds overdue tickets and sorts the most urgent first', async () => {
+    const { staff, ids } = await threeTickets();
+    // A: urgent and two hours old, so past its 1-hour reply target. C: resolved.
+    await pool.query("UPDATE tickets SET priority = 'urgent', created_at = NOW() - INTERVAL '2 hours' WHERE id = $1", [ids[0]]);
+    await pool.query("UPDATE tickets SET status = 'resolved', resolved_at = NOW() WHERE id = $1", [ids[2]]);
+    expect(titles(await list(staff.token, '?overdue=1'))).toEqual(['A printer']);
+    expect(titles(await list(staff.token, '?sort=urgent'))).toEqual(['A printer', 'B wifi', 'C email']);
+  });
+
+  it('counts the whole queue whatever the filters, and lists the categories used', async () => {
+    const { staff, ids } = await threeTickets();
+    const vpn = await addCategory('VPN');
+    await pool.query("UPDATE tickets SET status = 'resolved', resolved_at = NOW(), category_id = $1 WHERE id = $2", [vpn, ids[0]]);
+    await pool.query('UPDATE tickets SET assigned_to = $1 WHERE id = $2', [staff.user.id, ids[1]]);
+    const res = await list(staff.token, '?status=open&per_page=1');
+    expect(res.body.counts).toEqual({ all: 3, open: 2, in_progress: 0, resolved: 1, mine: 1, unassigned: 1, overdue: 0 });
+    expect(res.body.categories).toEqual(['VPN']);
+  });
+
+  it('keeps users to their own tickets, and gives staff theirs with scope=mine', async () => {
+    const { alice, staff } = await threeTickets();
+    await createTicket(staff.token, { title: 'Staff own' });
+    expect((await list(alice.token)).body).toMatchObject({ total: 3, counts: { all: 3 } });
+    expect(titles(await list(alice.token, '?q=Staff'))).toEqual([]);
+    expect(titles(await list(staff.token, '?scope=mine'))).toEqual(['Staff own']);
+    expect((await list(staff.token)).body.total).toBe(4);
+  });
+});
+
 describe('GET /api/tickets/:id', () => {
   it('lets the creator view their ticket', async () => {
     const { token } = await signUp();

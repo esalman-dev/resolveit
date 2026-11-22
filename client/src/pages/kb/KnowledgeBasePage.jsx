@@ -2,13 +2,14 @@
 // drafts and archived articles, write one by hand or with the AI ("Write with AI"), and can ask
 // the AI which common problems still have no article ("Missing articles").
 //
-// The search words, category and tab are kept in the address (/kb?q=outlook, /kb?category=3,
-// /kb?tab=draft).
+// The search words, category, tab and page are kept in the address (/kb?q=outlook,
+// /kb?category=3, /kb?tab=draft&page=2). The server sends one page of 25 at a time.
 
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { apiFetch } from '../../lib/api.js'
 import EmptyState from '../../components/EmptyState.jsx'
+import Pagination from '../../components/Pagination.jsx'
 import RelativeTime from '../../components/RelativeTime.jsx'
 import { isStaff } from '../../lib/roles.js'
 import { usePageTitle } from '../../lib/usePageTitle.js'
@@ -30,6 +31,7 @@ function KnowledgeBasePage({ currentUser }) {
   const tab = staff && TABS.some((t) => t.value === params.get('tab')) ? params.get('tab') : 'published'
   const q = params.get('q') ?? ''
   const category = params.get('category') ?? ''
+  const page = params.get('page') ?? ''
   const [typed, setTyped] = useState(q) // the box updates the address after a short pause
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
@@ -45,6 +47,7 @@ function KnowledgeBasePage({ currentUser }) {
           const next = new URLSearchParams(current)
           if (typed.trim()) next.set('q', typed.trim())
           else next.delete('q')
+          next.delete('page') // new words, new results: back to page 1
           return next
         },
         { replace: true }
@@ -57,26 +60,38 @@ function KnowledgeBasePage({ currentUser }) {
     if (tab === 'missing') return // that tab loads only when asked (it's an AI call)
     let cancelled = false
     const published = tab === 'published'
-    const query = new URLSearchParams({ status: tab, ...(q && published ? { q } : {}), ...(category && published ? { category } : {}) })
+    const query = new URLSearchParams({ status: tab, ...(q && published ? { q } : {}), ...(category && published ? { category } : {}), ...(page ? { page } : {}) })
     apiFetch(`/api/kb?${query}`)
       .then((d) => !cancelled && setData(d))
       .catch((err) => !cancelled && setError(err.message))
     return () => {
       cancelled = true
     }
-  }, [tab, q, category])
+  }, [tab, q, category, page])
 
-  /** Sets one value in the address (or removes it when empty), keeping the others. */
+  /** Sets one value in the address (or removes it when empty), keeping the others, and goes back to page 1. */
   function setParam(name, value) {
     setParams(
       (current) => {
         const next = new URLSearchParams(current)
         if (value) next.set(name, value)
         else next.delete(name)
+        next.delete('page')
         return next
       },
       { replace: true }
     )
+  }
+
+  /** Goes to another page (a Back-button step, like turning a page). */
+  function goToPage(number) {
+    setParams((current) => {
+      const next = new URLSearchParams(current)
+      if (number > 1) next.set('page', String(number))
+      else next.delete('page')
+      return next
+    })
+    window.scrollTo({ top: 0 })
   }
 
   /**
@@ -186,6 +201,9 @@ function KnowledgeBasePage({ currentUser }) {
             </li>
           ))}
         </ul>
+      )}
+      {tab !== 'missing' && data?.total > 0 && (
+        <Pagination page={data.page} perPage={data.per_page} total={data.total} onPage={goToPage} />
       )}
     </div>
   )

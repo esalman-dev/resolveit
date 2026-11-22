@@ -19,6 +19,7 @@ import { ADMINS, ROLES, STAFF } from '../roles.js';
 import { draftArticle, findMissingArticles, isAiConfigured, pickArticles, writeArticle, AiUnavailableError } from '../services/ai.js';
 import { findBlockedTopic, MAX_STEPS } from '../services/guardrails.js';
 import { checkText, parseId } from './tickets.js';
+import { clampPage, readPaging } from '../services/paging.js';
 
 const router = Router();
 
@@ -118,9 +119,12 @@ function checkFields(body, { partial = false } = {}) {
  * Best first: most stems matched, then where they matched (ts_rank weighs a word in the title
  * or "Also called" above one in the steps), then the most "fixed it" votes.
  *
- * @returns {Promise<object[]>} articles with `matched` (stems found) and `total` (stems asked)
+ * The knowledge base page also passes `offset` (to skip earlier pages) and `categoryId`.
+ *
+ * @returns {Promise<object[]>} articles with `matched` (stems found), `total` (stems asked) and
+ *   `found` (how many articles match in all, for the page count)
  */
-export async function searchArticles(text, { limit = 3, minMatched = 2, minShare = 0.25 } = {}) {
+export async function searchArticles(text, { limit = 3, minMatched = 2, minShare = 0.25, offset = 0, categoryId = null } = {}) {
   const result = await pool.query(
     `WITH q AS (
        SELECT ARRAY(SELECT DISTINCT unnest(tsvector_to_array(to_tsvector('english', $1)))) AS stems
@@ -134,13 +138,14 @@ export async function searchArticles(text, { limit = 3, minMatched = 2, minShare
          FROM kb_articles a, q
         WHERE a.status = 'published'
      )
-     SELECT art.*, scored.matched, scored.total
+     SELECT art.*, scored.matched, scored.total, COUNT(*) OVER ()::int AS found
        FROM scored
        JOIN (${ARTICLE_SELECT}) art ON art.id = scored.id
       WHERE scored.matched >= $2::int AND scored.matched >= scored.total * $3::float
+        AND ($5::int IS NULL OR art.category_id = $5)
       ORDER BY scored.matched DESC, scored.rank DESC, art.helpful_count DESC, art.id
-      LIMIT $4`,
-    [String(text ?? ''), minMatched, minShare, limit]
+      LIMIT $4 OFFSET $6`,
+    [String(text ?? ''), minMatched, minShare, limit, categoryId, offset]
   );
   return result.rows;
 }
@@ -279,12 +284,12 @@ router.use(requireAuth, requireRole(...ROLES));
 
 /**
  * GET /api/kb
- * Articles, newest first, or the best matches for `q`. Published lists also carry each
- * category's article count, for the category buttons.
+ * One page of articles, newest first, or the best matches for `q`, with `total` (how many in
+ * all). Published lists also carry each category's article count, for the category buttons.
  * Access: anyone logged in. Users only ever get published articles.
  * Query: q (search words), status (staff: draft, published, archived; default published),
- *   category (a category id: published articles in it), source_ticket (staff: the article
- *   drafted from that ticket, any status)
+ *   category (a category id: published articles in it), page, per_page, source_ticket (staff:
+ *   the article drafted from that ticket, any status)
  */
 router.get('/', async (req, res) => {
   const staff = isStaff(req.user);
@@ -314,21 +319,25 @@ router.get('/', async (req, res) => {
         ).rows
       : undefined;
 
+  const { page: asked, perPage } = readPaging(req.query);
+  let total;
   let articles;
   if (q && status === 'published') {
     // A short search is a few words, so one matching word is enough here (unlike Get help).
-    articles = (await searchArticles(q, { limit: 50, minMatched: 1, minShare: 0 })).filter((a) => !categoryId || a.category_id === categoryId);
+    const search = { minMatched: 1, minShare: 0, categoryId: categoryId ?? null };
+    total = (await searchArticles(q, { ...search, limit: 1 }))[0]?.found ?? 0;
+    const { offset } = clampPage(asked, perPage, total);
+    articles = await searchArticles(q, { ...search, limit: perPage, offset });
   } else {
     const params = [status];
     if (status === 'published' && categoryId) params.push(categoryId);
-    articles = (
-      await pool.query(
-        `${ARTICLE_SELECT} WHERE a.status = $1 ${params.length > 1 ? 'AND a.category_id = $2' : ''} ORDER BY a.updated_at DESC LIMIT 200`,
-        params
-      )
-    ).rows;
+    const where = `WHERE a.status = $1 ${params.length > 1 ? 'AND a.category_id = $2' : ''}`;
+    total = (await pool.query(`SELECT COUNT(*)::int AS n FROM kb_articles a ${where}`, params)).rows[0].n;
+    const { offset } = clampPage(asked, perPage, total);
+    articles = (await pool.query(`${ARTICLE_SELECT} ${where} ORDER BY a.updated_at DESC, a.id DESC LIMIT ${perPage} OFFSET ${offset}`, params)).rows;
   }
-  res.json({ articles, counts, categories });
+  const { page } = clampPage(asked, perPage, total);
+  res.json({ articles, total, page, per_page: perPage, counts, categories });
 });
 
 /**

@@ -4,13 +4,16 @@
 // an "Are you sure?" box, plus the account history (who changed what, and when).
 //
 // A search box (name or email) and a Role filter narrow the list. Like the ticket list, they're
-// kept in the address (e.g. /admin/users?role=technician), so a refresh keeps them.
+// kept in the address (e.g. /admin/users?role=technician&page=2), so a refresh keeps them, and
+// the server sends one page of 25 at a time.
 
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { apiFetch } from '../lib/api.js'
 import { ROLES, canManage, grantableRoles } from '../lib/roles.js'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
+import Pagination from '../components/Pagination.jsx'
+import { showingText } from '../lib/paging.js'
 import { usePageTitle } from '../lib/usePageTitle.js'
 import './UsersPage.css'
 
@@ -23,6 +26,7 @@ import './UsersPage.css'
 function UsersPage({ currentUser }) {
   usePageTitle('Users')
   const [users, setUsers] = useState([])
+  const [listInfo, setListInfo] = useState(null) // { total, total_all, page, per_page }
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -38,11 +42,67 @@ function UsersPage({ currentUser }) {
     []
   )
 
+  // The search and filters from the address, and the box (the address follows after a pause).
+  const q = params.get('q') ?? ''
+  const roleFilter = params.get('role') ?? ''
+  const filtering = Boolean(q || roleFilter)
+  const [typed, setTyped] = useState(q)
+  const requestKey = params.toString()
+
   useEffect(() => {
-    Promise.all([apiFetch('/api/users').then((data) => setUsers(data.users)), loadHistory()])
+    loadHistory().catch((err) => setError(err.message))
+  }, [loadHistory])
+
+  useEffect(() => {
+    apiFetch(`/api/users?${requestKey}`)
+      .then(({ users: list, ...info }) => {
+        setUsers(list)
+        setListInfo(info)
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false))
-  }, [loadHistory])
+  }, [requestKey])
+
+  // Why the pause: searching on every key press would ask the server once per letter.
+  useEffect(() => {
+    if (typed.trim() === q) return
+    const timer = setTimeout(() => setFilter('q', typed.trim()), 300)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typed])
+
+  // When the address's search changes by itself (Back, a link), the box shows it.
+  useEffect(() => {
+    setTyped((current) => (current.trim() === q ? current : q))
+  }, [q])
+
+  /**
+   * Changes one filter in the address; an empty value removes it, and it goes back to page 1.
+   * `replace` so typing doesn't add Back-button steps.
+   */
+  function setFilter(name, value) {
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (value) next.set(name, value)
+        else next.delete(name)
+        next.delete('page')
+        return next
+      },
+      { replace: true }
+    )
+  }
+
+  /** Goes to another page (a Back-button step, like turning a page). */
+  function goToPage(page) {
+    setParams((current) => {
+      const next = new URLSearchParams(current)
+      if (page > 1) next.set('page', String(page))
+      else next.delete('page')
+      return next
+    })
+    window.scrollTo({ top: 0 })
+  }
 
   /**
    * Step 1: picking a role or clicking Disable doesn't save anything; it opens the confirm box.
@@ -81,33 +141,10 @@ function UsersPage({ currentUser }) {
     return null
   }
 
-  if (loading) return <p>Loading users…</p>
+  if (loading || !listInfo) return <p>Loading users…</p>
 
   const options = grantableRoles(currentUser.role) // e.g. an admin may give: user, technician
 
-  // --- Search and filter ---
-  const q = params.get('q') ?? ''
-  const roleFilter = params.get('role') ?? ''
-  const filtering = Boolean(q || roleFilter)
-  const text = q.trim().toLowerCase()
-  const shown = users.filter(
-    (u) =>
-      (!text || u.name.toLowerCase().includes(text) || u.email.toLowerCase().includes(text)) &&
-      (!roleFilter || u.role === roleFilter)
-  )
-
-  /** Changes one filter in the address; `replace` so typing doesn't add Back-button steps. */
-  function setFilter(name, value) {
-    setParams(
-      (current) => {
-        const next = new URLSearchParams(current)
-        if (value) next.set(name, value)
-        else next.delete(name)
-        return next
-      },
-      { replace: true }
-    )
-  }
 
   return (
     <section className="users-page">
@@ -120,7 +157,7 @@ function UsersPage({ currentUser }) {
       <div className="users-page__toolbar" role="search">
         <label className="users-page__search">
           Search
-          <input type="search" value={q} onChange={(e) => setFilter('q', e.target.value)} placeholder="Name or email" />
+          <input type="search" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Name or email" />
         </label>
         <label>
           Role
@@ -130,7 +167,14 @@ function UsersPage({ currentUser }) {
           </select>
         </label>
         {filtering && (
-          <button type="button" className="link users-page__clear" onClick={() => setParams({}, { replace: true })}>
+          <button
+            type="button"
+            className="link users-page__clear"
+            onClick={() => {
+              setTyped('')
+              setParams({}, { replace: true })
+            }}
+          >
             Clear filters
           </button>
         )}
@@ -138,8 +182,8 @@ function UsersPage({ currentUser }) {
 
       {/* aria-live: screen readers announce the new count as the filters change. */}
       <p className="hint users-page__count" aria-live="polite">
-        {filtering ? `Showing ${shown.length} of ` : ''}
-        {users.length} {users.length === 1 ? 'user' : 'users'}
+        {showingText(listInfo.page, listInfo.per_page, listInfo.total, filtering ? ['matching user', 'matching users'] : ['user', 'users'])}
+        {filtering && ` (${listInfo.total_all.toLocaleString()} in all)`}
       </p>
 
       <div className="table-wrap">
@@ -154,12 +198,12 @@ function UsersPage({ currentUser }) {
             </tr>
           </thead>
           <tbody>
-            {shown.length === 0 && (
+            {users.length === 0 && (
               <tr>
                 <td colSpan={5} className="users-page__none">No users match these filters.</td>
               </tr>
             )}
-            {shown.map((u) => {
+            {users.map((u) => {
               const reason = lockedReason(u)
               const disabled = Boolean(u.disabled_at)
               return (
@@ -202,6 +246,7 @@ function UsersPage({ currentUser }) {
           </tbody>
         </table>
       </div>
+      <Pagination page={listInfo.page} perPage={listInfo.per_page} total={listInfo.total} onPage={goToPage} />
 
       <h3>Account history</h3>
       {history.length === 0 ? (

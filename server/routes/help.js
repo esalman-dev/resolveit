@@ -28,6 +28,7 @@ import { matchArticles, searchArticles } from './kb.js';
 import { autoAssign } from '../services/autoAssign.js';
 import { checkForOutage } from '../services/outages.js';
 import { articleCheckLimiter } from '../middleware/rateLimit.js';
+import { clampPage, containsPattern, readPaging } from '../services/paging.js';
 
 // Images larger than this aren't sent to the AI (its limit is 5 MB once encoded as text, which
 // adds a third). They stay attached to the request and the ticket either way.
@@ -484,12 +485,33 @@ const OUTCOMES = ['fixed', 'still_broken', 'escalated', 'pending', 'failed'];
 
 /**
  * GET /api/help/sessions
- * Every AI help attempt, newest first (the latest 500), plus a count of each outcome across
- * all of them. This is how staff see what users fixed on their own, since fixes never become
- * tickets.
+ * One page of AI help attempts, newest first, with the filters applied by the database, plus a
+ * count of each outcome across all of them (ignoring the filters, for the count cards). This is
+ * how staff see what users fixed on their own, since fixes never become tickets.
  * Access: technicians, admins and owners.
+ * Query (all optional): result (an outcome), type ('fix' or 'question'), q (words in the
+ *   problem or the person's name), page, per_page
  */
 router.get('/sessions', requireRole(...STAFF), async (req, res) => {
+  const { result, type } = req.query;
+  if (result && !OUTCOMES.includes(result)) return res.status(400).json({ error: 'Invalid result' });
+  if (type && !['fix', 'question'].includes(type)) return res.status(400).json({ error: 'Invalid type' });
+  const values = [];
+  const value = (v) => `$${values.push(v)}`;
+  const where = [];
+  if (result) where.push(`s.outcome = ${value(result)}`);
+  if (type) where.push(`s.kind = ${value(type)}`);
+  const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 200) : '';
+  if (q) {
+    const pattern = value(containsPattern(q));
+    where.push(`(s.title ILIKE ${pattern} OR asker.name ILIKE ${pattern})`);
+  }
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const total = (await pool.query(`SELECT COUNT(*)::int AS n FROM help_sessions s JOIN users asker ON asker.id = s.user_id ${whereSql}`, values)).rows[0].n;
+  const { page: asked, perPage } = readPaging(req.query);
+  const { page, offset } = clampPage(asked, perPage, total);
+
   // Security: the person's name only, not their email, the same as on tickets.
   // steps_tried comes from the ticket, when the session went on to one.
   const sessions = await pool.query(
@@ -505,8 +527,10 @@ router.get('/sessions', requireRole(...STAFF), async (req, res) => {
        LEFT JOIN categories suggested ON suggested.id = s.suggested_category_id
        LEFT JOIN tickets t            ON t.id = s.ticket_id
        LEFT JOIN kb_articles article  ON article.id = s.article_id
+      ${whereSql}
       ORDER BY s.created_at DESC, s.id DESC
-      LIMIT 500`
+      LIMIT ${perPage} OFFSET ${offset}`,
+    values
   );
   const totals = await pool.query('SELECT kind, outcome, COUNT(*)::int AS n FROM help_sessions GROUP BY kind, outcome');
 
@@ -518,7 +542,7 @@ router.get('/sessions', requireRole(...STAFF), async (req, res) => {
     counts.all[row.outcome] += row.n;
     counts[row.kind][row.outcome] += row.n;
   }
-  res.json({ sessions: sessions.rows, counts });
+  res.json({ sessions: sessions.rows, counts, total, page, per_page: perPage });
 });
 
 // --- Coming back to a request ---

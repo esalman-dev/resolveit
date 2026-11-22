@@ -413,6 +413,27 @@ describe('GET /api/help/sessions (staff list)', () => {
     expect(escalated).toMatchObject({ escalate_reason: 'Possible phishing.', ticket_id: expect.any(Number) });
   });
 
+  it('filters by result, source and words, and sends one page at a time', async () => {
+    const alice = await signUp({ name: 'Alice', email: 'alice@example.com' });
+    const tech = await signUpAs('technician', 'tech@example.com');
+    const fixed = await suggest(alice.token, { title: 'Printer jam' });
+    await sendOutcome(alice.token, fixed.body.session.id, { outcome: 'fixed' });
+    await suggest(alice.token, { title: 'Wi-Fi drops' });
+    await suggest(alice.token, { title: 'Monitor dark' });
+    const get = (query) => request(app).get(`/api/help/sessions${query}`).set(bearer(tech.token));
+    const titles = (res) => res.body.sessions.map((s) => s.title);
+
+    expect(titles(await get('?result=fixed'))).toEqual(['Printer jam']);
+    expect(titles(await get('?type=question'))).toEqual([]);
+    expect(titles(await get('?q=wi-fi'))).toEqual(['Wi-Fi drops']);
+    expect((await get('?q=alice')).body.total).toBe(3); // the person's name counts too
+    const page2 = await get('?per_page=2&page=2');
+    expect(titles(page2)).toEqual(['Printer jam']);
+    expect(page2.body).toMatchObject({ total: 3, page: 2, per_page: 2 });
+    expect((await get('?result=fixed')).body.counts.all.pending).toBe(2); // counts ignore the filters
+    expect((await get('?result=lost')).status).toBe(400);
+  });
+
   it('shows the asker by name, never by email', async () => {
     const alice = await signUp({ name: 'Alice', email: 'alice@example.com' });
     const admin = await signUpAs('admin', 'boss@example.com');
