@@ -71,7 +71,7 @@ function GoogleButton({ onLoggedIn }) {
   return (
     <div className="google">
       <div className="divider"><span>or</span></div>
-      <div ref={buttonRef} />
+      <div ref={buttonRef} className="google__button" />
       {error && <p className="error" role="alert">{error}</p>}
     </div>
   )

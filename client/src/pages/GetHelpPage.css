@@ -206,14 +206,14 @@
   display: inline-block;
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius);
-  background: var(--color-primary);
+  background: var(--color-primary-fill);
   color: var(--color-on-primary);
   font-weight: 600;
   text-decoration: none;
 }
 
 .get-help__view:hover {
-  background: var(--color-primary-hover);
+  background: var(--color-primary-fill-hover);
 }
 
 /* Headings that receive focus from the code, not the keyboard: no focus ring. */

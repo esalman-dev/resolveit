@@ -1,5 +1,5 @@
 // App shell: the frame around every page after login, with the sidebar on the left and the
-// header (page title, who is logged in, Log out) on top.
+// header (page title, the bell, and the account menu with Theme and Log out) on top.
 //
 // On screens narrower than 768px the sidebar's links fold away behind a ☰ menu button.
 // The sidebar's foot shows how many staff are online; staff also set their own status in the
@@ -15,8 +15,10 @@ import { STATUS_LABELS, usePresence } from '../lib/presence.js'
 import StatusDot from './StatusDot.jsx'
 import NotificationBell from './NotificationBell.jsx'
 import OutageBanner from './OutageBanner.jsx'
+import AccountMenu from './AccountMenu.jsx'
 import { useOutages } from '../lib/outages.js'
-import logo from '../assets/resolveit-logo-horizontal.png' // Vite turns this into the file's URL
+import logo from '../assets/resolveit-logo-horizontal.svg' // Vite turns this into the file's URL
+import logoDark from '../assets/resolveit-logo-horizontal-dark.svg' // white lettering
 import './AppShell.css'
 
 /**
@@ -41,10 +43,11 @@ function AppShell({ user, serverStatus, onLogout }) {
     <div className="app-shell">
       <aside className={menuOpen ? 'app-shell__sidebar app-shell__sidebar--open' : 'app-shell__sidebar'}>
         <div className="app-shell__brand">
-          {/* The image is 1200 × 270, shown at 160 × 36, so it stays sharp on high-resolution
-              screens. Its alt text is the link's name for screen readers. */}
+          {/* Two colorings of the logo; CSS shows the one for the current theme (index.css).
+              The hidden one is skipped by screen readers too, so the link has one name. */}
           <Link className="app-shell__brand-name" to="/">
-            <img src={logo} alt="ResolveIT" width="160" height="36" />
+            <img className="logo-light" src={logo} alt="ResolveIT" width="166" height="36" />
+            <img className="logo-dark" src={logoDark} alt="ResolveIT" width="166" height="36" />
           </Link>
           <button
             type="button"
@@ -123,10 +126,7 @@ function AppShell({ user, serverStatus, onLogout }) {
                   </select>
                 </label>
               )}
-              <span>
-                {user.name} <span className="app-shell__role">({user.role})</span>
-              </span>
-              <button type="button" onClick={onLogout}>Log out</button>
+              <AccountMenu user={user} onLogout={onLogout} />
             </div>
           </div>
         </header>

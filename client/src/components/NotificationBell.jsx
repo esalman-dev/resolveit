@@ -4,9 +4,10 @@
 // it read and opens its ticket (or, for an outage, the Tickets page or Get help). Escape or a
 // click outside closes the panel.
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { notificationLink, notificationText, useNotifications } from '../lib/notifications.js'
+import { useDismiss } from '../lib/useDismiss.js'
 import RelativeTime from './RelativeTime.jsx'
 import './NotificationBell.css'
 
@@ -17,25 +18,7 @@ function NotificationBell() {
   const wrapper = useRef(null)
   const button = useRef(null)
 
-  // While open: Escape closes and puts focus back on the bell; a click anywhere else closes.
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e) => {
-      if (e.key === 'Escape') {
-        setOpen(false)
-        button.current?.focus()
-      }
-    }
-    const onClick = (e) => {
-      if (!wrapper.current?.contains(e.target)) setOpen(false)
-    }
-    document.addEventListener('keydown', onKey)
-    document.addEventListener('pointerdown', onClick)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.removeEventListener('pointerdown', onClick)
-    }
-  }, [open])
+  useDismiss(open, setOpen, wrapper, button) // Escape or a click outside closes the panel
 
   function toggle() {
     if (!open) refresh() // opening shows the latest, not last minute's

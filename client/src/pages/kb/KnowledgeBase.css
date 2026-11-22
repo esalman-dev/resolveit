@@ -47,7 +47,7 @@
 .kb__tabs button[aria-pressed='true'] {
   font-weight: 600;
   color: var(--color-on-primary);
-  background: var(--color-primary);
+  background: var(--color-primary-fill);
 }
 
 .kb__count {
@@ -57,7 +57,7 @@
   line-height: 18px;
   text-align: center;
   color: var(--color-on-danger);
-  background: var(--color-danger);
+  background: var(--color-danger-fill);
   border-radius: 999px;
 }
 

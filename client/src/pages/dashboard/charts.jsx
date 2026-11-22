@@ -7,8 +7,9 @@
 
 import { useEffect, useId, useRef, useState } from 'react'
 
-// Series colors, in a fixed order (checked for color blindness with the dataviz validator).
-const SERIES = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4']
+// Series colors, in a fixed order. The values live in theme.css (--chart-1 to --chart-5), with a
+// separate set for dark mode; both were checked for color blindness with the dataviz validator.
+const SERIES = [1, 2, 3, 4, 5].map((n) => `var(--chart-${n})`)
 
 /** Rounds a top value up to a clean axis number: 7 → 8, 23 → 25, 140 → 150. */
 function niceMax(value) {
@@ -109,7 +110,7 @@ export function LineChart({ rows, series, formatX, title }) {
               <polyline
                 key={s.key}
                 className="chart__line"
-                stroke={SERIES[si]}
+                style={{ stroke: SERIES[si] }}
                 points={rows.map((r, i) => `${x(i)},${y(r[s.key])}`).join(' ')}
               />
             ))}
@@ -117,7 +118,7 @@ export function LineChart({ rows, series, formatX, title }) {
               <g>
                 <line className="chart__crosshair" x1={x(active)} x2={x(active)} y1={pad.top} y2={H - pad.bottom} />
                 {series.map((s, si) => (
-                  <circle key={s.key} className="chart__dot" cx={x(active)} cy={y(rows[active][s.key])} r={4} fill={SERIES[si]} />
+                  <circle key={s.key} className="chart__dot" cx={x(active)} cy={y(rows[active][s.key])} r={4} style={{ fill: SERIES[si] }} />
                 ))}
               </g>
             )}

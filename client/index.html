@@ -5,6 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ResolveIT</title>
+    <!-- Sets light or dark mode before anything is drawn, so a dark-mode visitor never sees a
+         white flash while the app loads. Note: a short copy of resolveTheme in
+         src/lib/theme.js (same storage key); keep the two in sync. -->
+    <script>
+      try {
+        var choice = localStorage.getItem('resolveit_theme')
+        var dark = choice === 'dark' || (choice !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+      } catch (e) {
+        // Storage blocked: the app sets the theme itself a moment later.
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

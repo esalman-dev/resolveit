@@ -1,24 +1,33 @@
 /*
   Theme: every color, size and spacing value the app uses, as CSS variables.
 
-  The look is a dark slate sidebar with an indigo main color, light theme only. Other CSS files
-  use these names instead of typing colors, so changing a value here changes it everywhere:
+  The look is a dark slate sidebar with an indigo main color. Other CSS files use these names
+  instead of typing colors, so changing a value here changes it everywhere:
     color: var(--color-primary);
 
+  Two sets of colors: light (in :root) and dark (at the bottom). The page is marked
+  <html data-theme="light"> or "dark" by lib/theme.js, and the dark set replaces the light
+  colors when it says "dark". Sizes and spacing are the same in both.
+
   Note: every text color here has at least 4.5 : 1 contrast against its background (the WCAG
-  standard for normal text), and form field edges have 3 : 1. Keep it that way when changing
-  colors.
+  standard for normal text), and form field edges have 3 : 1, in both sets. Keep it that way
+  when changing colors, and add any new color to the dark set too.
 */
 
 :root {
-  /* Light theme only. Also tells the browser to draw its own parts (scrollbars, date pickers,
-     form controls) in light mode, even when the computer is set to dark mode. */
+  /* Tells the browser to draw its own parts (scrollbars, date pickers, form controls) in light
+     mode. The dark set switches this to dark. */
   color-scheme: light;
+  accent-color: var(--color-primary-fill); /* ticked boxes and radio buttons in the brand indigo */
 
-  /* Main color (indigo): buttons, links, focus rings. */
+  /* Main color (indigo): links, outlined buttons, focus rings. */
   --color-primary: #4f46e5;
   --color-primary-hover: #4338ca;
   --color-primary-soft: #eef2ff;   /* light indigo background, e.g. selected row */
+  /* Filled buttons (Save, Mark fixed). Why separate from --color-primary: in dark mode, links
+     need a light indigo to be read on the page, but white text needs a deeper one. */
+  --color-primary-fill: #4f46e5;
+  --color-primary-fill-hover: #4338ca;
   --color-on-primary: #ffffff;     /* text on an indigo button */
 
   /* Sidebar (dark slate). */
@@ -29,6 +38,7 @@
   --sidebar-item-active: #334155;
   --sidebar-heading: #94a3b8;      /* small "ADMIN" section label */
   --sidebar-online: #4ade80;       /* the "online" dot on the dark sidebar (the normal green is too dark there) */
+  --sidebar-edge: transparent;     /* a line between sidebar and page; only dark mode needs one */
 
   /* Page and surfaces. */
   --page-bg: #f8fafc;              /* behind everything in the main area */
@@ -47,6 +57,8 @@
   --color-danger: #dc2626;
   --color-danger-hover: #b91c1c;
   --color-danger-soft: #fef2f2;
+  --color-danger-fill: #dc2626;    /* filled red buttons and count bubbles, as with indigo */
+  --color-danger-fill-hover: #b91c1c;
   --color-on-danger: #ffffff;      /* text on a red button */
 
   /* Status badges: a soft background with dark text of the same color.
@@ -68,6 +80,15 @@
   /* Review stars: amber 600 is 3.2 : 1 on white, enough for a large symbol. */
   --star-on: #d97706;
   --star-hover: #b45309;
+
+  /* Dashboard chart series, in a fixed order: blue, orange, aqua, yellow, pink. Checked for
+     color blindness with the dataviz validator (also the dark set). Labels beside them carry
+     the words, and every chart has a table view. */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
 
   /* Messages. */
   --success-bg: #f0fdf4;            --success-text: #166534;
@@ -98,4 +119,74 @@
 
   /* Note: the phone breakpoint (768px) can't be a variable, because @media rules don't read
      variables. Write 768px directly in @media. */
+}
+
+/* --- Dark mode --- */
+/* The same names with dark values. A dark slate page, slightly lighter cards, and the sidebar
+   darkest of all. Badges flip to a deep background with light text of the same color.
+   Every text pair is checked at 4.5 : 1 or more, like the light set. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Main color: a lighter indigo for links, because the light set's indigo is too dark to read
+     on a dark page. Filled buttons keep white text on a deeper indigo (4.9 : 1), so the main
+     action looks the same in both themes. */
+  --color-primary: #818cf8;
+  --color-primary-hover: #a5b4fc;
+  --color-primary-soft: #242850;   /* deep indigo: indigo text on it is 4.7 : 1 */
+  --color-primary-fill: #5b5ef0;
+  --color-primary-fill-hover: #4f46e5;
+
+  --sidebar-bg: #0b1120;
+  --sidebar-item-hover: #172033;
+  --sidebar-item-active: #1e293b;
+  --sidebar-edge: rgba(255, 255, 255, 0.08); /* the sidebar is nearly the page's color here */
+
+  --page-bg: #0f172a;
+  --surface: #1e293b;
+  --border: #334155;
+  --border-strong: #475569;
+  --border-input: #7b879b;         /* 4.0 : 1 on a card */
+
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;           /* 5.7 : 1 on a card */
+
+  --color-danger: #f87171;
+  --color-danger-hover: #fca5a5;
+  --color-danger-soft: #3a1a22;
+  /* The fills keep the light set's red: white text on it is 4.8 : 1. */
+
+  --status-open-bg: #1e3a8a;        --status-open-text: #bfdbfe;
+  --status-progress-bg: #713f12;    --status-progress-text: #fde68a;
+  --status-resolved-bg: #14532d;    --status-resolved-text: #86efac;
+
+  --priority-low-bg: #334155;       --priority-low-text: #e2e8f0;
+  --priority-medium-bg: #312e81;    --priority-medium-text: #c7d2fe;
+  --priority-high-bg: #7c2d12;      --priority-high-text: #fdba74;
+  --priority-urgent-bg: #7f1d1d;    --priority-urgent-text: #fecaca;
+
+  --internal-note-bg: #2b2712;
+  --internal-note-border: #ca8a04;
+
+  --star-on: #fbbf24;
+  --star-hover: #f59e0b;
+
+  /* The same five hues, stepped for a dark card: all 3 : 1 or more on it. */
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+
+  --success-bg: #0f2e1d;            --success-text: #86efac;
+  --error-bg: #3a1a22;              --error-text: #fca5a5;
+  /* A faint amber: the outage banner and card sit on top of each other, and a stronger amber
+     made the top of the page heavy. */
+  --warning-bg: #221b12;            --warning-text: #fcd34d;
+  --warning-border: #f59e0b;
+
+  /* Shadows barely show on a dark page, so they are darker; the overlay too. */
+  --overlay: rgba(0, 0, 0, 0.6);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --focus-ring: 0 0 0 3px rgba(129, 140, 248, 0.5);
 }

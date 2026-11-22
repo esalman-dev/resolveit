@@ -60,6 +60,7 @@
   overflow-y: auto;
   box-sizing: border-box;
   background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-edge);
   color: var(--sidebar-text);
 }
 
@@ -68,9 +69,10 @@
   box-shadow: 0 0 0 2px var(--sidebar-text-active);
 }
 
-/* The logo bay: the top of the sidebar is white and exactly as tall as the page header, so one
-   white strip runs across the top of the screen. Why: the logo's "Resolve" is drawn in the
-   same dark slate as the sidebar, so it would disappear on it. */
+/* The logo bay: the top of the sidebar is the header's color and exactly as tall as the header,
+   so one strip runs across the top of the screen. Why: the light logo's "Resolve" is drawn in
+   the same dark slate as the sidebar, so it would disappear on it. In dark mode the strip is
+   dark and the logo has white lettering. */
 .app-shell__brand {
   display: flex;
   justify-content: space-between;
@@ -162,11 +164,6 @@
   align-items: center;
   gap: var(--space-3);
   font-size: 14px;
-}
-
-.app-shell__role {
-  color: var(--text-muted);
-  text-transform: capitalize; /* "owner" shows as "Owner" */
 }
 
 /* --- Phones --- */

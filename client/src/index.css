@@ -21,6 +21,12 @@ body {
   padding: var(--space-6) var(--space-4);
 }
 
+/* The logo comes in two colorings: show the one that matches the theme. */
+:root[data-theme="dark"] .logo-light,
+:root:not([data-theme="dark"]) .logo-dark {
+  display: none;
+}
+
 .login-screen__logo {
   margin: 0 0 var(--space-5);
   text-align: center;
@@ -136,6 +142,13 @@ button.link:hover:not(:disabled),
   border-top: 1px solid var(--border);
 }
 
+/* Google draws its button in an iframe with a light page. Why: when the page around an iframe
+   is dark and the iframe is light, the browser fills it with white; matching them keeps it
+   see-through, so only Google's own button shows. */
+.google__button {
+  color-scheme: light;
+}
+
 .switch {
   margin-bottom: 0;
   font-size: 14px;
@@ -198,23 +211,23 @@ dialog.confirm h3 {
 }
 
 button.primary {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
+  border-color: var(--color-primary-fill);
+  background: var(--color-primary-fill);
   color: var(--color-on-primary);
 }
 
 button.primary:hover:not(:disabled) {
-  background: var(--color-primary-hover);
+  background: var(--color-primary-fill-hover);
 }
 
 button.danger {
-  border-color: var(--color-danger);
-  background: var(--color-danger);
+  border-color: var(--color-danger-fill);
+  background: var(--color-danger-fill);
   color: var(--color-on-danger);
 }
 
 button.danger:hover:not(:disabled) {
-  background: var(--color-danger-hover);
+  background: var(--color-danger-fill-hover);
 }
 
 /* An outlined red button for actions that take something away (e.g. Disable). */
