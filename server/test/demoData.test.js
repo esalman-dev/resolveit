@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import { pool, signUp, app, request, bearer } from './helpers.js';
 import { withTransaction } from '../db/index.js';
 import { DEMO_LOGINS, removeDemoData, seedDemoData } from '../scripts/demoData.js';
+import { findBlockedTopic } from '../services/guardrails.js';
 
 const readJson = (path) => JSON.parse(fs.readFileSync(new URL(path, import.meta.url), 'utf8'));
 const study = {
@@ -78,6 +79,25 @@ describe('seedDemoData', () => {
     );
     expect(wrong).toBe(0);
     expect(await count('SELECT COUNT(*)::int AS n FROM ticket_events WHERE created_at > $1', [now])).toBe(0);
+    expect(await count('SELECT COUNT(*)::int AS n FROM kb_articles WHERE created_at > $1 OR published_at > $1', [now])).toBe(0);
+  });
+
+  it('adds full knowledge base articles that pass the safety check, and two drafts', async () => {
+    await addCategories();
+    await seed();
+    const articles = (await pool.query('SELECT title, status, flagged, also_called, steps, if_still_broken, category_id FROM kb_articles')).rows;
+    const published = articles.filter((a) => a.status === 'published');
+    expect(published).toHaveLength(35);
+    expect(articles.filter((a) => a.status === 'draft')).toHaveLength(2);
+    for (const a of published) {
+      // Security: the same word check that guards publishing, so no demo article could be refused.
+      const texts = [...a.steps.map((s) => `${s.title} ${s.detail}`), a.if_still_broken];
+      expect(texts.map((t) => findBlockedTopic(t)).filter(Boolean), a.title).toEqual([]);
+      expect(a.also_called.length, a.title).toBeGreaterThanOrEqual(3);
+      expect(a.if_still_broken, a.title).not.toBe('');
+      expect(a.category_id, a.title).not.toBeNull();
+    }
+    expect(new Set(articles.map((a) => a.title)).size).toBe(articles.length); // no repeats
   });
 
   it('makes the same demo every time, and replaces the old one when re-run', async () => {

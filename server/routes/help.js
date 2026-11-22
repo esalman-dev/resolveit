@@ -1,5 +1,7 @@
 // Help API: AI self-service fixes, tried before a ticket is opened.
 //
+// 0. POST /match: published knowledge base articles that fit the problem, shown first. From an
+//    article: POST /article-fixed ("That fixed it") or /article-broken ("Still broken").
 // 1. POST /suggest: the user describes a problem; the AI suggests safe steps, or the problem
 //    goes straight to a technician (a ticket is opened at once).
 // 2. POST /:id/outcome: after trying the steps, "fixed" (no ticket needed) or "still_broken"
@@ -22,9 +24,10 @@ import { reviewAnswer, reviewSuggestion } from '../services/guardrails.js';
 import { checkText, checkCategory, parseId, MAX_TITLE, MAX_DESCRIPTION } from './tickets.js';
 import { ATTACHMENT_SELECT, checkAttachmentIds, claimAttachments, publicAttachment } from './attachments.js';
 import { readFile } from '../services/storage.js';
-import { searchArticles } from './kb.js';
+import { matchArticles, searchArticles } from './kb.js';
 import { autoAssign } from '../services/autoAssign.js';
 import { checkForOutage } from '../services/outages.js';
+import { articleCheckLimiter } from '../middleware/rateLimit.js';
 
 // Images larger than this aren't sent to the AI (its limit is 5 MB once encoded as text, which
 // adds a third). They stay attached to the request and the ticket either way.
@@ -64,8 +67,9 @@ const publicSession = (row) => ({
 });
 
 /**
- * Opens a ticket from a help session, with a "created" history entry marked 'get_help' (its new_value),
- * and auto-assigns it and checks for an outage like any new ticket. Must run inside a transaction (`db`), together with
+ * Opens a ticket from a help session, with a "created" history entry whose new_value says where it
+ * came from: 'get_help', or 'knowledge_base' for "Still broken" on an article. Auto-assigns it and
+ * checks for an outage like any new ticket. Must run inside a transaction (`db`), together with
  * the session update.
  *
  * Why not reuse POST /api/tickets? Here the server sets the priority (from the AI) and the steps
@@ -91,9 +95,10 @@ async function openTicket(db, session, stepsTried) {
     ]
   );
   const ticketId = inserted.rows[0].id;
-  await db.query(`INSERT INTO ticket_events (ticket_id, actor_id, action, new_value) VALUES ($1, $2, 'created', 'get_help')`, [
+  await db.query(`INSERT INTO ticket_events (ticket_id, actor_id, action, new_value) VALUES ($1, $2, 'created', $3)`, [
     ticketId,
     session.user_id,
+    session.article_id ? 'knowledge_base' : 'get_help',
   ]);
   // Files sent with the request move onto the ticket, so the technician sees them too.
   await db.query('UPDATE attachments SET ticket_id = $1 WHERE help_session_id = $2', [ticketId, session.id]);
@@ -187,21 +192,79 @@ const limitReached = (limit) => ({
 
 // --- Routes ---
 
+/** An article as Get help shows it. */
+const helpArticle = ({ id, title, problem, also_called, steps, if_still_broken, category_name }) => ({
+  id,
+  title,
+  problem,
+  also_called,
+  steps,
+  if_still_broken,
+  category_name,
+});
+
 /**
  * POST /api/help/match
- * Published knowledge base articles that match a problem, best first (at most 3). Get help
- * shows these before asking the AI. No AI call, so it doesn't count toward the daily limit.
+ * Published knowledge base articles that really match a problem, best first (at most 3). Get
+ * help shows these before asking the AI for steps. A word search makes a shortlist and a small
+ * AI call checks it (matchArticles in kb.js); that check doesn't count toward the daily limit,
+ * but has its own hourly cap, past which words alone decide.
  * Access: anyone logged in.
  * Body: { title, description }
  */
-router.post('/match', async (req, res) => {
+router.post('/match', articleCheckLimiter, async (req, res) => {
   const body = req.body ?? {};
   const title = checkText(body.title, 'Title', MAX_TITLE);
   if (title.error) return res.status(400).json({ error: title.error });
   const description = checkText(body.description, 'Description', MAX_DESCRIPTION);
   if (description.error) return res.status(400).json({ error: description.error });
-  const articles = await searchArticles(`${title.text} ${description.text}`);
-  res.json({ articles: articles.map(({ id, title: t, problem, steps, category_name }) => ({ id, title: t, problem, steps, category_name })) });
+  const { articles } = await matchArticles({ title: title.text, description: description.text }, { useAi: !req.aiArticleCheckOff });
+  res.json({ articles: articles.map(helpArticle) });
+});
+
+/**
+ * POST /api/help/article-broken
+ * "Still broken" on a knowledge base article page: opens a ticket titled with the article's
+ * title, in its category, with its steps listed as tried (or not), and the person's note as the
+ * description. Saved as a Get help request that ended "still broken", with the article it used,
+ * so the AI help screen and dashboard see it. No AI is used, so it doesn't count toward the
+ * daily limit. The article counts as not helpful.
+ * Access: anyone logged in, on a published article.
+ * Body: { article_id, details?, tried?: [step numbers, from 0] } tried defaults to every step.
+ */
+router.post('/article-broken', async (req, res) => {
+  const body = req.body ?? {};
+  const articleId = parseId(body.article_id);
+  const details = typeof body.details === 'string' ? body.details.trim() : '';
+  if (details.length > MAX_DESCRIPTION) return res.status(400).json({ error: `Details must be ${MAX_DESCRIPTION} characters or fewer` });
+  if (body.tried !== undefined && (!Array.isArray(body.tried) || !body.tried.every(Number.isInteger))) {
+    return res.status(400).json({ error: 'tried must be a list of step numbers' });
+  }
+  const article = articleId
+    ? (await pool.query("SELECT id, title, steps, category_id FROM kb_articles WHERE id = $1 AND status = 'published'", [articleId])).rows[0]
+    : null;
+  if (!article) return res.status(404).json({ error: 'Article not found' });
+
+  const tried = new Set(body.tried ?? article.steps.map((_, i) => i));
+  const stepsTried = article.steps.map((step, i) => ({ ...step, tried: tried.has(i) }));
+  const description = details || `I followed the knowledge base article "${article.title}" and the problem is still there.`;
+
+  const session = await withTransaction(async (db) => {
+    const inserted = await db.query(
+      `INSERT INTO help_sessions (user_id, kind, title, description, category_id, steps, article_id)
+       VALUES ($1, 'fix', $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [req.user.id, article.title.slice(0, MAX_TITLE), description, article.category_id, JSON.stringify(article.steps), article.id]
+    );
+    const ticketId = await openTicket(db, inserted.rows[0], stepsTried);
+    await db.query('UPDATE kb_articles SET not_helpful_count = not_helpful_count + 1 WHERE id = $1', [article.id]);
+    const finished = await db.query(
+      `UPDATE help_sessions SET outcome = 'still_broken', ticket_id = $2, finished_at = NOW() WHERE id = $1 RETURNING *`,
+      [inserted.rows[0].id, ticketId]
+    );
+    return finished.rows[0];
+  });
+  res.status(201).json({ session: publicSession(session), ticket_id: session.ticket_id });
 });
 
 /**

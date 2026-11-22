@@ -9,7 +9,7 @@
 
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
-> 🚧 **Status: in development.** The ticket tracker and AI self-service are complete; Phase 3 (dashboard, knowledge base, and more) is in progress. Deployment is next. See [Progress](#progress).
+> 🚧 **Status: in development.** The ticket tracker, AI self-service and the Phase 3 help desk features are complete. Deployment is next. See [Progress](#progress).
 
 ## The idea
 
@@ -48,14 +48,19 @@ Everything needed to check or re-run it is in [`server/eval/`](server/eval/): th
 - **Get help:** 2 to 7 safe steps, easiest first, each with an "I tried this" box. "Still broken" opens a ticket with the steps tried; risky problems skip the steps and go straight to a technician.
 - **Two-layer AI safety:** the AI's instructions list what must escalate, and a **server-side check** reads every step before anyone sees it, so the AI can't talk its way past code.
 - **Ask IT:** one quick question, one short answer, the same safety rules.
-- **Knowledge base that writes itself:** when staff resolve a ticket, the AI drafts a how-to from the fix; staff publish it, and Get help shows matching articles before asking the AI.
+- **Knowledge base:** step-by-step articles you tick through; "Still broken" opens a ticket with the steps already tried. The AI drafts them (from a resolved ticket, or a problem a technician types) and finds common problems with no article yet; staff review and publish every one. Get help shows matching articles first: a word search makes a shortlist and a small AI check keeps only the ones about the same problem.
 - **Tickets:** comments with staff-only internal notes, edits that keep every earlier version, a full change history, search and filters kept in the address.
 - **Attachments:** screenshots and files, which the AI can read; each file's real type is checked from its first bytes.
 - **Target times (SLA):** due and overdue on every ticket, "most urgent" sorting, and an admin screen for the targets.
 - **Dashboard:** numbers compared with the period before, team goals, hand-built accessible charts, and the tickets that need attention.
 - **Reviews:** "How did we do?" ratings, anonymous for technicians.
 - **Online status:** Available / Busy / Away for staff, and "N technicians online" for everyone.
+- **Auto-assign and notifications:** new tickets go to the available technician with the fewest open ones; an in-app bell for assignments, replies and overdue tickets.
+- **Outage spotting:** three tickets in one category within 15 minutes is flagged; once staff confirm, everyone sees a banner, and fixing it resolves every linked ticket.
+- **New-hire setup checklists:** a standard list admins edit, due the morning of the start date; the ticket can't close until every step is done.
+- **Keyboard shortcuts** for technicians (`?` lists them).
 - **Roles:** user < technician < admin < owner; you can only manage people ranked below you.
+- **Dark mode:** follows the computer's setting, or pick Light or Dark; every color pair checked for contrast.
 - **Never breaks:** if the AI is off, down or a daily limit is reached, Get help becomes a plain ticket form.
 
 ## Security
@@ -89,7 +94,7 @@ The full list is in [docs/SECURITY.md](docs/SECURITY.md).
 
 - ✅ **Phase 1: Core ticket tracker**: accounts, roles, tickets, comments, history, search and filters
 - ✅ **Phase 2: AI self-service fixes**: Get help, Ask IT, guardrails, the 500-ticket study
-- 🛠️ **Phase 3: Smarter help desk**: attachments, demo data, target times, reviews, dashboard, online status and knowledge base done; auto-assignment, notifications, outage spotting, dark mode next
+- ✅ **Phase 3: Smarter help desk**: attachments, demo data, target times, reviews, dashboard, online status, knowledge base, auto-assignment, notifications, outage spotting, new-hire checklists, keyboard shortcuts, dark mode
 - ⬜ **Phase 4: Ship it**: deployment, password reset, screenshots
 
 ## Project structure

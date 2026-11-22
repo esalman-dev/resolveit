@@ -220,11 +220,13 @@ function CommentForm({ staff, onAdd }) {
   )
 }
 
-/** The words for a ticket opened through Get help, from its steps marked tried or not. */
-function describeGetHelp(steps) {
+/** The words for a ticket opened through Get help or from an article, from its steps marked tried or not. */
+function describeGetHelp(steps, fromArticle = false) {
   if (steps.length === 0) return 'opened this ticket through Get help; it needed a technician'
   const tried = steps.filter((s) => s.tried).length
-  return `opened this ticket through Get help after trying ${tried} of ${steps.length} suggested steps`
+  return fromArticle
+    ? `opened this ticket from a knowledge base article after trying ${tried} of ${steps.length} steps`
+    : `opened this ticket through Get help after trying ${tried} of ${steps.length} suggested steps`
 }
 
 /**
@@ -255,7 +257,10 @@ function describeChecklistStep(title, what) {
  * // "changed the status from Open to Resolved"
  */
 function describeEvent({ action, field, old_value: from, new_value: to }, stepsTried = []) {
-  if (action === 'created') return to === 'get_help' ? describeGetHelp(stepsTried) : 'opened this ticket'
+  if (action === 'created') {
+    if (to === 'get_help' || to === 'knowledge_base') return describeGetHelp(stepsTried, to === 'knowledge_base')
+    return 'opened this ticket'
+  }
   switch (field) {
     case 'status':
       return `changed the status from ${statusLabel(from)} to ${statusLabel(to)}`

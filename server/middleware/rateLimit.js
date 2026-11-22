@@ -42,6 +42,26 @@ export const signupLimiter = rateLimit({
   message: { error: 'Too many accounts created. Please try again in an hour.' },
 });
 
+/**
+ * Get help's AI article check: 40 per person per hour. Past that, the request still goes on,
+ * marked `req.aiArticleCheckOff`, and articles are matched by words alone (no AI call).
+ * Why not refuse: the check only improves the matching, so running out shouldn't block anyone;
+ * the cap just keeps one person (or a script) from running up the AI bill.
+ * Keyed by the logged-in user, so it must run after requireAuth.
+ */
+export const articleCheckLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  limit: 40,
+  keyGenerator: (req) => `user-${req.user.id}`,
+  standardHeaders: false,
+  legacyHeaders: false,
+  skip,
+  handler: (req, res, next) => {
+    req.aiArticleCheckOff = true;
+    next();
+  },
+});
+
 /** General limit for every other API request: high enough that normal use never hits it. */
 export const apiLimiter = rateLimit({
   windowMs: FIFTEEN_MINUTES,

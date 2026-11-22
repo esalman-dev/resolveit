@@ -14,6 +14,7 @@
 
 import bcrypt from 'bcryptjs';
 import { newHireTitle } from '../services/newHire.js';
+import { DEMO_ARTICLES } from './demoArticles.js';
 
 const DEMO_DOMAIN = 'demo.example.com';
 
@@ -103,53 +104,6 @@ const REVIEW_COMMENTS = {
   2: ['Took days to get a reply.', 'Had to explain the problem twice.'],
   1: ['Waited too long, I fixed it myself in the end.'],
 };
-
-// Knowledge base articles for the demo, written like the AI drafts them from resolved tickets.
-// The last two are drafts; one has a step the safety check flags, to show the review step.
-const DEMO_ARTICLES = [
-  { title: 'Outlook says Working Offline', category: 'Email', problem: 'Outlook shows "Working Offline" at the bottom of the window and new emails stop arriving.', steps: [
-    { title: 'Turn off Work Offline', detail: 'On the Send / Receive tab, click Work Offline so it is no longer highlighted.' },
-    { title: 'Wait a minute for new mail', detail: 'Outlook catches up on its own once it is back online.' },
-    { title: 'Restart Outlook', detail: 'If it still says offline, close Outlook completely and open it again.' } ] },
-  { title: 'Teams is stuck on the loading screen', category: 'Software', problem: 'Microsoft Teams shows a spinning circle and never opens.', steps: [
-    { title: 'Use Teams on the web for now', detail: 'Open teams.microsoft.com in your browser so you can keep working.' },
-    { title: 'Quit Teams completely', detail: 'Right-click the Teams icon near the clock, choose Quit, then open Teams again.' },
-    { title: 'Restart your computer', detail: 'If it still hangs, save your work and restart.' } ] },
-  { title: 'No Wi-Fi networks are showing', category: 'Network', problem: 'The laptop says no Wi-Fi networks are available, though it worked before.', steps: [
-    { title: 'Turn off airplane mode', detail: 'Click the network icon near the clock and make sure Airplane mode is off.' },
-    { title: 'Turn Wi-Fi on', detail: 'In the same panel, make sure Wi-Fi is switched on.' },
-    { title: 'Restart the laptop', detail: 'If networks still do not appear, restart and check again.' } ] },
-  { title: "Wi-Fi won't connect after the password changed", category: 'Network', problem: 'The office Wi-Fi password was changed and the laptop no longer connects.', steps: [
-    { title: 'Forget the network', detail: 'Open Wi-Fi settings, choose the office network and click Forget.' },
-    { title: 'Connect with the new password', detail: 'Pick the office network again and type the new Wi-Fi password.' } ] },
-  { title: 'A print job is stuck and nothing prints', category: 'Printer', problem: 'A document has been "printing" for a long time and other jobs are waiting behind it.', steps: [
-    { title: 'Open the print queue', detail: 'Go to Settings, Printers & scanners, choose the printer and open the print queue.' },
-    { title: 'Cancel the stuck job', detail: 'Right-click the first job in the list and choose Cancel.' },
-    { title: 'Print again', detail: 'Send your document to the printer again.' } ] },
-  { title: 'A PDF attachment does nothing when clicked', category: 'Software', problem: 'Clicking a PDF in an email does nothing, or Windows asks how to open the file.', steps: [
-    { title: 'Open it with Edge', detail: 'Right-click the file, choose Open with, then Microsoft Edge.' },
-    { title: 'Make it the default', detail: 'Tick "Always use this app to open .pdf files" so it works next time.' } ] },
-  { title: 'Password is "wrong" but you are sure it is right', category: 'Account & Access', problem: 'Signing in says the password is incorrect even though it is typed carefully.', steps: [
-    { title: 'Check Caps Lock', detail: 'If the Caps Lock light is on, press Caps Lock and type the password again.' },
-    { title: 'Check the keyboard language', detail: 'Look at the language near the clock; press Windows + Space to switch back to your usual one.' },
-    { title: 'Use the password reset page', detail: 'If it still fails, use "Forgot password" on the sign-in page.' } ] },
-  { title: 'OneDrive shows a pause symbol', category: 'Software', problem: 'The OneDrive icon has a pause symbol and files are not syncing.', steps: [
-    { title: 'Resume syncing', detail: 'Click the OneDrive cloud icon near the clock and choose Resume syncing.' },
-    { title: 'Plug in your laptop', detail: 'Battery saver can pause syncing again; charging stops that.' } ] },
-  { title: 'Second monitor says No signal', category: 'Hardware', problem: 'The external monitor shows "No signal" when the laptop is plugged in.', steps: [
-    { title: 'Choose the right input', detail: 'Press the input or source button on the monitor until it finds your laptop.' },
-    { title: 'Check the cable at both ends', detail: 'Unplug the video cable and push it back in firmly at the monitor and the laptop.' },
-    { title: 'Press Windows + P', detail: 'Choose Extend or Duplicate so Windows sends a picture to the monitor.' } ] },
-  { title: 'Authenticator codes are always rejected', category: 'Account & Access', problem: 'Codes from the authenticator app are rejected even when typed quickly.', steps: [
-    { title: "Set your phone's time to automatic", detail: 'In the phone settings, turn on automatic date and time.' },
-    { title: 'Try a fresh code', detail: 'Wait for a new code in the app and type it straight away.' } ] },
-  { title: 'Outlook keeps asking for your password', category: 'Email', status: 'draft', problem: 'After a password change, Outlook asks for the password again and again.', steps: [
-    { title: 'Type your new password', detail: 'Enter the new password in the box Outlook shows and tick Remember.' },
-    { title: 'Sign out of Office and back in', detail: 'In Outlook, go to File, Office Account, Sign out, then sign in again.' } ] },
-  { title: 'Computer is slow to start', category: 'Software', status: 'draft', flagged: true, problem: 'The computer takes a long time to start in the morning.', steps: [
-    { title: 'Restart once a week', detail: 'Restarting clears out programs that pile up.' },
-    { title: 'Turn off startup apps in the registry', detail: 'Open regedit and remove entries under the Run key.' } ] },
-];
 
 // New-hire setup tickets at different stages. startsInDays below 0 = already started.
 //   progress: the share of steps finished (1 = all, so the ticket is resolved)
@@ -455,11 +409,13 @@ export async function seedDemoData(db, { tickets, scenarios, studyResults, passw
   // --- Knowledge base: published how-tos, plus two drafts waiting for review ---
   for (const [i, a] of DEMO_ARTICLES.entries()) {
     const author = technicians[i % technicians.length];
-    const publishedAt = new Date(now.getTime() - (days - 5 - i * 3) * 24 * HOUR);
+    // Spread evenly from about two months ago to a few days ago, oldest first.
+    const ageDays = 5 + ((days - 10) * (DEMO_ARTICLES.length - 1 - i)) / Math.max(1, DEMO_ARTICLES.length - 1);
+    const publishedAt = new Date(now.getTime() - ageDays * 24 * HOUR);
     await db.query(
       `INSERT INTO kb_articles (title, problem, steps, category_id, status, flagged, created_by, published_by,
-                                helpful_count, not_helpful_count, created_at, updated_at, published_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9, $10, $10, $11)`,
+                                helpful_count, not_helpful_count, created_at, updated_at, published_at, also_called, if_still_broken)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9, $10, $10, $11, $12, $13)`,
       [
         a.title,
         a.problem,
@@ -472,6 +428,8 @@ export async function seedDemoData(db, { tickets, scenarios, studyResults, passw
         a.status === 'draft' ? 0 : Math.floor(random() * 4),
         publishedAt,
         a.status === 'draft' ? null : publishedAt,
+        JSON.stringify(a.also_called ?? []),
+        a.if_still_broken ?? '',
       ]
     );
   }

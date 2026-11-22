@@ -230,6 +230,10 @@ CREATE TABLE IF NOT EXISTS kb_articles (
     title             TEXT NOT NULL CHECK (char_length(title) BETWEEN 1 AND 200),
     problem           TEXT NOT NULL CHECK (char_length(problem) <= 2000),
     steps             JSONB NOT NULL DEFAULT '[]' CHECK (jsonb_typeof(steps) = 'array'),
+    -- Other words people use for the same problem (["wifi", "no internet"]); searched with the
+    -- title. JSONB, not TEXT[], because the search column below may only use immutable functions.
+    also_called       JSONB NOT NULL DEFAULT '[]' CHECK (jsonb_typeof(also_called) = 'array'),
+    if_still_broken   TEXT NOT NULL DEFAULT '' CHECK (char_length(if_still_broken) <= 1000), -- what to note for IT, when to stop
     category_id       INTEGER REFERENCES categories(id),
     status            TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
     flagged           BOOLEAN NOT NULL DEFAULT FALSE,
@@ -243,6 +247,7 @@ CREATE TABLE IF NOT EXISTS kb_articles (
     published_at      TIMESTAMPTZ,
     search_text       TSVECTOR GENERATED ALWAYS AS (
                         setweight(to_tsvector('english', title), 'A') ||
+                        setweight(to_tsvector('english', also_called::text), 'A') ||
                         setweight(to_tsvector('english', problem), 'B') ||
                         setweight(to_tsvector('english', steps::text), 'C')
                       ) STORED

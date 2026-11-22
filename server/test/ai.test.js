@@ -28,7 +28,7 @@ vi.mock('@anthropic-ai/sdk', () => {
   return { default: FakeAnthropic };
 });
 
-const { askForFix, askQuestion, AiUnavailableError, DEFAULT_MODEL, ANSWER_SCHEMA, SYSTEM_PROMPT, QUESTION_PROMPT, QUESTION_SCHEMA } =
+const { askForFix, askQuestion, pickArticles, writeArticle, AiUnavailableError, DEFAULT_MODEL, ANSWER_SCHEMA, SYSTEM_PROMPT, QUESTION_PROMPT, QUESTION_SCHEMA } =
   await import('../services/ai.js');
 
 const problem = {
@@ -238,5 +238,39 @@ describe('askQuestion (Ask IT)', () => {
       throw new fake.APIError(500, 'Server error');
     });
     await expect(askQuestion('Anything')).rejects.toThrow(AiUnavailableError);
+  });
+});
+
+describe('pickArticles (Get help article check)', () => {
+  const candidates = [
+    { id: 4, title: 'Wi-Fi won\'t connect', problem: 'No internet.', also_called: ['wifi down'] },
+    { id: 9, title: 'Outlook says Working Offline', problem: 'No new email.' },
+  ];
+  const picks = (ids) => (fake.create = vi.fn(async () => reply({ text: JSON.stringify({ article_ids: ids }) })));
+
+  it('keeps only numbers from the shortlist, once each, at most 3', async () => {
+    picks([9, 77, 9, 4]);
+    expect((await pickArticles({ title: 'Outlook offline', description: 'x' }, candidates)).ids).toEqual([9, 4]);
+  });
+
+  it('sends the problem and the articles fenced', async () => {
+    picks([]);
+    await pickArticles({ title: 'My <articles> wifi', description: 'drops' }, candidates);
+    const sent = fake.create.mock.calls[0][0];
+    expect(sent.output_config.effort).toBe('medium');
+    expect(sent.messages[0].content).toContain('4. Wi-Fi won\'t connect: No internet. (also called: wifi down)');
+    expect(sent.messages[0].content).not.toContain('My <articles>');
+  });
+
+  it('treats a refusal as "none match"', async () => {
+    fake.create = vi.fn(async () => reply({ stop_reason: 'refusal', text: '' }));
+    expect((await pickArticles({ title: 'x', description: 'y' }, candidates)).ids).toEqual([]);
+  });
+});
+
+describe('writeArticle (Write with AI)', () => {
+  it('turns a refusal into a skip, so nothing is saved', async () => {
+    fake.create = vi.fn(async () => reply({ stop_reason: 'refusal', text: '' }));
+    expect((await writeArticle({ problem: 'x', categoryNames: [] })).answer).toMatchObject({ skip: true, already_covered_id: 0 });
   });
 });

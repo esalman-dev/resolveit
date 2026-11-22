@@ -88,6 +88,11 @@
     position: static;
   }
 
+  /* Why: the name and role wrapped onto two lines in the narrow header; the panel shows the role. */
+  .account__button .account__role {
+    display: none;
+  }
+
   /* The panel fits the screen width, as the bell's does. */
   .account__panel {
     position: fixed;
