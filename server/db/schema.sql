@@ -27,6 +27,8 @@
 CREATE TABLE IF NOT EXISTS users (
     id               INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,  -- auto-numbered: 1, 2, 3...
     name             TEXT NOT NULL,
+    job_title        TEXT CHECK (char_length(job_title) <= 80),            -- optional, shown next to the name
+    department       TEXT CHECK (char_length(department) <= 80),           -- optional
     email            TEXT NOT NULL UNIQUE,                               -- no two accounts with the same email
     password_hash    TEXT,                                               -- bcrypt hash, never the real password; empty for Google-only accounts
     google_id        TEXT UNIQUE,
@@ -65,7 +67,7 @@ CREATE TABLE IF NOT EXISTS account_events (
     id         INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id    INTEGER NOT NULL REFERENCES users(id),            -- whose account
     actor_id   INTEGER REFERENCES users(id),                     -- who did it (empty = server command)
-    action     TEXT NOT NULL CHECK (action IN ('role_changed', 'disabled', 'enabled')),
+    action     TEXT NOT NULL CHECK (action IN ('role_changed', 'disabled', 'enabled', 'renamed', 'password_changed')),
     old_value  TEXT,                                             -- e.g. 'technician'
     new_value  TEXT,                                             -- e.g. 'admin'
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

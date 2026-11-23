@@ -10,6 +10,7 @@ import pool, { withTransaction } from '../db/index.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ROLES, ADMINS, canManage, canGrant } from '../roles.js';
 import { clampPage, containsPattern, readPaging } from '../services/paging.js';
+import { PROFILE_COLUMNS, checkProfileFields, saveProfile } from '../services/profile.js';
 
 const router = Router();
 
@@ -25,8 +26,8 @@ function parseId(value) {
 }
 
 /**
- * Checks shared by "change role" and "disable/enable": the target exists, isn't the caller,
- * and is ranked below the caller. Returns { target } or { status, error }.
+ * Checks shared by "change role", "edit details" and "disable/enable": the target exists,
+ * isn't the caller, and is ranked below the caller. Returns { target } or { status, error }.
  */
 async function checkTarget(req, id) {
   if (!id) return { status: 400, error: 'Invalid user id' };
@@ -76,9 +77,7 @@ router.get('/', async (req, res) => {
   const { page: asked, perPage } = readPaging(req.query);
   const { page, offset } = clampPage(asked, perPage, total);
   const result = await pool.query(
-    `SELECT id, name, email, role, created_at, disabled_at,
-            password_hash IS NOT NULL AS has_password,  -- true/false only; never send the hash itself
-            google_id IS NOT NULL     AS has_google
+    `SELECT ${PROFILE_COLUMNS}
        FROM users
       ${whereSql}
       ORDER BY id
@@ -170,6 +169,28 @@ router.patch('/:id/role', async (req, res) => {
   }
   // Takes effect at once: requireRole reads the role from the database on every request.
   res.json({ user: updated });
+});
+
+/**
+ * PATCH /api/users/:id/details
+ * Changes someone's name, job title or department (a company may want official names). The
+ * same ranking rule as roles: only people ranked below you, and never yourself here (your own
+ * details are on the Profile page). A new name is written to the account history.
+ * Access: admins and owners.
+ * Body (any of): { name, job_title, department } (job_title / department: '' clears it)
+ */
+router.patch('/:id/details', async (req, res) => {
+  const id = parseId(req.params.id);
+  const checked = checkProfileFields(req.body ?? {});
+  if (checked.error) return res.status(400).json({ error: checked.error });
+  const { status, error } = await checkTarget(req, id);
+  if (error) return res.status(status).json({ error });
+
+  const user = await withTransaction(async (db) => {
+    const target = (await db.query('SELECT id, name, job_title, department FROM users WHERE id = $1 FOR UPDATE', [id])).rows[0];
+    return saveProfile(db, target, checked.fields, req.user.id);
+  });
+  res.json({ user });
 });
 
 /**

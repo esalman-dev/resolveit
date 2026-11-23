@@ -294,7 +294,12 @@ function TicketPage({ currentUser }) {
         <article className="ticket-page__post">
           <header className="ticket-page__post-header">
             <span>
-              <strong>{ticket.created_by_name}</strong> opened this ticket <RelativeTime date={ticket.created_at} />
+              <strong>{ticket.created_by_name}</strong>
+              {/* Their job title and department (Profile), so the technician knows who they're helping. */}
+              {(ticket.created_by_job_title || ticket.created_by_department) && (
+                <span> · {[ticket.created_by_job_title, ticket.created_by_department].filter(Boolean).join(', ')}</span>
+              )}{' '}
+              opened this ticket <RelativeTime date={ticket.created_at} />
             </span>
             {canEdit && !editing && (
               <button type="button" className="link" onClick={startEditing}>Edit</button>

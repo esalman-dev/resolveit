@@ -33,6 +33,13 @@ const USERS = [
   'Lily Chen', 'Caleb Wright', 'Nora Fischer', 'Jacob Silva', 'Emma Novak',
 ]; // plus Demo User
 
+// Job titles and departments for the demo's users, in turn (the Profile page's work details).
+const WORK = [
+  ['Accountant', 'Finance'], ['Sales Representative', 'Sales'], ['Marketing Coordinator', 'Marketing'],
+  ['HR Generalist', 'People'], ['Warehouse Supervisor', 'Operations'], ['Customer Support Agent', 'Support'],
+  ['Office Manager', 'Administration'], ['Project Manager', 'Operations'], ['Payroll Specialist', 'Finance'],
+];
+
 // Target times per priority, in hours: first reply, resolved. Must match the defaults of the
 // target-times (SLA) feature, so the demo has a realistic mix of on-time and late tickets.
 const TARGET_HOURS = {
@@ -172,10 +179,15 @@ export async function seedDemoData(db, { tickets, scenarios, studyResults, passw
   // --- Accounts ---
   const passwordHash = await bcrypt.hash(password, 12); // one hash for every demo account
   const accountStart = new Date(now.getTime() - (days + 10) * 24 * HOUR);
+  let workIndex = 0;
   async function addUser(name, role, email = `${name.toLowerCase().replace(/[^a-z]+/g, '.')}@${DEMO_DOMAIN}`) {
+    // Staff are the IT team; everyone else gets the next job from WORK.
+    const [jobTitle, department] =
+      role === 'user' ? WORK[workIndex++ % WORK.length] : [role === 'admin' ? 'IT Manager' : 'IT Support Technician', 'IT'];
     const row = await db.query(
-      'INSERT INTO users (name, email, password_hash, role, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id, name',
-      [name, email, passwordHash, role, accountStart]
+      `INSERT INTO users (name, email, password_hash, role, created_at, job_title, department)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, name`,
+      [name, email, passwordHash, role, accountStart, jobTitle, department]
     );
     return row.rows[0];
   }

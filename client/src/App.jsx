@@ -25,6 +25,7 @@ import LoginPage from './pages/LoginPage.jsx'
 import TicketPage from './pages/ticket/TicketPage.jsx'
 import TicketsPage from './pages/TicketsPage.jsx'
 import UsersPage from './pages/UsersPage.jsx'
+import ProfilePage from './pages/ProfilePage.jsx'
 import { isAdminOrOwner, isStaff } from './lib/roles.js'
 import { usePageTitle } from './lib/usePageTitle.js'
 import logo from './assets/resolveit-logo.svg' // Vite turns this into the file's URL
@@ -106,6 +107,7 @@ function App() {
         <Route path="dashboard" element={isStaff(user.role) ? <DashboardPage currentUser={user} /> : <Navigate to="/" replace />} />
         <Route path="kb" element={<KnowledgeBasePage currentUser={user} />} />
         <Route path="kb/:id" element={<ArticlePage currentUser={user} />} />
+        <Route path="profile" element={<ProfilePage currentUser={user} onUserChange={(changes) => setUser((old) => ({ ...old, ...changes }))} />} />
         <Route path="admin/users" element={admin ? <UsersPage currentUser={user} /> : <Navigate to="/" replace />} />
         <Route path="admin/categories" element={admin ? <CategoriesPage /> : <Navigate to="/" replace />} />
         <Route path="admin/targets" element={admin ? <SlaTargetsPage /> : <Navigate to="/" replace />} />

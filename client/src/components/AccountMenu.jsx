@@ -1,9 +1,10 @@
-// Account menu: your name in the header, and the panel it opens (Theme, Log out).
+// Account menu: your name in the header, and the panel it opens (Theme, Profile, Log out).
 //
 // The theme choice is saved in this browser (lib/theme.js) and shows at once. Escape or a click
 // outside closes the panel.
 
 import { useRef, useState } from 'react'
+import { Link } from 'react-router'
 import { getThemeChoice, setThemeChoice } from '../lib/theme.js'
 import { useDismiss } from '../lib/useDismiss.js'
 import './AccountMenu.css'
@@ -46,6 +47,9 @@ function AccountMenu({ user, onLogout }) {
         <section id="account-panel" className="account__panel" aria-label="Account">
           <div className="account__who">
             <strong>{user.name}</strong>
+            {(user.job_title || user.department) && (
+              <span className="account__work">{[user.job_title, user.department].filter(Boolean).join(' · ')}</span>
+            )}
             <span className="account__role">{user.role}</span>
           </div>
 
@@ -60,6 +64,13 @@ function AccountMenu({ user, onLogout }) {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="account__section">
+            {/* A link, since it goes to a page; it closes the menu on the way. */}
+            <Link className="button-link account__profile" to="/profile" onClick={() => setOpen(false)}>
+              Profile
+            </Link>
           </div>
 
           <div className="account__section">

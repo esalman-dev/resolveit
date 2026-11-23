@@ -63,7 +63,8 @@ const isStaff = (user) => STAFF.includes(user.role);
 const TICKET_SELECT = `
   SELECT t.id, t.kind, t.title, t.description, t.status, t.priority,
          t.category_id, category.name AS category_name,
-         t.created_by,  creator.name  AS created_by_name,
+         t.created_by,  creator.name  AS created_by_name, creator.job_title AS created_by_job_title,
+         creator.department AS created_by_department,
          t.assigned_to, assignee.name AS assigned_to_name,
          t.created_at, t.updated_at, t.resolved_at, t.steps_tried, t.first_response_at,
          t.created_at + make_interval(mins => sla.first_response_minutes) AS response_due_at,

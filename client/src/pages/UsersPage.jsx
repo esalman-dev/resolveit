@@ -1,14 +1,15 @@
 // Users page: the Manage users screen for admins and owners.
 //
-// Every account with a role dropdown and a Disable/Enable button, each change confirmed with
+// Every account with a role dropdown, a Disable/Enable button and Edit (name, job title,
+// department) for people ranked below you; role and Disable changes are confirmed with
 // an "Are you sure?" box, plus the account history (who changed what, and when).
 //
 // A search box (name or email) and a Role filter narrow the list. Like the ticket list, they're
 // kept in the address (e.g. /admin/users?role=technician&page=2), so a refresh keeps them, and
 // the server sends one page of 25 at a time.
 
-import { useCallback, useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router'
 import { apiFetch } from '../lib/api.js'
 import { ROLES, canManage, grantableRoles } from '../lib/roles.js'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
@@ -33,6 +34,7 @@ function UsersPage({ currentUser }) {
   // The action waiting for "Are you sure?", or null. Either
   // { kind: 'role', user, role } or { kind: 'disable', user, disabled }.
   const [pending, setPending] = useState(null)
+  const [editing, setEditing] = useState(null) // the person whose details are being edited, or null
   const [saving, setSaving] = useState(false)
   const [params, setParams] = useSearchParams()
 
@@ -195,20 +197,25 @@ function UsersPage({ currentUser }) {
               <th>Sign-in</th>
               <th>Role</th>
               <th>Account</th>
+              <th>Details</th>
             </tr>
           </thead>
           <tbody>
             {users.length === 0 && (
               <tr>
-                <td colSpan={5} className="users-page__none">No users match these filters.</td>
+                <td colSpan={6} className="users-page__none">No users match these filters.</td>
               </tr>
             )}
             {users.map((u) => {
               const reason = lockedReason(u)
               const disabled = Boolean(u.disabled_at)
+              const work = [u.job_title, u.department].filter(Boolean).join(' · ')
               return (
                 <tr key={u.id} className={disabled ? 'muted' : undefined}>
-                  <td>{u.name}{u.id === currentUser.id && ' (you)'}</td>
+                  <td>
+                    {u.name}{u.id === currentUser.id && ' (you)'}
+                    {work && <span className="users-page__work">{work}</span>}
+                  </td>
                   <td>{u.email}</td>
                   <td>{[u.has_password && 'Password', u.has_google && 'Google'].filter(Boolean).join(', ')}</td>
                   <td>
@@ -237,6 +244,18 @@ function UsersPage({ currentUser }) {
                         disabled={saving}
                       >
                         {disabled ? 'Enable' : 'Disable'}
+                      </button>
+                    )}
+                  </td>
+                  <td>
+                    {/* Your own details are changed on the Profile page; others follow the ranking rule. */}
+                    {u.id === currentUser.id ? (
+                      <Link className="button-link" to="/profile">Edit your profile</Link>
+                    ) : reason ? (
+                      <span className="hint" title={reason}>–</span>
+                    ) : (
+                      <button type="button" className="link" onClick={() => setEditing(u)} disabled={saving} aria-label={`Edit ${u.name}'s details`}>
+                        Edit
                       </button>
                     )}
                   </td>
@@ -282,7 +301,82 @@ function UsersPage({ currentUser }) {
         onConfirm={confirm}
         onCancel={() => setPending(null)}
       />
+      {editing && (
+        <EditDetailsDialog
+          user={editing}
+          onSaved={(saved) => {
+            setUsers((list) => list.map((u) => (u.id === saved.id ? { ...u, ...saved } : u)))
+            setEditing(null)
+            loadHistory().catch(() => {}) // a rename adds a history line
+          }}
+          onCancel={() => setEditing(null)}
+        />
+      )}
     </section>
+  )
+}
+
+/**
+ * The "Edit details" box for someone else: name, job title, department.
+ * Why not the "Are you sure?" box: that one closes whatever happens, but a form should stay
+ * open to show "Name is required" next to what was typed.
+ */
+function EditDetailsDialog({ user, onSaved, onCancel }) {
+  const dialogRef = useRef(null)
+  const [form, setForm] = useState({ name: user.name, job_title: user.job_title ?? '', department: user.department ?? '' })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  // Opens as a modal box when shown (the same browser <dialog> as "Are you sure?").
+  useEffect(() => {
+    dialogRef.current.showModal()
+  }, [])
+
+  async function save(event) {
+    event.preventDefault()
+    setBusy(true)
+    setError('')
+    try {
+      const data = await apiFetch(`/api/users/${user.id}/details`, { method: 'PATCH', body: form })
+      onSaved(data.user)
+    } catch (err) {
+      setError(err.message)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="confirm"
+      aria-labelledby="edit-details-title"
+      onCancel={(e) => {
+        e.preventDefault() // Escape: React decides, as with the other boxes
+        if (!busy) onCancel()
+      }}
+    >
+      <form className="users-page__details" onSubmit={save}>
+        <h3 id="edit-details-title">Edit {user.name}'s details</h3>
+        <label>
+          Name
+          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required maxLength={100} />
+        </label>
+        <label>
+          <span>Job title <span className="hint">(optional)</span></span>
+          <input value={form.job_title} onChange={(e) => setForm({ ...form, job_title: e.target.value })} maxLength={80} />
+        </label>
+        <label>
+          <span>Department <span className="hint">(optional)</span></span>
+          <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} maxLength={80} />
+        </label>
+        <p className="hint">A new name shows everywhere at once and goes in the account history.</p>
+        {error && <p className="error" role="alert">{error}</p>}
+        <div className="confirm-buttons">
+          <button type="button" onClick={onCancel} disabled={busy}>Cancel</button>
+          <button type="submit" className="primary" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+        </div>
+      </form>
+    </dialog>
   )
 }
 
@@ -291,6 +385,8 @@ function describeEvent(e) {
   if (e.action === 'role_changed') return `${e.user_name}: ${e.old_value} → ${e.new_value}`
   if (e.action === 'disabled') return `Disabled ${e.user_name}`
   if (e.action === 'enabled') return `Re-enabled ${e.user_name}`
+  if (e.action === 'renamed') return `Renamed "${e.old_value}" to "${e.new_value}"`
+  if (e.action === 'password_changed') return `${e.user_name} changed their password`
   return e.action
 }
 

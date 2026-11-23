@@ -77,8 +77,16 @@
   background: var(--color-primary-fill);
 }
 
-.account__logout {
+.account__work {
+  font-size: var(--font-size-small);
+  color: var(--text);
+}
+
+.account__logout,
+.account__profile {
+  box-sizing: border-box;
   width: 100%;
+  text-align: center;
 }
 
 /* --- Phones --- */

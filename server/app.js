@@ -25,6 +25,7 @@ import settingsRoutes from './routes/settings.js';
 import outageRoutes from './routes/outages.js';
 import newHireStepRoutes from './routes/newHireSteps.js';
 import checklistRoutes from './routes/checklist.js';
+import profileRoutes from './routes/profile.js';
 
 // Security: without a secret, login tokens can't be signed or checked, so refuse to start.
 if (!process.env.JWT_SECRET) {
@@ -81,6 +82,7 @@ app.use('/api/notifications', notificationRoutes); // the bell: your notificatio
 app.use('/api/settings', settingsRoutes); // help desk settings (auto-assign on or off)
 app.use('/api/outages', outageRoutes); // outages: confirm, dismiss, fix, "This is my problem"
 app.use('/api/new-hire-steps', newHireStepRoutes); // the standard new-hire checklist (staff read, admins change)
+app.use('/api/profile', profileRoutes); // your own details, password and numbers
 
 // --- Error handling ---
 

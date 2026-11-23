@@ -1,4 +1,5 @@
-// Auth API: sign up, log in (password or Google), stay logged in, log out, and "who am I?".
+// Auth API: sign up, log in (password or Google), stay logged in, log out, change your password,
+// and "who am I?".
 //
 // Two tokens:
 //   Access token:  a short-lived JWT (15 minutes), kept in the browser's memory and sent in the
@@ -14,7 +15,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
-import pool from '../db/index.js';
+import pool, { withTransaction } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import { loginLimiter, signupLimiter } from '../middleware/rateLimit.js';
 
@@ -29,7 +30,7 @@ const REFRESH_DAYS = 30; // "stay logged in" window; resets every time the app i
 const MAX_SESSION_DAYS = 90; // hard limit: log in again after 90 days, however active you are
 const DAY_MS = 24 * 60 * 60 * 1000;
 const REFRESH_COOKIE = 'resolveit_refresh';
-const MAX_NAME = 100; // characters
+export const MAX_NAME = 100; // characters
 const MAX_EMAIL = 254; // the longest a valid email address can be
 const MAX_PASSWORD_BYTES = 72; // bcrypt ignores everything past 72 bytes, so longer passwords are refused
 
@@ -62,6 +63,17 @@ function createAccessToken(user) {
     process.env.JWT_SECRET,
     { expiresIn: ACCESS_TOKEN_LIFETIME }
   );
+}
+
+/**
+ * Checks a new password against the rules (sign-up and "Change password" share them).
+ * @returns {string | null} what's wrong with it, or null if it's fine
+ */
+function checkNewPassword(password) {
+  if (password.length < 8) return 'Password must be at least 8 characters';
+  // Note: this counts bytes, not characters. An emoji is 1 character but 4 bytes, and bcrypt counts bytes.
+  if (Buffer.byteLength(password, 'utf8') > MAX_PASSWORD_BYTES) return 'Password is too long (maximum 72 bytes, about 72 letters)';
+  return null;
 }
 
 /**
@@ -130,13 +142,8 @@ router.post('/register', signupLimiter, async (req, res) => {
   if (email.length > MAX_EMAIL || !/^\S+@\S+\.\S+$/.test(email)) {
     return res.status(400).json({ error: 'Please enter a valid email address' });
   }
-  if (password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
-  }
-  // Note: this counts bytes, not characters. An emoji is 1 character but 4 bytes, and bcrypt counts bytes.
-  if (Buffer.byteLength(password, 'utf8') > MAX_PASSWORD_BYTES) {
-    return res.status(400).json({ error: 'Password is too long (maximum 72 bytes, about 72 letters)' });
-  }
+  const passwordProblem = checkNewPassword(password);
+  if (passwordProblem) return res.status(400).json({ error: passwordProblem });
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS); // the real password is never stored
 
@@ -146,7 +153,7 @@ router.post('/register', signupLimiter, async (req, res) => {
     const result = await pool.query(
       `INSERT INTO users (name, email, password_hash)
        VALUES ($1, $2, $3)
-       RETURNING id, name, email, role`,
+       RETURNING id, name, email, role, job_title, department`,
       [name, email, passwordHash]
     );
     const user = result.rows[0];
@@ -176,7 +183,7 @@ router.post('/login', loginLimiter, async (req, res) => {
   }
 
   const result = await pool.query(
-    'SELECT id, name, email, role, password_hash, disabled_at FROM users WHERE email = $1',
+    'SELECT id, name, email, role, job_title, department, password_hash, disabled_at FROM users WHERE email = $1',
     [email]
   );
   const user = result.rows[0];
@@ -228,7 +235,7 @@ router.post('/google', loginLimiter, async (req, res) => {
     return res.status(401).json({ error: 'Google sign-in failed, please try again' });
   }
 
-  const fields = 'id, name, email, role, disabled_at'; // fixed text from our code, safe to build into SQL
+  const fields = 'id, name, email, role, job_title, department, disabled_at'; // fixed text from our code, safe to build into SQL
   const googleEmail = google.email?.toLowerCase();
 
   // Step 2: a returning Google user, matched on Google's permanent id ("sub"), not the email.
@@ -301,7 +308,7 @@ router.post('/refresh', async (req, res) => {
   // Joined with users, so the name, role and disabled state come fresh from the database.
   const result = await pool.query(
     `SELECT rt.id, rt.user_id, rt.expires_at, rt.revoked_at, rt.session_started_at,
-            u.name, u.email, u.role, u.disabled_at
+            u.name, u.email, u.role, u.job_title, u.department, u.disabled_at
        FROM refresh_tokens rt
        JOIN users u ON u.id = rt.user_id
       WHERE rt.token_hash = $1`,
@@ -344,7 +351,14 @@ router.post('/refresh', async (req, res) => {
     return endSession(res, 401, 'Session expired, please log in again');
   }
 
-  const user = { id: session.user_id, name: session.name, email: session.email, role: session.role };
+  const user = {
+    id: session.user_id,
+    name: session.name,
+    email: session.email,
+    role: session.role,
+    job_title: session.job_title,
+    department: session.department,
+  };
   // Pass the original login time along, so the 90-day clock keeps running across rotations.
   res.json({ user, token: await startSession(res, user, session.session_started_at) });
 });
@@ -368,6 +382,51 @@ router.post('/logout', async (req, res) => {
 });
 
 /**
+ * POST /api/auth/password
+ * Changes your password, after checking the current one. Logs you out everywhere else (every
+ * other "stay logged in" session is ended), and writes "changed their password" to the history.
+ * Answers 400 for a wrong current password, not 401: 401 would mean "your session is gone" to the
+ * app, and log you out here too.
+ * Security: wrong current passwords count toward the same limit as failed logins (10 per 15
+ * minutes), so this can't be used to guess someone's password from a borrowed session.
+ * Access: anyone logged in with a password (Google-only accounts have none).
+ * Body: { current_password, new_password }
+ */
+router.post('/password', requireAuth, loginLimiter, async (req, res) => {
+  const body = req.body ?? {};
+  const current = typeof body.current_password === 'string' ? body.current_password : '';
+  const next = typeof body.new_password === 'string' ? body.new_password : '';
+
+  const row = (await pool.query('SELECT password_hash, disabled_at FROM users WHERE id = $1', [req.user.id])).rows[0];
+  if (!row || row.disabled_at) return res.status(401).json({ error: row ? DISABLED_MESSAGE : 'Account no longer exists' });
+  if (!row.password_hash) {
+    return res.status(400).json({ error: "You sign in with Google, so there's no ResolveIT password to change." });
+  }
+  if (!current || !(await bcrypt.compare(current, row.password_hash))) {
+    return res.status(400).json({ error: 'Your current password is wrong' });
+  }
+  const problem = checkNewPassword(next);
+  if (problem) return res.status(400).json({ error: problem });
+
+  const hash = await bcrypt.hash(next, SALT_ROUNDS);
+  // This browser's session stays; every other one ends (another device, or someone else who had
+  // the old password). Why this route is under /api/auth: the session cookie is only sent there.
+  // Without a cookie there is no "this browser", so all of them end.
+  const thisSession = req.cookies[REFRESH_COOKIE] ? hashToken(req.cookies[REFRESH_COOKIE]) : null;
+  await withTransaction(async (db) => {
+    await db.query('UPDATE users SET password_hash = $2 WHERE id = $1', [req.user.id, hash]);
+    // Why delete, not mark revoked: a revoked token coming back trips the reuse alarm in
+    // /refresh, which ends every session, this one included. A deleted one is just "not logged in".
+    await db.query('DELETE FROM refresh_tokens WHERE user_id = $1 AND ($2::text IS NULL OR token_hash <> $2)', [
+      req.user.id,
+      thisSession,
+    ]);
+    await db.query("INSERT INTO account_events (user_id, actor_id, action) VALUES ($1, $1, 'password_changed')", [req.user.id]);
+  });
+  res.status(204).end();
+});
+
+/**
  * GET /api/auth/me
  * The logged-in user's profile. Answers 401 for a deleted or disabled account, the same as
  * requireRole: either way the session is no good.
@@ -375,7 +434,7 @@ router.post('/logout', async (req, res) => {
  */
 router.get('/me', requireAuth, async (req, res) => {
   const result = await pool.query(
-    'SELECT id, name, email, role, created_at, disabled_at FROM users WHERE id = $1',
+    'SELECT id, name, email, role, job_title, department, created_at, disabled_at FROM users WHERE id = $1',
     [req.user.id]
   );
   const user = result.rows[0];

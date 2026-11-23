@@ -36,3 +36,21 @@
   text-align: center;
   color: var(--text-muted);
 }
+
+/* Job title and department under a name. */
+.users-page__work {
+  display: block;
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+}
+
+/* The "Edit details" box: a form inside the shared dialog look. */
+.users-page__details {
+  gap: var(--space-3);
+  min-width: min(360px, 80vw);
+}
+
+.users-page__details h3,
+.users-page__details p {
+  margin: 0;
+}

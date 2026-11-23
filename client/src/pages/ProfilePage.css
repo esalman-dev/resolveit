@@ -1,0 +1,85 @@
+/* Profile page (ProfilePage.jsx): three cards in one column. */
+
+.profile {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 640px;
+}
+
+.profile__card {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.profile__heading {
+  margin: 0;
+  font-size: 16px;
+}
+
+.profile__optional {
+  font-weight: normal;
+  color: var(--text-muted);
+}
+
+/* Email and sign-in method: read-only facts, label on the left. */
+.profile__facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  font-size: 14px;
+}
+
+.profile__facts dt {
+  color: var(--text-muted);
+}
+
+.profile__facts dd {
+  margin: 0;
+  overflow-wrap: anywhere; /* a long email doesn't push the page wider on a phone */
+}
+
+.profile__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.profile__actions p {
+  margin: 0;
+}
+
+.profile__ok {
+  color: var(--success-text);
+}
+
+/* The staff numbers: small tiles that wrap. */
+.profile__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.profile__stat {
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.profile__stat dt {
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+}
+
+.profile__stat dd {
+  margin: var(--space-1) 0 0;
+  font-size: 20px;
+  font-weight: 600;
+}

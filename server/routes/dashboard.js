@@ -116,8 +116,11 @@ async function perBucket(from, to, hourly) {
   return result.rows;
 }
 
-/** Each technician's numbers for the window (only staff who were assigned or credited). */
-async function technicianRows(from, to) {
+/**
+ * Each technician's numbers for the window (only staff who were assigned or credited), or just
+ * one person's with `userId` (the Profile page's "Your last 30 days").
+ */
+export async function technicianRows(from, to, userId = null) {
   const result = await pool.query(
     `WITH t AS (
        SELECT t.*, ${DUE} FROM tickets t LEFT JOIN sla_targets sla ON sla.priority = t.priority
@@ -135,8 +138,9 @@ async function technicianRows(from, to) {
        FROM users u
       WHERE u.role <> 'user' AND u.disabled_at IS NULL
         AND (EXISTS (SELECT 1 FROM tickets WHERE assigned_to = u.id) OR EXISTS (SELECT 1 FROM ticket_ratings WHERE technician_id = u.id))
+        AND ($3::int IS NULL OR u.id = $3)
       ORDER BY u.name`,
-    [from, to]
+    [from, to, userId]
   );
   return result.rows;
 }

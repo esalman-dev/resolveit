@@ -10,7 +10,7 @@ describe('POST /api/auth/register', () => {
       .send({ name: 'Ada', email: 'Ada@Example.COM', password: 'password123' });
 
     expect(res.status).toBe(201);
-    expect(res.body.user).toEqual({ id: 1, name: 'Ada', email: 'ada@example.com', role: 'user' });
+    expect(res.body.user).toEqual({ id: 1, name: 'Ada', email: 'ada@example.com', role: 'user', job_title: null, department: null });
     expect(res.body.token).toBeTypeOf('string');
   });
 
