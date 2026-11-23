@@ -7,9 +7,10 @@ import GoogleButton from '../components/GoogleButton.jsx'
 /**
  * The login / create-account form.
  * @param onLoggedIn called with the user after success, so App can switch screens
+ * @param startMode 'login' (default) or 'register', for the home page's "Create an account"
  */
-function LoginPage({ onLoggedIn }) {
-  const [mode, setMode] = useState('login') // 'login' or 'register'
+function LoginPage({ onLoggedIn, startMode = 'login' }) {
+  const [mode, setMode] = useState(startMode) // 'login' or 'register'
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

@@ -5,7 +5,7 @@
 // sidebar and header.
 
 import { useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { apiFetch, refreshSession, logout, setOnSessionLost } from './lib/api.js'
 import { clearAllDrafts } from './lib/drafts.js'
 import AiHelpPage from './pages/AiHelpPage.jsx'
@@ -25,6 +25,7 @@ import LoginPage from './pages/LoginPage.jsx'
 import TicketPage from './pages/ticket/TicketPage.jsx'
 import TicketsPage from './pages/TicketsPage.jsx'
 import UsersPage from './pages/UsersPage.jsx'
+import HomePage from './pages/HomePage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import { isAdminOrOwner, isStaff } from './lib/roles.js'
 import { usePageTitle } from './lib/usePageTitle.js'
@@ -37,6 +38,7 @@ function App() {
   const [checking, setChecking] = useState(true) // true while we ask the server about a saved session
   const [serverStatus, setServerStatus] = useState('checking')
   const navigate = useNavigate()
+  const location = useLocation()
 
   // Runs once, when the page opens.
   useEffect(() => {
@@ -66,17 +68,23 @@ function App() {
 
   if (checking) return <p className="login-screen">Loading…</p>
 
-  // Logged out: any address shows the login form. After logging in, the same address opens,
-  // so a shared ticket link still works for someone who wasn't logged in yet.
+  // Logged out: "/" is the public home page; any other address shows the login form. After
+  // logging in, the same address opens, so a shared ticket link still works for someone who
+  // wasn't logged in yet (and /login goes to their home page).
   if (!user) {
+    if (location.pathname === '/') return <HomePage />
     return (
       <main className="login-screen">
-        {/* The logo is the page's heading; its alt text gives screen readers the name. */}
+        {/* The logo is the page's heading (and the way back to the home page); its alt text
+            gives screen readers the name. */}
         <h1 className="login-screen__logo">
-          <img className="logo-light" src={logo} alt="ResolveIT" width="192" height="120" />
-          <img className="logo-dark" src={logoDark} alt="ResolveIT" width="192" height="120" />
+          <Link to="/">
+            <img className="logo-light" src={logo} alt="ResolveIT" width="192" height="120" />
+            <img className="logo-dark" src={logoDark} alt="ResolveIT" width="192" height="120" />
+          </Link>
         </h1>
-        <LoginPage onLoggedIn={setUser} />
+        {/* "Create an account" on the home page opens the form already in sign-up mode. */}
+        <LoginPage onLoggedIn={setUser} startMode={location.state?.register ? 'register' : 'login'} />
         <footer>API: {serverStatus}</footer>
       </main>
     )

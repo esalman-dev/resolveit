@@ -1,0 +1,458 @@
+/*
+  Home page (HomePage.jsx): the public landing page at "/".
+
+  Built from the theme's color names like every other screen, so dark mode works by itself.
+  Sections alternate between the page color and a faint indigo tint, each in the same centered
+  column as the app (--content-width).
+*/
+
+.home {
+  min-height: 100vh;
+  background: var(--page-bg);
+}
+
+.home__column {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+  box-sizing: border-box;
+}
+
+/* --- Top bar --- */
+
+.home__bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.home__bar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  height: var(--header-height);
+}
+
+.home__logo {
+  display: flex; /* no gap under the image */
+}
+
+.home__nav {
+  display: flex;
+  gap: var(--space-5);
+  margin-right: auto;
+  font-size: 14px;
+}
+
+.home__nav a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.home__nav a:hover {
+  color: var(--text);
+}
+
+.home__bar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Log in next to Create an account: the same size, so their words line up. */
+.home__bar-actions .button-link {
+  padding: var(--space-2) 14px;
+  font-size: 15px;
+}
+
+/* The main call to action: a filled link that looks like the primary button. */
+.home__cta {
+  display: inline-block;
+  padding: var(--space-2) 14px;
+  font-weight: 600;
+  color: var(--color-on-primary);
+  text-decoration: none;
+  background: var(--color-primary-fill);
+  border-radius: var(--radius);
+}
+
+.home__cta:hover {
+  background: var(--color-primary-fill-hover);
+}
+
+.home__cta--big {
+  padding: var(--space-3) var(--space-5);
+  font-size: 16px;
+}
+
+/* --- Hero --- */
+
+/* A soft indigo glow from the top right, fading into the page. */
+.home__hero {
+  padding: var(--space-6) 0;
+  background:
+    radial-gradient(ellipse 60% 70% at 85% 20%, var(--color-primary-soft), transparent 70%),
+    var(--page-bg);
+}
+
+.home__hero-row {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: var(--space-6);
+  align-items: center;
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-6);
+}
+
+.home__eyebrow {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.home__title {
+  margin: 0;
+  font-size: clamp(36px, 6vw, 60px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.home__lead {
+  max-width: 34em;
+  margin: var(--space-4) 0 var(--space-5);
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.home__hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.home__secondary {
+  padding: var(--space-3) var(--space-5);
+  font-size: 16px;
+}
+
+/* --- The Get help preview (decoration) --- */
+
+.home__preview {
+  position: relative;
+  padding: var(--space-5) var(--space-5) var(--space-6);
+}
+
+.home__preview-card {
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  transform: rotate(-1.5deg); /* a slight tilt, so it reads as a picture, not a real form */
+}
+
+.home__preview-label {
+  margin: 0;
+  font-size: var(--font-size-small);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.home__preview-problem {
+  margin: var(--space-1) 0 var(--space-3);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.home__preview-hint {
+  margin: 0 0 var(--space-2);
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.home__preview-steps {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.home__preview-steps li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.home__preview-steps li.is-done {
+  background: var(--success-bg);
+  border-color: var(--success-text);
+}
+
+.home__preview-box {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  color: var(--color-on-primary);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+}
+
+.is-done .home__preview-box {
+  background: var(--color-primary-fill);
+  border-color: var(--color-primary-fill);
+}
+
+.home__preview-buttons {
+  display: flex;
+  gap: var(--space-2);
+  font-size: 14px;
+}
+
+.home__preview-fixed,
+.home__preview-broken {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+}
+
+.home__preview-fixed {
+  font-weight: 600;
+  color: var(--color-on-primary);
+  background: var(--color-primary-fill);
+}
+
+.home__preview-broken {
+  border: 1px solid var(--border-input);
+}
+
+/* A little "notification" pinned to the card's corner. */
+.home__preview-toast {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--success-text);
+  background: var(--surface);
+  border: 1px solid var(--success-text);
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+}
+
+/* --- The results --- */
+
+.home__results {
+  padding: var(--space-6) 0;
+  background: var(--surface);
+  border-block: 1px solid var(--border);
+}
+
+.home__numbers {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home__numbers li {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.home__number {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--color-primary);
+}
+
+.home__number-words {
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.home__note {
+  margin: var(--space-5) 0 0;
+  font-size: var(--font-size-small);
+  color: var(--text-muted);
+}
+
+/* --- Sections --- */
+
+.home__section {
+  padding: calc(var(--space-6) * 2) 0;
+}
+
+.home__section--tinted {
+  background: var(--color-primary-soft);
+}
+
+.home__heading {
+  margin: 0 0 var(--space-5);
+  font-size: 30px;
+  letter-spacing: -0.01em;
+}
+
+.home__steps,
+.home__features,
+.home__goals {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home__steps {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.home__features {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.home__card {
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.home__card h3,
+.home__goals h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 17px;
+}
+
+.home__card p,
+.home__goals p {
+  margin: 0;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.home__step-number {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: var(--space-3);
+  font-weight: 700;
+  color: var(--color-on-primary);
+  background: var(--color-primary-fill);
+  border-radius: 999px;
+}
+
+/* The goals: three columns with an indigo rule on top, no boxes. */
+.home__goals {
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+}
+
+.home__goals li {
+  padding-top: var(--space-3);
+  border-top: 3px solid var(--color-primary-fill);
+}
+
+.home__stack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.home__stack-heading {
+  margin: 0;
+  font-size: 15px;
+}
+
+.home__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.home__chips li {
+  padding: var(--space-1) var(--space-3);
+  font-size: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+/* --- Footer --- */
+
+.home__footer {
+  padding: var(--space-5) 0;
+  font-size: 14px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+
+.home__footer-row {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* --- Narrower screens --- */
+
+@media (max-width: 900px) {
+  .home__hero-row,
+  .home__steps,
+  .home__features,
+  .home__goals {
+    grid-template-columns: 1fr;
+  }
+
+  .home__numbers {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .home__column {
+    padding: 0 var(--space-4);
+  }
+
+  /* Phones: the section links hide; Log in and Create an account stay. */
+  .home__nav {
+    display: none;
+  }
+
+  .home__bar-row {
+    justify-content: space-between;
+  }
+
+  .home__bar-actions .home__cta {
+    display: none; /* the hero's big button is right below */
+  }
+
+  .home__section {
+    padding: var(--space-6) 0;
+  }
+
+  .home__preview-card {
+    transform: none;
+  }
+}
