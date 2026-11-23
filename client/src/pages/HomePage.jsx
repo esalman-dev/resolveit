@@ -1,8 +1,9 @@
 // Home page: what ResolveIT is, for anyone who isn't logged in, at "/".
 //
 // The first thing someone sees when the link is shared: the idea, how it works, the study's
-// results, the features and the goals, with Log in and Create an account. Everything is drawn
-// in HTML and CSS (the preview of Get help too), so nothing extra is downloaded.
+// results, the features and the goals, with Log in and Create an account. Logged-in people get
+// here from the logo, and see one button back into the app instead. Everything is drawn in HTML
+// and CSS (the preview of Get help too), so nothing extra is downloaded.
 
 import { useEffect } from 'react'
 import { Link } from 'react-router'
@@ -43,8 +44,13 @@ const GOALS = [
 
 const STACK = ['React', 'Node.js + Express', 'PostgreSQL', 'Claude Haiku', 'Vitest + GitHub Actions']
 
-/** The public home page. */
-function HomePage() {
+/**
+ * The public home page.
+ * @param appHome logged in: where the app starts for you ('/tickets' or '/get-help'); logged
+ *   out: not given, so Log in and Create an account show instead
+ */
+function HomePage({ appHome = null }) {
+  const appLabel = appHome === '/tickets' ? 'Go to Tickets' : 'Go to Get help'
   // Why not usePageTitle: that one sets the app shell's header, and this page is outside the shell.
   useEffect(() => {
     document.title = 'ResolveIT · IT help that fixes itself first'
@@ -65,8 +71,14 @@ function HomePage() {
             <a href="#results">The results</a>
           </nav>
           <div className="home__bar-actions">
-            <Link className="button-link" to="/login">Log in</Link>
-            <Link className="home__cta" to="/login" state={{ register: true }}>Create an account</Link>
+            {appHome ? (
+              <Link className="home__cta home__cta--always" to={appHome}>{appLabel}</Link>
+            ) : (
+              <>
+                <Link className="button-link" to="/login">Log in</Link>
+                <Link className="home__cta" to="/login" state={{ register: true }}>Create an account</Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -82,8 +94,14 @@ function HomePage() {
                 checked steps, and if it's still broken, a ticket opens with everything a technician needs.
               </p>
               <div className="home__hero-actions">
-                <Link className="home__cta home__cta--big" to="/login" state={{ register: true }}>Create an account</Link>
-                <Link className="button-link home__secondary" to="/login">Log in</Link>
+                {appHome ? (
+                  <Link className="home__cta home__cta--big" to={appHome}>{appLabel}</Link>
+                ) : (
+                  <>
+                    <Link className="home__cta home__cta--big" to="/login" state={{ register: true }}>Create an account</Link>
+                    <Link className="button-link home__secondary" to="/login">Log in</Link>
+                  </>
+                )}
               </div>
             </div>
             <GetHelpPreview />

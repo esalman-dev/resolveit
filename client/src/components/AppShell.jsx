@@ -44,7 +44,8 @@ function AppShell({ user, serverStatus, onLogout }) {
       <aside className={menuOpen ? 'app-shell__sidebar app-shell__sidebar--open' : 'app-shell__sidebar'}>
         <div className="app-shell__brand">
           {/* Two colorings of the logo; CSS shows the one for the current theme (index.css).
-              The hidden one is skipped by screen readers too, so the link has one name. */}
+              The hidden one is skipped by screen readers too, so the link has one name.
+              It leads to the home page ("/"); the page's button comes back into the app. */}
           <Link className="app-shell__brand-name" to="/">
             <img className="logo-light" src={logo} alt="ResolveIT" width="166" height="36" />
             <img className="logo-dark" src={logoDark} alt="ResolveIT" width="166" height="36" />

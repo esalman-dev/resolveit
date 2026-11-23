@@ -92,12 +92,15 @@ function App() {
 
   // Note: blocking admin pages here only keeps the interface tidy. The server checks every request.
   const admin = isAdminOrOwner(user.role)
+  // Where your work starts: Tickets for staff, Get help for everyone else. "/" is the public home
+  // page for everyone (the logo leads there), so the app's own "home" is this.
   const home = isStaff(user.role) ? '/tickets' : '/get-help'
 
   return (
     <Routes>
+      {/* Outside the app shell: the home page has its own top bar. */}
+      <Route index element={<HomePage appHome={home} />} />
       <Route element={<AppShell user={user} serverStatus={serverStatus} onLogout={handleLogout} />}>
-        <Route index element={<Navigate to={home} replace />} />
         {/* Logging in at /login (a bookmark, or typed in) would otherwise end on "Page not found". */}
         <Route path="login" element={<Navigate to={home} replace />} />
         <Route path="get-help" element={<GetHelpPage currentUser={user} />} />
@@ -108,19 +111,19 @@ function App() {
           path="tickets"
           element={isStaff(user.role) ? <TicketsPage key="all" scope="all" currentUser={user} /> : <Navigate to="/my-tickets" replace />}
         />
-        <Route path="tickets/new-hire" element={isStaff(user.role) ? <NewHirePage /> : <Navigate to="/" replace />} />
+        <Route path="tickets/new-hire" element={isStaff(user.role) ? <NewHirePage /> : <Navigate to={home} replace />} />
         <Route path="tickets/:id" element={<TicketPage currentUser={user} />} />
-        <Route path="ai-help" element={isStaff(user.role) ? <AiHelpPage /> : <Navigate to="/" replace />} />
-        <Route path="reviews" element={isStaff(user.role) ? <ReviewsPage currentUser={user} /> : <Navigate to="/" replace />} />
-        <Route path="dashboard" element={isStaff(user.role) ? <DashboardPage currentUser={user} /> : <Navigate to="/" replace />} />
+        <Route path="ai-help" element={isStaff(user.role) ? <AiHelpPage /> : <Navigate to={home} replace />} />
+        <Route path="reviews" element={isStaff(user.role) ? <ReviewsPage currentUser={user} /> : <Navigate to={home} replace />} />
+        <Route path="dashboard" element={isStaff(user.role) ? <DashboardPage currentUser={user} /> : <Navigate to={home} replace />} />
         <Route path="kb" element={<KnowledgeBasePage currentUser={user} />} />
         <Route path="kb/:id" element={<ArticlePage currentUser={user} />} />
         <Route path="profile" element={<ProfilePage currentUser={user} onUserChange={(changes) => setUser((old) => ({ ...old, ...changes }))} />} />
-        <Route path="admin/users" element={admin ? <UsersPage currentUser={user} /> : <Navigate to="/" replace />} />
-        <Route path="admin/categories" element={admin ? <CategoriesPage /> : <Navigate to="/" replace />} />
-        <Route path="admin/targets" element={admin ? <SlaTargetsPage /> : <Navigate to="/" replace />} />
-        <Route path="admin/new-hire-steps" element={admin ? <NewHireStepsPage /> : <Navigate to="/" replace />} />
-        <Route path="*" element={<NotFoundPage />} />
+        <Route path="admin/users" element={admin ? <UsersPage currentUser={user} /> : <Navigate to={home} replace />} />
+        <Route path="admin/categories" element={admin ? <CategoriesPage /> : <Navigate to={home} replace />} />
+        <Route path="admin/targets" element={admin ? <SlaTargetsPage /> : <Navigate to={home} replace />} />
+        <Route path="admin/new-hire-steps" element={admin ? <NewHireStepsPage /> : <Navigate to={home} replace />} />
+        <Route path="*" element={<NotFoundPage home={home} />} />
       </Route>
     </Routes>
   )
@@ -129,9 +132,9 @@ function App() {
 // --- Not found ---
 
 /** Any address that doesn't match a page. */
-function NotFoundPage() {
+function NotFoundPage({ home }) {
   usePageTitle('Page not found')
-  return <EmptyState message="That page doesn't exist." actionLabel="Go to your home page" actionTo="/" />
+  return <EmptyState message="That page doesn't exist." actionLabel="Go to your home page" actionTo={home} />
 }
 
 export default App

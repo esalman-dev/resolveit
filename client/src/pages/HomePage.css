@@ -444,7 +444,7 @@
     justify-content: space-between;
   }
 
-  .home__bar-actions .home__cta {
+  .home__bar-actions .home__cta:not(.home__cta--always) {
     display: none; /* the hero's big button is right below */
   }
 
