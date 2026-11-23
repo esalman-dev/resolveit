@@ -26,6 +26,7 @@ import outageRoutes from './routes/outages.js';
 import newHireStepRoutes from './routes/newHireSteps.js';
 import checklistRoutes from './routes/checklist.js';
 import profileRoutes from './routes/profile.js';
+import { demoMode, signupOpen } from './services/demo.js';
 
 // Security: without a secret, login tokens can't be signed or checked, so refuse to start.
 if (!process.env.JWT_SECRET) {
@@ -53,13 +54,14 @@ app.use('/api', apiLimiter); // general request cap on every API route
 
 /**
  * GET /api/health
- * Confirms the server is up and can reach the database.
+ * Confirms the server is up and can reach the database, and says whether the live-site switches
+ * are on (demo: the Try as… buttons work; signup: new accounts can be made).
  * Access: anyone. Returns 503 if the database is down.
  */
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1'); // the simplest possible query
-    res.json({ status: 'ok', database: 'connected' });
+    res.json({ status: 'ok', database: 'connected', demo: demoMode(), signup: signupOpen() });
   } catch (err) {
     console.error('Database check failed:', err.message);
     res.status(503).json({ status: 'error', database: 'unreachable' });

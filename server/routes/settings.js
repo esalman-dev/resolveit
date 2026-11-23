@@ -7,6 +7,7 @@ import { Router } from 'express';
 import pool from '../db/index.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ADMINS, STAFF } from '../roles.js';
+import { blockDemo } from '../services/demo.js';
 
 const router = Router();
 
@@ -35,7 +36,7 @@ router.get('/', requireRole(...STAFF), async (req, res) => {
  * Access: admins and owners.
  * Body: { auto_assign: boolean }
  */
-router.put('/', requireRole(...ADMINS), async (req, res) => {
+router.put('/', requireRole(...ADMINS), blockDemo, async (req, res) => {
   const autoAssign = req.body?.auto_assign;
   if (typeof autoAssign !== 'boolean') {
     return res.status(400).json({ error: 'auto_assign must be true or false' });

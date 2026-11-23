@@ -14,6 +14,7 @@ import pool, { withTransaction } from '../db/index.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ADMINS, STAFF } from '../roles.js';
 import { STATUS_SQL } from './presence.js';
+import { blockDemo } from '../services/demo.js';
 
 const router = Router();
 
@@ -249,7 +250,7 @@ router.get('/', async (req, res) => {
  * Access: admins and owners.
  * Body: { goals: { self_solved_rate?, average_rating?, fixed_on_time_rate? } } (percent, stars, percent)
  */
-router.put('/goals', requireRole(...ADMINS), async (req, res) => {
+router.put('/goals', requireRole(...ADMINS), blockDemo, async (req, res) => {
   const goals = req.body?.goals;
   if (!goals || typeof goals !== 'object' || Array.isArray(goals) || Object.keys(goals).length === 0) {
     return res.status(400).json({ error: 'Send goals as { self_solved_rate, average_rating, fixed_on_time_rate }' });

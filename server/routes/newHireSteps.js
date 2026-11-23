@@ -10,6 +10,7 @@ import { Router } from 'express';
 import pool, { withTransaction } from '../db/index.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ADMINS, STAFF } from '../roles.js';
+import { blockDemo } from '../services/demo.js';
 
 const router = Router();
 
@@ -40,7 +41,7 @@ router.get('/', requireRole(...STAFF), async (req, res) => {
  * Access: admins and owners.
  * Body: { steps: ['Create account', ...] } (1 to 30 steps, each 1 to 120 characters, no repeats)
  */
-router.put('/', requireRole(...ADMINS), async (req, res) => {
+router.put('/', requireRole(...ADMINS), blockDemo, async (req, res) => {
   const sent = req.body?.steps;
   if (!Array.isArray(sent) || sent.length < 1 || sent.length > MAX_STEPS) {
     return res.status(400).json({ error: `Send a list of 1 to ${MAX_STEPS} steps` });

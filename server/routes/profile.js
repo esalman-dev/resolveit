@@ -12,6 +12,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ROLES, STAFF } from '../roles.js';
 import { technicianRows } from './dashboard.js';
 import { PROFILE_COLUMNS, checkProfileFields, saveProfile } from '../services/profile.js';
+import { blockDemo } from '../services/demo.js';
 
 const router = Router();
 const STATS_DAYS = 30; // "Your last 30 days"
@@ -47,7 +48,7 @@ router.get('/', async (req, res) => {
  * Access: anyone logged in; only their own.
  * Body (any of): { name, job_title, department } (job_title / department: '' clears it)
  */
-router.patch('/', async (req, res) => {
+router.patch('/', blockDemo, async (req, res) => {
   const checked = checkProfileFields(req.body ?? {});
   if (checked.error) return res.status(400).json({ error: checked.error });
   const user = await withTransaction(async (db) => {

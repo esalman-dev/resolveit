@@ -18,6 +18,7 @@ import { OAuth2Client } from 'google-auth-library';
 import pool, { withTransaction } from '../db/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import { loginLimiter, signupLimiter } from '../middleware/rateLimit.js';
+import { DEMO_LOGINS, blockDemo, demoMode, signupOpen } from '../services/demo.js';
 
 const router = Router();
 const googleClient = new OAuth2Client(); // checks Google ID tokens (downloads and caches Google's public keys)
@@ -43,6 +44,7 @@ const MAX_PASSWORD_BYTES = 72; // bcrypt ignores everything past 72 bytes, so lo
  */
 const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', SALT_ROUNDS);
 const DISABLED_MESSAGE = 'This account has been disabled. Contact an administrator.';
+const SIGNUP_CLOSED = 'New accounts are switched off on this site. Use the Try the demo buttons instead.';
 
 const cookieOptions = {
   httpOnly: true, // JavaScript can't read it, so an XSS bug can't steal it
@@ -127,6 +129,7 @@ function endSession(res, status, error) {
  * Body: { name, email, password }
  */
 router.post('/register', signupLimiter, async (req, res) => {
+  if (!signupOpen()) return res.status(403).json({ error: SIGNUP_CLOSED });
   const body = req.body ?? {};
   // Anything that isn't text (a number, a list) counts as missing.
   const name = typeof body.name === 'string' ? body.name.trim() : '';
@@ -278,6 +281,7 @@ router.post('/google', loginLimiter, async (req, res) => {
       }
 
       // Step 4: a brand-new person. No password; the role defaults to 'user'.
+      if (!signupOpen()) return res.status(403).json({ error: SIGNUP_CLOSED });
       result = await pool.query(
         `INSERT INTO users (name, email, google_id) VALUES ($1, $2, $3) RETURNING ${fields}`,
         [(google.name || googleEmail.split('@')[0]).slice(0, MAX_NAME), googleEmail, google.sub]
@@ -382,6 +386,30 @@ router.post('/logout', async (req, res) => {
 });
 
 /**
+ * POST /api/auth/demo
+ * "Try as a user / technician / admin" on the live site: logs straight into one of the shared
+ * demo accounts, no password needed. Only in demo mode; anywhere else it answers 404.
+ * Security: only the three demo accounts can be reached this way, and in demo mode they can't
+ * make admin changes (blockDemo). They're ordinary accounts otherwise, with the normal limits.
+ * Access: anyone.
+ * Body: { as: 'user' | 'technician' | 'admin' }
+ */
+router.post('/demo', loginLimiter, async (req, res) => {
+  if (!demoMode()) return res.status(404).json({ error: 'Not found' });
+  const login = Object.hasOwn(DEMO_LOGINS, req.body?.as) ? DEMO_LOGINS[req.body.as] : null;
+  if (!login) return res.status(400).json({ error: 'as must be user, technician or admin' });
+  const found = await pool.query(
+    'SELECT id, name, email, role, job_title, department, disabled_at FROM users WHERE email = $1',
+    [login.email]
+  );
+  const user = found.rows[0];
+  // Missing between the nightly reset's delete and re-create, or never seeded.
+  if (!user || user.disabled_at) return res.status(503).json({ error: 'The demo is being reset. Try again in a minute.' });
+  const { disabled_at, ...safeUser } = user;
+  res.json({ user: safeUser, token: await startSession(res, safeUser) });
+});
+
+/**
  * POST /api/auth/password
  * Changes your password, after checking the current one. Logs you out everywhere else (every
  * other "stay logged in" session is ended), and writes "changed their password" to the history.
@@ -392,7 +420,7 @@ router.post('/logout', async (req, res) => {
  * Access: anyone logged in with a password (Google-only accounts have none).
  * Body: { current_password, new_password }
  */
-router.post('/password', requireAuth, loginLimiter, async (req, res) => {
+router.post('/password', requireAuth, blockDemo, loginLimiter, async (req, res) => {
   const body = req.body ?? {};
   const current = typeof body.current_password === 'string' ? body.current_password : '';
   const next = typeof body.new_password === 'string' ? body.new_password : '';

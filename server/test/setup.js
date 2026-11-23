@@ -7,7 +7,7 @@ import pool from '../db/index.js';
 
 beforeEach(async () => {
   // TRUNCATE empties the tables instantly, RESTART IDENTITY resets ids to 1, and CASCADE handles foreign keys.
-  await pool.query('TRUNCATE users, tickets, refresh_tokens, categories, ticket_comments, comment_edits, ticket_events, account_events, help_sessions, attachments, ticket_ratings, kb_articles, outages, new_hire_steps RESTART IDENTITY CASCADE');
+  await pool.query('TRUNCATE users, tickets, refresh_tokens, categories, ticket_comments, comment_edits, ticket_events, account_events, help_sessions, attachments, stored_files, ticket_ratings, kb_articles, outages, new_hire_steps RESTART IDENTITY CASCADE');
   // Note: CASCADE also empties sla_targets, team_goals, app_settings and notifications (they
   // point at users), but the app needs the first three, so the defaults from schema.sql are put
   // back. new_hire_steps is emptied and refilled too, so one test's edits can't leak into the next.

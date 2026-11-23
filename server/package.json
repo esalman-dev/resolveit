@@ -13,7 +13,8 @@
     "eval": "node eval/run.js",
     "study": "node eval/study/run.js",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "migrate": "node scripts/migrate.js"
   },
   "keywords": [],
   "author": "",

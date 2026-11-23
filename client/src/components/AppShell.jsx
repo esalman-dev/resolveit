@@ -28,7 +28,7 @@ import './AppShell.css'
  *
  * @param serverStatus the API health shown in the footer, e.g. "online"
  */
-function AppShell({ user, serverStatus, onLogout }) {
+function AppShell({ user, site, serverStatus, onLogout }) {
   const [title, setTitle] = useState('') // set by each page through usePageTitle
   const [menuOpen, setMenuOpen] = useState(false) // phones only: is the link list showing?
   const [helpOpen, setHelpOpen] = useState(false) // the Keyboard shortcuts panel (staff)
@@ -131,6 +131,13 @@ function AppShell({ user, serverStatus, onLogout }) {
             </div>
           </div>
         </header>
+        {/* Note: matches DEMO_DOMAIN in server/services/demo.js. */}
+        {site?.demo && user.email.endsWith('@demo.example.com') && (
+          <p className="app-shell__demo" role="status">
+            <span>You're trying the demo as {{ user: 'a user', technician: 'a technician', admin: 'an admin' }[user.role] ?? user.role}. Changes reset every night.</span>
+            <button type="button" className="link" onClick={onLogout}>Log out</button>
+          </p>
+        )}
         <OutageBanner outages={outages.list} />
 
         <main className="app-shell__column app-shell__main">

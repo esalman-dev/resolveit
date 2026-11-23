@@ -9,8 +9,9 @@ export default defineConfig({
     // Dev proxy: the browser calls /api/... on localhost:5173 (this dev server) and Vite forwards
     // it to Express on :5000. To the browser it's one site, so the refresh cookie is first-party.
     // In production, vercel.json does the same job (forwards /api/... to the Render server).
+    // API_PROXY points it at another server, e.g. a second copy in demo mode on :5001.
     proxy: {
-      '/api': 'http://localhost:5000',
+      '/api': process.env.API_PROXY || 'http://localhost:5000',
     },
   },
 })

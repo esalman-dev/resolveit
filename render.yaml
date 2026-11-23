@@ -1,0 +1,41 @@
+# Render blueprint: the API server on Render's free plan. Render reads this file when the
+# repository is connected ("New > Blueprint"), and creates the service with these settings.
+#
+# The free plan sleeps after 15 minutes without requests; the first request after that takes up
+# to a minute (the home page explains the wait). The database is on Neon, not here.
+#
+# Settings marked sync: false are secrets, typed in once on Render's dashboard, never stored here.
+
+services:
+  - type: web
+    name: resolveit-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm ci
+    # Brings the database up to date first; the server doesn't start if that fails.
+    startCommand: npm run migrate && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production # also makes the login cookie HTTPS-only
+      - key: DATABASE_URL
+        sync: false # from Neon: the connection string with ?sslmode=require
+      - key: JWT_SECRET
+        generateValue: true # a long random value Render makes once
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CLIENT_URL
+        sync: false # the Vercel address, e.g. https://resolveit.vercel.app
+      # Requests come through Vercel's proxy and then Render's, so the visitor's own address is
+      # two hops back. Without this, everyone would share one rate limit.
+      - key: TRUST_PROXY
+        value: "2"
+      - key: DEMO_MODE
+        value: "true" # the Try as… buttons, and no admin changes from demo accounts
+      - key: ALLOW_SIGNUP
+        value: "false" # no new accounts; the demo buttons instead
+      - key: FILE_STORAGE
+        value: database # Render's free disk is wiped on every restart

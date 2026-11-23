@@ -37,6 +37,8 @@ function App() {
   const [user, setUser] = useState(null) // the logged-in user, or null
   const [checking, setChecking] = useState(true) // true while we ask the server about a saved session
   const [serverStatus, setServerStatus] = useState('checking')
+  // The live-site switches from the health check: demo (Try as… buttons) and signup (new accounts).
+  const [site, setSite] = useState({ demo: false, signup: true })
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -44,7 +46,10 @@ function App() {
   useEffect(() => {
     // Is the API (and its database) up?
     apiFetch('/api/health')
-      .then((data) => setServerStatus(data.database === 'connected' ? 'online' : 'database offline'))
+      .then((data) => {
+        setServerStatus(data.database === 'connected' ? 'online' : 'database offline')
+        setSite({ demo: Boolean(data.demo), signup: data.signup !== false })
+      })
       .catch(() => setServerStatus('offline'))
 
     // If the session ends mid-use (e.g. logged out in another tab), go back to the login screen.
@@ -72,7 +77,7 @@ function App() {
   // logging in, the same address opens, so a shared ticket link still works for someone who
   // wasn't logged in yet (and /login goes to their home page).
   if (!user) {
-    if (location.pathname === '/') return <HomePage />
+    if (location.pathname === '/') return <HomePage site={site} onLoggedIn={setUser} />
     return (
       <main className="login-screen">
         {/* The logo is the page's heading (and the way back to the home page); its alt text
@@ -84,7 +89,7 @@ function App() {
           </Link>
         </h1>
         {/* "Create an account" on the home page opens the form already in sign-up mode. */}
-        <LoginPage onLoggedIn={setUser} startMode={location.state?.register ? 'register' : 'login'} />
+        <LoginPage onLoggedIn={setUser} site={site} startMode={location.state?.register && site.signup ? 'register' : 'login'} />
         <footer>API: {serverStatus}</footer>
       </main>
     )
@@ -100,7 +105,7 @@ function App() {
     <Routes>
       {/* Outside the app shell: the home page has its own top bar. */}
       <Route index element={<HomePage appHome={home} />} />
-      <Route element={<AppShell user={user} serverStatus={serverStatus} onLogout={handleLogout} />}>
+      <Route element={<AppShell user={user} site={site} serverStatus={serverStatus} onLogout={handleLogout} />}>
         {/* Logging in at /login (a bookmark, or typed in) would otherwise end on "Page not found". */}
         <Route path="login" element={<Navigate to={home} replace />} />
         <Route path="get-help" element={<GetHelpPage currentUser={user} />} />

@@ -328,6 +328,15 @@ CREATE INDEX IF NOT EXISTS idx_help_sessions_user_created ON help_sessions(user_
 CREATE INDEX IF NOT EXISTS idx_help_sessions_created_at   ON help_sessions(created_at);
 CREATE INDEX IF NOT EXISTS idx_help_sessions_ticket_id    ON help_sessions(ticket_id);
 
+-- The attachment files themselves, when they're kept in the database (FILE_STORAGE=database,
+-- the live site): its free server wipes its disk on every restart. On a developer's computer
+-- they're in a folder instead, and this table stays empty. See services/storage.js.
+CREATE TABLE IF NOT EXISTS stored_files (
+    storage_key TEXT PRIMARY KEY CHECK (storage_key ~ '^[a-f0-9]{32}$'), -- the same random name as on disk
+    data        BYTEA NOT NULL,                                        -- the file's bytes (at most 5 MB)
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Screenshots and files on tickets, comments and Get help requests. The file itself lives in
 -- storage (services/storage.js); this row says who may see it.
 --

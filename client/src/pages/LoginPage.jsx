@@ -3,13 +3,15 @@
 import { useState } from 'react'
 import { apiFetch, setAccessToken } from '../lib/api.js'
 import GoogleButton from '../components/GoogleButton.jsx'
+import DemoButtons from '../components/DemoButtons.jsx'
 
 /**
  * The login / create-account form.
  * @param onLoggedIn called with the user after success, so App can switch screens
  * @param startMode 'login' (default) or 'register', for the home page's "Create an account"
+ * @param site the live-site switches: demo (show Try as… buttons), signup (allow Create an account)
  */
-function LoginPage({ onLoggedIn, startMode = 'login' }) {
+function LoginPage({ onLoggedIn, startMode = 'login', site = { demo: false, signup: true } }) {
   const [mode, setMode] = useState(startMode) // 'login' or 'register'
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -78,12 +80,22 @@ function LoginPage({ onLoggedIn, startMode = 'login' }) {
 
       <GoogleButton onLoggedIn={onLoggedIn} />
 
-      <p className="switch">
-        {isRegister ? 'Already have an account?' : 'New to ResolveIT?'}{' '}
-        <button type="button" className="link" onClick={switchMode}>
-          {isRegister ? 'Log in' : 'Create an account'}
-        </button>
-      </p>
+      {site.demo && (
+        <div className="login-demo">
+          <div className="divider"><span>or try the demo</span></div>
+          <DemoButtons onLoggedIn={onLoggedIn} />
+        </div>
+      )}
+
+      {/* Sign-up can be switched off on the live site (the demo buttons instead). */}
+      {(site.signup || isRegister) && (
+        <p className="switch">
+          {isRegister ? 'Already have an account?' : 'New to ResolveIT?'}{' '}
+          <button type="button" className="link" onClick={switchMode}>
+            {isRegister ? 'Log in' : 'Create an account'}
+          </button>
+        </p>
+      )}
     </section>
   )
 }

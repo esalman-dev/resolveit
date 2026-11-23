@@ -10,6 +10,7 @@ import { Router } from 'express';
 import pool, { withTransaction } from '../db/index.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ADMINS, STAFF } from '../roles.js';
+import { blockDemo } from '../services/demo.js';
 
 const router = Router();
 
@@ -54,7 +55,7 @@ router.get('/', requireRole(...STAFF), async (req, res) => {
  * Access: admins and owners.
  * Body: { targets: [{ priority, first_response_minutes, resolve_minutes }] } (all four priorities)
  */
-router.put('/', requireRole(...ADMINS), async (req, res) => {
+router.put('/', requireRole(...ADMINS), blockDemo, async (req, res) => {
   const targets = req.body?.targets;
   if (!Array.isArray(targets) || targets.length !== PRIORITIES.length) {
     return res.status(400).json({ error: 'Send a target for each priority: urgent, high, medium and low' });

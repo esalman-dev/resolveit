@@ -10,6 +10,7 @@ import { Router } from 'express';
 import pool from '../db/index.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ROLES, ADMINS } from '../roles.js';
+import { blockDemo } from '../services/demo.js';
 
 const router = Router();
 const MAX_NAME = 50;
@@ -67,7 +68,7 @@ router.get('/', async (req, res) => {
  * Access: admins and owners.
  * Body: { name }
  */
-router.post('/', requireRole(...ADMINS), async (req, res) => {
+router.post('/', requireRole(...ADMINS), blockDemo, async (req, res) => {
   const { name, error } = checkName(req.body?.name);
   if (error) return res.status(400).json({ error });
 
@@ -89,7 +90,7 @@ router.post('/', requireRole(...ADMINS), async (req, res) => {
  * Access: admins and owners.
  * Body (any of): { name, active }
  */
-router.patch('/:id', requireRole(...ADMINS), async (req, res) => {
+router.patch('/:id', requireRole(...ADMINS), blockDemo, async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) return res.status(400).json({ error: 'Invalid category id' });
 

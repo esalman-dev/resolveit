@@ -51,7 +51,7 @@ resolveit/
 │   │   │   └── usePageTitle.js      Lets a page set the header and browser tab title
 │   │   ├── styles/
 │   │   │   └── theme.css            Colors, spacing and fonts in one place (contrast-checked)
-│   │   └── assets/              Logos: stacked SVG (login screen), horizontal PNG (sidebar)
+│   │   └── assets/              Logos as SVG: stacked (login screen) and horizontal (sidebar), each with a dark-mode version
 │   ├── public/favicon.svg   Browser tab icon
 │   ├── vite.config.js       Dev proxy: forwards /api to the Express server
 │   └── vercel.json          Production: forwards /api to the hosted API, every other address to the app

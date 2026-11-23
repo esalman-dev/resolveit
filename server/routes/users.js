@@ -11,6 +11,7 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 import { ROLES, ADMINS, canManage, canGrant } from '../roles.js';
 import { clampPage, containsPattern, readPaging } from '../services/paging.js';
 import { PROFILE_COLUMNS, checkProfileFields, saveProfile } from '../services/profile.js';
+import { blockDemo } from '../services/demo.js';
 
 const router = Router();
 
@@ -124,7 +125,7 @@ router.get('/history', async (req, res) => {
  * Access: admins and owners.
  * Body: { role }
  */
-router.patch('/:id/role', async (req, res) => {
+router.patch('/:id/role', blockDemo, async (req, res) => {
   const id = parseId(req.params.id);
   const { role } = req.body ?? {};
 
@@ -179,7 +180,7 @@ router.patch('/:id/role', async (req, res) => {
  * Access: admins and owners.
  * Body (any of): { name, job_title, department } (job_title / department: '' clears it)
  */
-router.patch('/:id/details', async (req, res) => {
+router.patch('/:id/details', blockDemo, async (req, res) => {
   const id = parseId(req.params.id);
   const checked = checkProfileFields(req.body ?? {});
   if (checked.error) return res.status(400).json({ error: checked.error });
@@ -201,7 +202,7 @@ router.patch('/:id/details', async (req, res) => {
  * Access: admins and owners.
  * Body: { disabled: true | false }
  */
-router.patch('/:id/disabled', async (req, res) => {
+router.patch('/:id/disabled', blockDemo, async (req, res) => {
   const id = parseId(req.params.id);
   const { disabled } = req.body ?? {};
   if (typeof disabled !== 'boolean') {

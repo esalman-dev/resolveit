@@ -16,14 +16,9 @@ import bcrypt from 'bcryptjs';
 import { newHireTitle } from '../services/newHire.js';
 import { DEMO_ARTICLES } from './demoArticles.js';
 
-const DEMO_DOMAIN = 'demo.example.com';
+import { DEMO_DOMAIN, DEMO_LOGINS } from '../services/demo.js';
 
-/** The three accounts anyone can log in with to try the app. */
-export const DEMO_LOGINS = {
-  user: { name: 'Demo User', email: `demo.user@${DEMO_DOMAIN}`, role: 'user' },
-  technician: { name: 'Demo Technician', email: `demo.tech@${DEMO_DOMAIN}`, role: 'technician' },
-  admin: { name: 'Demo Admin', email: `demo.admin@${DEMO_DOMAIN}`, role: 'admin' },
-};
+export { DEMO_LOGINS }; // the three accounts anyone can log in with (defined in services/demo.js)
 
 const TECHNICIANS = ['Sam Rivera', 'Priya Nair', 'Marcus Chen']; // plus Demo Technician
 const USERS = [
@@ -152,6 +147,9 @@ export async function removeDemoData(db) {
   // Articles a demo account wrote or published go too (their account columns would otherwise just
   // be emptied, leaving ownerless demo articles behind).
   await db.query('DELETE FROM kb_articles WHERE created_by = ANY($1) OR published_by = ANY($1)', [ids]);
+  // Files kept in the database (the live site) go with their attachment rows, so the nightly
+  // reset doesn't leave visitors' screenshots behind.
+  await db.query('DELETE FROM stored_files WHERE storage_key IN (SELECT storage_key FROM attachments WHERE uploaded_by = ANY($1))', [ids]);
   await db.query('DELETE FROM attachments WHERE uploaded_by = ANY($1)', [ids]);
   await db.query('DELETE FROM tickets WHERE created_by = ANY($1)', [ids]); // their history and comments go too
   await db.query('DELETE FROM ticket_events WHERE actor_id = ANY($1)', [ids]);

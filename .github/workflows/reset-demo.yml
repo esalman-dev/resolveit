@@ -1,0 +1,55 @@
+# Reset the live demo: every night, replaces the demo data on the live database with a fresh
+# copy, so whatever visitors changed with the Try as… accounts is gone by morning.
+#
+# Real accounts (not on demo.example.com) and their tickets are never touched (see
+# server/scripts/demoData.js). Can also be run by hand: Actions > Reset the live demo > Run workflow.
+#
+# Needs one repository secret (Settings > Secrets and variables > Actions):
+#   LIVE_DATABASE_URL  the Neon connection string (the same as DATABASE_URL on Render)
+# Without it, the job says so and does nothing (forks and before the first deploy).
+name: Reset the live demo
+
+on:
+  schedule:
+    - cron: '0 9 * * *' # 09:00 UTC = 4:00 AM US Eastern (5:00 in summer), when nobody's looking
+  workflow_dispatch:
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    env:
+      DATABASE_URL: ${{ secrets.LIVE_DATABASE_URL }}
+    steps:
+      - name: Check the database is set up
+        id: check
+        working-directory: . # before checkout, server/ doesn't exist yet
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "LIVE_DATABASE_URL isn't set, so there's no live database to reset."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v5
+        if: steps.check.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v5
+        if: steps.check.outputs.ready == 'true'
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        if: steps.check.outputs.ready == 'true'
+        run: npm ci
+
+      # The demo accounts are logged into with the Try as… buttons, so their password is never
+      # used; a new random one each night keeps them from being logged into any other way.
+      - name: Replace the demo data
+        if: steps.check.outputs.ready == 'true'
+        run: DEMO_PASSWORD="$(openssl rand -hex 24)" npm run seed-demo -- --yes

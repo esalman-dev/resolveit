@@ -9,7 +9,11 @@
 
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
-> 🚧 **Status: in development.** The ticket tracker, AI self-service and the Phase 3 help desk features are complete. Deployment is next. See [Progress](#progress).
+> 🚧 **Status: deploying.** The ticket tracker, AI self-service and the Phase 3 help desk features are complete; the live demo (one click, no sign-up) is being set up. See [Progress](#progress).
+
+<p align="center">
+  <img src="docs/images/get-help.gif" alt="Get help: a user describes a Teams problem, gets five safe steps from the AI, ticks the two they tried and clicks That fixed it, so no ticket is needed" width="820">
+</p>
 
 ## The idea
 
@@ -42,6 +46,17 @@ In a **simulated test of 500 help desk tickets**, ResolveIT's AI self-service re
 **Limits.** These are simulated tickets, not real users. The ticket mix comes from a vendor's benchmark, and the split of each category into "user can fix", "needs IT" and "risky" is this project's assumption. The tickets were written by the same model that answers them (Claude Haiku 5.5). Four self-fixable tickets mention a red flag (a spill, a virus worry), so escalating them counts against the result. The study found that the AI often gave steps for access and license requests that only IT can grant. That was fixed after the study: re-run on the same 40 of those tickets, correct escalations went from 20 to 27. The numbers above are from before the fix.
 
 Everything needed to check or re-run it is in [`server/eval/`](server/eval/): the scenarios, the frozen tickets, the scripts, every run's full results, and a [log of every paid run](server/eval/RUNS.md) with what changed and what it cost.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![The public home page: "Fix it before it's a ticket", with Try as a user, technician or admin buttons](docs/images/home.png) | ![The staff ticket queue: count cards that double as filters, search, filters and target-time badges](docs/images/tickets.png) |
+| **Home page**: what it is, the study's numbers, and one-click demo logins | **Ticket queue**: count cards, filters, due badges, paging done by the database |
+| ![A ticket: the conversation with an internal note, the history, and the steps the user already tried](docs/images/ticket.png) | ![The dashboard: number cards compared with the week before, team goals and hand-built charts](docs/images/dashboard.png) |
+| **A ticket**: the steps already tried, internal notes, target times | **Dashboard**: self-solved rate, goals, accessible charts |
+| ![A knowledge base article as a checklist, with two steps ticked and That fixed it / Still broken](docs/images/article.png) | ![The dashboard in dark mode](docs/images/dashboard-dark.png) |
+| **Knowledge base**: articles as checklists; Still broken opens a ticket | **Dark mode**: follows the computer, every color pair contrast-checked |
 
 ## Features
 
@@ -88,7 +103,7 @@ The full list is in [docs/SECURITY.md](docs/SECURITY.md).
 | Auth | bcrypt, JSON Web Tokens, Google Identity Services, express-rate-limit |
 | Testing | Vitest + Supertest (411 tests), against a separate test database; GitHub Actions CI |
 | AI | Anthropic Claude API (Claude Haiku 5.5, chosen for cost), structured outputs |
-| Hosting | Vercel (frontend), Render (API), Neon (database), on free tiers (planned) |
+| Hosting | Vercel (frontend), Render (API), Neon (database), on free tiers; the demo data resets nightly from a scheduled GitHub Action |
 
 ## Progress
 

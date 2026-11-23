@@ -7,6 +7,7 @@
 
 import { useEffect } from 'react'
 import { Link } from 'react-router'
+import DemoButtons from '../components/DemoButtons.jsx'
 import logo from '../assets/resolveit-logo-horizontal.svg'
 import logoDark from '../assets/resolveit-logo-horizontal-dark.svg'
 import './HomePage.css'
@@ -47,9 +48,11 @@ const STACK = ['React', 'Node.js + Express', 'PostgreSQL', 'Claude Haiku', 'Vite
 /**
  * The public home page.
  * @param appHome logged in: where the app starts for you ('/tickets' or '/get-help'); logged
- *   out: not given, so Log in and Create an account show instead
+ *   out: not given, so Log in and Create an account (or the demo buttons) show instead
+ * @param site the live-site switches: demo (show Try as… buttons), signup (show Create an account)
+ * @param onLoggedIn logged out: called when a demo button logs someone in
  */
-function HomePage({ appHome = null }) {
+function HomePage({ appHome = null, site = { demo: false, signup: true }, onLoggedIn }) {
   const appLabel = appHome === '/tickets' ? 'Go to Tickets' : 'Go to Get help'
   // Why not usePageTitle: that one sets the app shell's header, and this page is outside the shell.
   useEffect(() => {
@@ -76,7 +79,11 @@ function HomePage({ appHome = null }) {
             ) : (
               <>
                 <Link className="button-link" to="/login">Log in</Link>
-                <Link className="home__cta" to="/login" state={{ register: true }}>Create an account</Link>
+                {site.demo ? (
+                  <a className="home__cta" href="#try">Try the demo</a>
+                ) : (
+                  site.signup && <Link className="home__cta" to="/login" state={{ register: true }}>Create an account</Link>
+                )}
               </>
             )}
           </div>
@@ -96,9 +103,14 @@ function HomePage({ appHome = null }) {
               <div className="home__hero-actions">
                 {appHome ? (
                   <Link className="home__cta home__cta--big" to={appHome}>{appLabel}</Link>
+                ) : site.demo ? (
+                  // The live site: one click into the app as any role, no account needed.
+                  <div id="try">
+                    <DemoButtons onLoggedIn={onLoggedIn} size="big" />
+                  </div>
                 ) : (
                   <>
-                    <Link className="home__cta home__cta--big" to="/login" state={{ register: true }}>Create an account</Link>
+                    {site.signup && <Link className="home__cta home__cta--big" to="/login" state={{ register: true }}>Create an account</Link>}
                     <Link className="button-link home__secondary" to="/login">Log in</Link>
                   </>
                 )}

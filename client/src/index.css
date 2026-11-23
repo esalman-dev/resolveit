@@ -256,3 +256,8 @@ tr.muted td {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* The demo buttons under the login form, on the live site. */
+.login-demo {
+  margin-top: var(--space-2);
+}

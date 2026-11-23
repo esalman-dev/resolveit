@@ -253,3 +253,18 @@
 .app-shell__online .status-dot--available {
   background: var(--sidebar-online);
 }
+
+/* The demo banner: a thin indigo strip under the header while in a shared demo account. */
+.app-shell__demo {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--color-primary-soft);
+  border-bottom: 1px solid var(--border);
+}
