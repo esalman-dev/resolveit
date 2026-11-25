@@ -29,6 +29,8 @@ services:
         sync: false
       - key: CLIENT_URL
         sync: false # the Vercel address, e.g. https://resolveit-helpdesk.vercel.app
+      - key: GOOGLE_CLIENT_ID
+        sync: false # optional: turns on Sign in with Google; the same ID as VITE_GOOGLE_CLIENT_ID on Vercel
       # Requests come through Vercel's proxy and then Render's, so the visitor's own address is
       # two hops back. Without this, everyone would share one rate limit.
       - key: TRUST_PROXY
