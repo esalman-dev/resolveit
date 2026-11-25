@@ -1,0 +1,5 @@
+# Search engines may read every page; the sitemap lists the public ones.
+User-agent: *
+Allow: /
+
+Sitemap: https://resolveit-helpdesk.vercel.app/sitemap.xml

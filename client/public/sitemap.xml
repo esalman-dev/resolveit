@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The page search engines should list: the home page. Everything else needs a login. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://resolveit-helpdesk.vercel.app/</loc></url>
+</urlset>
