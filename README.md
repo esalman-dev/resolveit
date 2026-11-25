@@ -9,7 +9,7 @@
 
 **A help desk ticket tracker that helps users fix common IT problems themselves, before a ticket is ever created.**
 
-> 🚧 **Status: deploying.** The ticket tracker, AI self-service and the Phase 3 help desk features are complete; the live demo (one click, no sign-up) is being set up. See [Progress](#progress).
+> **[Try the live demo →](https://resolveit-helpdesk.vercel.app)** One click as a user, technician or admin, with no sign-up needed. The demo data resets every night. The first click can take up to a minute while the free server wakes up.
 
 <p align="center">
   <img src="docs/images/get-help.gif" alt="Get help: a user describes a Teams problem, gets five safe steps from the AI, ticks the two they tried and clicks That fixed it, so no ticket is needed" width="820">
@@ -110,7 +110,7 @@ The full list is in [docs/SECURITY.md](docs/SECURITY.md).
 - ✅ **Phase 1: Core ticket tracker**: accounts, roles, tickets, comments, history, search and filters
 - ✅ **Phase 2: AI self-service fixes**: Get help, Ask IT, guardrails, the 500-ticket study
 - ✅ **Phase 3: Smarter help desk**: attachments, demo data, target times, reviews, dashboard, online status, knowledge base, auto-assignment, notifications, outage spotting, new-hire checklists, keyboard shortcuts, dark mode
-- ⬜ **Phase 4: Ship it**: deployment, password reset, screenshots
+- 🔄 **Phase 4: Ship it**: live on Vercel, Render and Neon, with screenshots; password reset is next
 
 ## Project structure
 
