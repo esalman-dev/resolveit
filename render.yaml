@@ -36,6 +36,6 @@ services:
       - key: DEMO_MODE
         value: "true" # the Try as… buttons, and no admin changes from demo accounts
       - key: ALLOW_SIGNUP
-        value: "false" # no new accounts; the demo buttons instead
+        value: "true" # visitors can make their own account as well as use the demo buttons
       - key: FILE_STORAGE
         value: database # Render's free disk is wiped on every restart
